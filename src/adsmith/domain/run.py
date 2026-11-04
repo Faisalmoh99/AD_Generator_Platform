@@ -92,6 +92,19 @@ class ProductReference(DomainModel):
     def approved(self) -> bool:
         return self.artifact is not None
 
+    def valid_for(self, state: RunState) -> bool:
+        """Still the right reference for the current bible: only a PRODUCT change makes it stale
+        (a wardrobe or location edit bumps the bible version but leaves the product as it was)."""
+        bible = state.bible
+        if bible is None:
+            return False
+        if self.bible_version == bible.version:
+            return True
+        made_with = next(
+            (b for b in [*state.bible_history, bible] if b.version == self.bible_version), None
+        )
+        return made_with is not None and made_with.product == bible.product
+
 
 class RunState(DomainModel):
     id: str = Field(default_factory=lambda: new_id("run"))

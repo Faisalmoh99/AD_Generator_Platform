@@ -257,6 +257,8 @@ class EditService:
             events = _book(s, calls)
             s.patches.append(patch)
             if new_bible is not None:
+                if s.bible is not None:
+                    s.bible_history.append(s.bible)  # keep the version scenes were made with
                 s.bible = new_bible
             touched = []
             propagated = {

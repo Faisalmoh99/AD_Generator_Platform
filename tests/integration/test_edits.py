@@ -177,3 +177,21 @@ async def test_the_second_one_is_scene_two(tmp_path: Path) -> None:
     assert state.storyboard is not None
     got = resolve_ref(SceneRef(kind="ordinal", value="the second one"), state.storyboard)
     assert got == [state.storyboard.scenes[1].id]
+
+
+async def test_wardrobe_edit_archives_the_bible_and_keeps_the_product_reference(
+    tmp_path: Path,
+) -> None:
+    h = make_harness(fast_settings(tmp_path), scenario="perfume_ar")
+    run = h.orch.create_run(REQUEST, interactive=False, product_reference=True)
+    before = await h.orch.run_until_blocked(run.id)
+    assert before.product_reference is not None and before.product_reference.approved
+    assert before.bible is not None
+    refs_before = h.reference.calls if h.reference else 0
+    after, _images, _videos = await apply(h, before.id, "غيّر لبسه لثوب أسود")
+    assert after.bible is not None and after.bible.version == before.bible.version + 1
+    assert [b.version for b in after.bible_history][-1] == before.bible.version  # archived
+    pr = after.product_reference
+    assert pr is not None and pr.valid_for(after)  # the product did not change
+    assert pr.tries == before.product_reference.tries  # no new packshot was paid for
+    assert h.reference is not None and h.reference.calls >= refs_before

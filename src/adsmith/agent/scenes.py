@@ -191,7 +191,7 @@ class SceneStageRunner:
             return
         bible_v, max_tries = state.bible.version, self.node_ctx.settings.keyframe_max_tries
         current = state.product_reference
-        same = current is not None and current.bible_version == bible_v
+        same = current is not None and current.valid_for(state)
         if same and current is not None and (current.approved or current.tries >= max_tries):
             return
         product = state.bible.product
@@ -1205,11 +1205,7 @@ class SceneStageRunner:
             and not (a.error_message or "").startswith("interrupted")
         )
         ref = state.product_reference
-        locked = (
-            ref.artifact
-            if ref is not None and ref.approved and ref.bible_version == state.bible.version
-            else None
-        )
+        locked = ref.artifact if ref is not None and ref.approved and ref.valid_for(state) else None
         return self.gateway.prepare(
             scene,
             phase,
