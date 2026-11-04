@@ -1,0 +1,188 @@
+[
+  {
+    "output": {
+      "scenes": [
+        {
+          "purpose": "hook",
+          "description": "A razor line of light crawls over the brushed metal cap of the bottle.",
+          "duration_s": 1.3,
+          "shot": {
+            "shot_type": "extreme_close_up",
+            "camera_movement": "push_in",
+            "lens": "100mm macro f/4",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "the cap of the bottle fills the frame edge to edge",
+            "mood": "tense, precise",
+            "subject_action": "A thin band of hard light slides slowly across the brushed metal cap of the bottle.",
+            "setting": "black void",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "build",
+          "description": "A single water drop lands on a dark leaf.",
+          "duration_s": 1.3,
+          "shot": {
+            "shot_type": "extreme_close_up",
+            "camera_movement": "static",
+            "lens": "100mm macro f/2.8",
+            "lighting": "single hard backlight, black void",
+            "time_of_day": "night",
+            "composition": "the leaf fills the lower half against a black void",
+            "mood": "still, charged",
+            "subject_action": "A single water drop falls onto a dark leaf in extreme slow motion.",
+            "setting": "black void",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": false
+        },
+        {
+          "purpose": "build",
+          "description": "Rim light traces the faceted glass edge of the bottle.",
+          "duration_s": 1.3,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "push_in",
+            "lens": "100mm macro f/4",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "the glass edge of the bottle runs diagonally across the frame",
+            "mood": "precise",
+            "subject_action": "Rim light traces the faceted glass edge of the bottle as the camera pushes in.",
+            "setting": "black void",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "build",
+          "description": "Cold droplets bead on the glass of the bottle.",
+          "duration_s": 1.3,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "static",
+            "lens": "90mm macro f/4",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "droplets cover the glass of the bottle, sharp in the centre",
+            "mood": "cool",
+            "subject_action": "Fine droplets bead on the cold glass of the bottle and run down slowly.",
+            "setting": "black void",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "build",
+          "description": "One short burst of fine mist crosses the black frame.",
+          "duration_s": 1.35,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "static",
+            "lens": "50mm f/2",
+            "lighting": "single hard backlight behind the mist, black void",
+            "time_of_day": "night",
+            "composition": "a horizontal band of mist enters from the left edge",
+            "mood": "explosive, brief",
+            "subject_action": "One short burst of fine mist crosses a black void from the left edge.",
+            "setting": "black void",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": false
+        },
+        {
+          "purpose": "build",
+          "description": "The bottle sinks into still black water in a column of bubbles.",
+          "duration_s": 1.35,
+          "shot": {
+            "shot_type": "medium_close_up",
+            "camera_movement": "static",
+            "lens": "50mm f/2.8",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "the bottle centred, bubbles rising around it",
+            "mood": "weightless",
+            "subject_action": "The bottle sinks into still black water in slow motion, sending up a column of bubbles.",
+            "setting": "still black water",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "build",
+          "description": "Warm light sweeps across the bottle on wet dark rock.",
+          "duration_s": 1.35,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "orbit",
+            "lens": "85mm f/2.8",
+            "lighting": "a slow sweep of warm light over cold rim light",
+            "time_of_day": "night",
+            "composition": "the bottle on wet rock, slightly low angle",
+            "mood": "revealing",
+            "subject_action": "A slow sweep of warm light travels across the bottle on wet dark rock.",
+            "setting": "wet dark rock",
+            "color_notes": null,
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "reveal",
+          "description": "A hand in a white thobe cuff sets the bottle down on dark stone.",
+          "duration_s": 1.3,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "static",
+            "lens": "85mm f/2",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "the hand and cuff enter from the right; only the wrist and fingers in frame",
+            "mood": "assured",
+            "subject_action": "A hand in a white thobe cuff sets the bottle down on dark stone.",
+            "setting": "wet dark rock",
+            "color_notes": null,
+            "speed": "normal"
+          },
+          "shows_character": true,
+          "shows_product": true
+        },
+        {
+          "purpose": "product",
+          "description": "Hero: the bottle on wet black rock under a hard rim light.",
+          "duration_s": 1.45,
+          "shot": {
+            "shot_type": "medium_close_up",
+            "camera_movement": "push_in",
+            "lens": "85mm f/4",
+            "lighting": "hard rim light from camera-right, deep black surroundings, soft low fill",
+            "time_of_day": "night",
+            "composition": "the bottle centred, lower fifth of the frame clear for the end card",
+            "mood": "triumphant",
+            "subject_action": "The camera pushes in slowly on the bottle on wet black rock.",
+            "setting": "wet dark rock",
+            "color_notes": null,
+            "speed": "normal"
+          },
+          "shows_character": false,
+          "shows_product": true
+        }
+      ]
+    }
+  }
+]

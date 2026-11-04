@@ -17,6 +17,7 @@ from adsmith.agent.nodes.common import (
 )
 from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
+from adsmith.domain.formats import AdFormat, format_block, grammar_problems
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.domain.shot_lint import multi_action_problem, product_presence_problem
@@ -28,10 +29,17 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     concept = state.concepts.selected
     assert concept is not None
     video_model = state.config.video_model
-    min_s, max_s, single_max = scene_duration_bounds(ctx.settings, video_model)
     brief = state.brief
+    fmt = brief.format
+    grammar = ctx.settings.formats.grammar(fmt)
+    min_s, max_s, single_max = scene_duration_bounds(ctx.settings, video_model, fmt)
     duration = brief.duration_s
-    max_scenes = max(2, min(6, int(duration // min_s)))
+    montage = fmt is AdFormat.MONTAGE
+    max_scenes = (
+        min(grammar.max_shots, int(duration // min_s))
+        if montage
+        else max(2, min(6, int(duration // min_s)))
+    )
 
     requested = state.brief.requested_shots if state.brief else None
 
@@ -41,6 +49,8 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
                 f"the client asked for exactly {requested} shot(s); write exactly {requested} "
                 f"scene(s), not {len(draft.scenes)} (keep the concept, split or merge its beats)"
             )
+        if montage:
+            return _montage(draft)
         single = len(draft.scenes) == 1
         if single and draft.scenes[0].duration_s > single_max:
             raise ValueError(
@@ -72,7 +82,16 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
             # the one-action-per-shot lint applies to multi-scene ads only.
             if not single and (problem := multi_action_problem(s.shot.subject_action))
         ]
-        product = product_presence_problem(
+        if product := _presence(draft):
+            busy.append(product)
+        if busy:
+            raise ValueError("; ".join(busy))
+        return Storyboard.from_draft(
+            draft, concept_id=concept.id, target_duration_s=duration, fmt=fmt
+        )
+
+    def _presence(draft: StoryboardDraft) -> str | None:
+        return product_presence_problem(
             [
                 (
                     s.purpose.value,
@@ -83,11 +102,22 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
             ],
             brief.product,
         )
-        if product:
-            busy.append(product)
-        if busy:
-            raise ValueError("; ".join(busy))
-        return Storyboard.from_draft(draft, concept_id=concept.id, target_duration_s=duration)
+
+    def _montage(draft: StoryboardDraft) -> Storyboard:
+        """Montage grammar (formats.toml): counts, kept durations, hero last, people, camera."""
+        problems = grammar_problems(draft.scenes, grammar)
+        problems += [
+            f"scene {i} subject_action {problem}"
+            for i, s in enumerate(draft.scenes, 1)
+            if (problem := multi_action_problem(s.shot.subject_action))
+        ]
+        if product := _presence(draft):
+            problems.append(product)
+        if problems:
+            raise ValueError("; ".join(problems))
+        return Storyboard.from_draft(
+            draft, concept_id=concept.id, target_duration_s=duration, fmt=fmt
+        )
 
     prompt = ctx.prompts.get("storyboard").render(
         brief=brief_block(state.brief),
@@ -98,6 +128,8 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
         single_max=f"{single_max:g}",
         video_profile=video_profile_block(ctx.settings, video_model),
         max_scenes=str(max_scenes),
+        format=fmt.value,
+        format_block=format_block(ctx.settings.formats, fmt),
         aspect_ratio=state.brief.aspect_ratio,
         user_language=language_name(state.brief.language),
     )
@@ -112,6 +144,9 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     )
     return NodeResult(
         deltas=[SetStoryboard(storyboard=sb)],
-        events=[*flag_events, decision(ctx.run_id, Stage.STORYBOARD, f"Storyboard: {summary}")],
+        events=[
+            *flag_events,
+            decision(ctx.run_id, Stage.STORYBOARD, f"Storyboard ({sb.format.value}): {summary}"),
+        ],
         llm_calls=result.calls,
     )

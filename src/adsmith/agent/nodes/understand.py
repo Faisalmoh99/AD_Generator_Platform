@@ -10,6 +10,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.brief import Brief, BriefDraft
 from adsmith.domain.dialect import corrected_dialect
 from adsmith.domain.enums import Dialect, Language, Stage
+from adsmith.domain.formats import resolve_format
 from adsmith.domain.run import RunState
 from adsmith.domain.similarity import detect_language
 
@@ -62,14 +63,23 @@ async def understand(state: RunState, ctx: NodeContext) -> NodeResult:
         )
         brief = Brief.model_validate(brief.model_dump() | {"dialect": dialect})
 
+    fmt, why = resolve_format(
+        ctx.settings.formats,
+        requested=brief.requested_format,
+        requested_shots=brief.requested_shots,
+        physical_product=brief.physical_product,
+    )
+    brief = Brief.model_validate(brief.model_dump() | {"format": fmt})
     events.append(
         decision(
             ctx.run_id,
             Stage.UNDERSTAND,
             f"Brief: {brief.product} for {brief.target_audience}, {brief.duration_s:g}s "
             f"{brief.aspect_ratio}, {brief.language.value}/{brief.dialect.value}; "
-            f"{len(brief.assumptions)} assumption(s).",
+            f"{len(brief.assumptions)} assumption(s). Format: {fmt.value} ({why}).",
             assumptions=list(brief.assumptions),
+            format=fmt.value,
+            format_why=why,
         )
     )
     return NodeResult(deltas=[SetBrief(brief=brief)], events=events, llm_calls=result.calls)

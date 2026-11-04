@@ -151,7 +151,9 @@ class EditService:
         orders = [sb.by_id(t).order for t in targets]
 
         # 2. conflicts -----------------------------------------------------------------------
-        min_s, max_s, _single = scene_duration_bounds(self.rt.settings, state.config.video_model)
+        min_s, max_s, _single = scene_duration_bounds(
+            self.rt.settings, state.config.video_model, sb.format
+        )
         findings = deterministic_findings(sb, patch, targets)
         neighbour_ids = {
             n.id for t in targets for n in sb.neighbors(t) if n is not None and n.id not in targets

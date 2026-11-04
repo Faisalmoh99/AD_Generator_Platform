@@ -1,0 +1,58 @@
+[
+  {
+    "output": {
+      "character": {
+        "description": "a young Saudi man seen only as a hand and wrist",
+        "age_range": "22-28",
+        "appearance": "warm olive skin, neat short nails",
+        "hair": "not visible",
+        "grooming": "well groomed hands",
+        "build": "slim",
+        "wardrobe": [
+          "white Saudi thobe cuff with a concealed placket and a silver cufflink"
+        ]
+      },
+      "product": {
+        "name": "the fragrance",
+        "form": "faceted rectangular glass flacon with chamfered shoulders",
+        "materials": "clear heavy glass, brushed gunmetal cap",
+        "colors": "clear glass, smoky amber liquid, gunmetal grey cap",
+        "branding_text": "",
+        "branding_style": "bare unmarked glass and metal, completely wordless",
+        "distinctive_features": [
+          "squared brushed gunmetal cap",
+          "thick glass base"
+        ],
+        "hero_angle": "straight-on, slightly low"
+      },
+      "color_grade": {
+        "palette": [
+          "#050506",
+          "#2B2D31",
+          "#B07A3A",
+          "#D9DDE2"
+        ],
+        "contrast": "very high",
+        "saturation": "low",
+        "film_emulation": null
+      },
+      "location": {
+        "primary": "a black void studio",
+        "secondary": [
+          "wet dark rock",
+          "still black water"
+        ],
+        "era": "contemporary"
+      },
+      "mood": "restrained, bold, luxurious",
+      "lighting": "one hard rim light against black, soft low fill",
+      "audio_mood": "low pulse with sharp transient hits",
+      "forbidden": [
+        "readable text",
+        "alcohol cues",
+        "smoke",
+        "full figure of a person"
+      ]
+    }
+  }
+]

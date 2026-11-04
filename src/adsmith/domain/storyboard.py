@@ -14,11 +14,12 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from adsmith.domain.base import DomainModel
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.scene import Scene, SceneDraft
 
 DURATION_TOLERANCE_S = 0.25
 MIN_SCENES = 1  # 1 = single-take hero format (one continuous shot)
-MAX_SCENES = 6
+MAX_SCENES = 12  # montage: up to 12 shots (formats.toml); narrative stays at 6 (node)
 
 
 class StoryboardDraft(DomainModel):
@@ -40,6 +41,7 @@ def check_duration_sum(durations: list[float], target: float) -> None:
 class Storyboard(DomainModel):
     concept_id: str
     target_duration_s: float = Field(gt=0, le=60)
+    format: AdFormat = AdFormat.NARRATIVE  # copied from the brief (self-contained validation)
     scenes: list[Scene] = Field(min_length=MIN_SCENES, max_length=MAX_SCENES)
 
     @model_validator(mode="after")
@@ -58,11 +60,18 @@ class Storyboard(DomainModel):
 
     @classmethod
     def from_draft(
-        cls, draft: StoryboardDraft, *, concept_id: str, target_duration_s: float
+        cls,
+        draft: StoryboardDraft,
+        *,
+        concept_id: str,
+        target_duration_s: float,
+        fmt: AdFormat = AdFormat.NARRATIVE,
     ) -> Storyboard:
         """Build from LLM output. Raises ``ValidationError`` with a repair-friendly message."""
         scenes = [Scene(**sd.model_dump(), order=i) for i, sd in enumerate(draft.scenes, start=1)]
-        return cls(concept_id=concept_id, target_duration_s=target_duration_s, scenes=scenes)
+        return cls(
+            concept_id=concept_id, target_duration_s=target_duration_s, format=fmt, scenes=scenes
+        )
 
     @property
     def total_duration_s(self) -> float:

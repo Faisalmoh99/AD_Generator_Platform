@@ -1,0 +1,37 @@
+[
+  {
+    "output": {
+      "language": "en",
+      "dialect": "none",
+      "product": "luxury men's eau de parfum",
+      "product_category": "fragrance",
+      "brand_name": null,
+      "target_audience": "young men aged 18-30 who value bold, refined style",
+      "tone": [
+        "luxurious",
+        "bold"
+      ],
+      "visual_style": "dark, low-key, rim-lit product cinematography",
+      "duration_s": 12.0,
+      "aspect_ratio": null,
+      "requested_shots": null,
+      "requested_format": null,
+      "physical_product": true,
+      "must_include": [
+        "clear product hero shot"
+      ],
+      "must_avoid": [
+        "readable on-screen text inside the generated footage"
+      ],
+      "tagline": null,
+      "tagline_language": null,
+      "cultural_notes": [
+        "Any wardrobe detail should read as Saudi (white thobe), never South Asian."
+      ],
+      "assumptions": [
+        "No brand name was given, so the product stays wordless."
+      ],
+      "normalized_request_en": "A 12-second luxurious, bold ad for a men's perfume aimed at young men."
+    }
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "output": {
+      "category_cliches": [
+        "A shirtless model emerging from the sea",
+        "A woman drawn to the man after one spray",
+        "Gold liquid splashes and swirling smoke for luxury"
+      ],
+      "concepts": [
+        {
+          "title": "Obsidian",
+          "logline": "Darkness, metal and water: the bottle is discovered one hard edge of light at a time until it stands whole on wet rock.",
+          "narrative_arc": [
+            "darkness and brushed metal",
+            "cold water",
+            "the reveal on wet rock"
+          ],
+          "visual_hook": "A razor line of light crawling over a brushed metal cap",
+          "insight": "Real confidence is quiet; it shows in details, not noise.",
+          "emotional_driver": "Restrained power",
+          "differentiator": "Pure material and light; no story, no character until one hand at the end.",
+          "style_references": [
+            "hard rim light",
+            "macro lens",
+            "low-key"
+          ],
+          "risk_notes": [],
+          "estimated_scene_count": 9
+        },
+        {
+          "title": "Night Rain",
+          "logline": "Rain on a midnight terrace beads on cold glass while the city hum fades; one drop at a time builds to the scent.",
+          "narrative_arc": [
+            "rain begins",
+            "glass beads with water",
+            "the city goes silent"
+          ],
+          "visual_hook": "A single raindrop landing on a leaf in extreme slow motion",
+          "insight": "The best nights start in the quiet minutes before you leave.",
+          "emotional_driver": "Anticipation",
+          "differentiator": "Built around weather and the city at night instead of pure material.",
+          "style_references": [
+            "blue night palette",
+            "slow motion water"
+          ],
+          "risk_notes": [],
+          "estimated_scene_count": 9
+        },
+        {
+          "title": "Desert Ember",
+          "logline": "Wind-carved sandstone and the last ember of a majlis fire glow behind the bottle as heat shimmers past it.",
+          "narrative_arc": [
+            "sandstone texture",
+            "ember glow",
+            "heat shimmer",
+            "the bottle in firelight"
+          ],
+          "visual_hook": "An ember's glow sweeping over carved sandstone",
+          "insight": "Heritage is warm; it is carried, not displayed.",
+          "emotional_driver": "Warm pride",
+          "differentiator": "Warm desert palette and heritage materials instead of cold water and metal.",
+          "style_references": [
+            "warm firelight",
+            "sandstone macro"
+          ],
+          "risk_notes": [],
+          "estimated_scene_count": 9
+        }
+      ]
+    }
+  }
+]

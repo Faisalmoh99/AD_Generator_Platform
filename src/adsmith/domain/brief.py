@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 
 from adsmith.domain.base import DomainModel, new_id
 from adsmith.domain.enums import Dialect, Language
+from adsmith.domain.formats import AdFormat
 
 AspectRatio = Literal["16:9", "9:16", "1:1"]
 ShortText = Annotated[str, Field(min_length=1, max_length=200)]
@@ -34,9 +35,19 @@ class BriefDraft(DomainModel):
         default=None, description="Only if the user specified one; otherwise null."
     )
     requested_shots: int | None = Field(
-        default=None, ge=1, le=6,
+        default=None, ge=1, le=12,
         description="Only if the user explicitly asked for a number of shots/scenes; else null.",
     )  # fmt: skip
+    requested_format: AdFormat | None = Field(
+        default=None,
+        description="Only if the client named a format: one continuous shot → single_take; a "
+        "story with a character or scenes → narrative; fast cuts / montage → montage. Else null.",
+    )
+    physical_product: bool = Field(
+        default=True,
+        description="True for a physical product the camera can show (a bottle, a dish, a "
+        "device); false for an app, a service, a place or an event.",
+    )
     must_include: list[ShortText] = Field(default_factory=list, max_length=10)
     must_avoid: list[ShortText] = Field(default_factory=list, max_length=10)
     tagline: str | None = Field(default=None, max_length=120)
@@ -64,6 +75,9 @@ class Brief(BriefDraft):
     id: str = Field(default_factory=lambda: new_id("brf"))
     raw_request: Annotated[str, Field(min_length=1, max_length=4000)]
     aspect_ratio: AspectRatio = "9:16"  # resolved: request value or configured default
+    # Resolved by code (domain/formats.py: resolve_format). Briefs stored before V2 load as
+    # narrative, which is exactly how they were planned.
+    format: AdFormat = AdFormat.NARRATIVE
 
     @classmethod
     def from_draft(

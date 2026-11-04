@@ -9,6 +9,7 @@ from adsmith.agent.nodes.common import brief_block, decision, language_name, vid
 from adsmith.config import LLMNode
 from adsmith.domain.concept import ConceptSet, ConceptSetDraft
 from adsmith.domain.enums import Stage
+from adsmith.domain.formats import format_block
 from adsmith.domain.run import RunState
 from adsmith.domain.similarity import pairwise_similarities
 
@@ -20,6 +21,7 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         user_language=language_name(state.brief.language),
         duration=f"{state.brief.duration_s:g}",
         video_profile=video_profile_block(ctx.settings, state.config.video_model),
+        format_block=format_block(ctx.settings.formats, state.brief.format),
     )
     result = await ctx.llm.call_and_convert(
         LLMNode.IDEATE, prompt, ConceptSetDraft, ConceptSet.from_draft

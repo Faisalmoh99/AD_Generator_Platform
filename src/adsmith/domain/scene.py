@@ -37,7 +37,9 @@ from adsmith.domain.qa import QAVerdict
 # 500, not 300: real runs at DP-level detail (Kelvin, direction, practicals) hit 300 and
 # cost a repair each time.
 SpecText = Annotated[str, Field(min_length=1, max_length=500)]
-MIN_SCENE_S = 1.5
+# Absolute lower bound of a scene's *kept* time. Montage shots keep 1.0-1.5 s of a longer render
+# (formats.toml); narrative scenes keep the model's minimum (scene_duration_bounds).
+MIN_SCENE_S = 1.0
 # Absolute bound for any scene: a single-take ad is one scene up to the model's single-shot
 # limit (Kling: 15 s). In multi-scene ads each scene stays at most MULTI_SCENE_MAX_S
 # (enforced by the storyboard node, where the scene count is known).

@@ -43,7 +43,7 @@ def test_arabic_brief_needs_dialect() -> None:
 
 def test_brief_from_draft_applies_default_aspect() -> None:
     draft = BriefDraft.model_validate(
-        make_brief().model_dump(exclude={"id", "raw_request", "aspect_ratio"})
+        make_brief().model_dump(exclude={"id", "raw_request", "aspect_ratio", "format"})
     )
     brief = Brief.from_draft(draft, raw_request="x", default_aspect="9:16")
     assert brief.aspect_ratio == "9:16"

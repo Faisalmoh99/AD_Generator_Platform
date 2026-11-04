@@ -34,7 +34,7 @@ class ConceptDraft(DomainModel):
         description="Cinematographic descriptors only; no real brands, films or people.",
     )
     risk_notes: list[UserText] = Field(default_factory=list, max_length=5)
-    estimated_scene_count: int = Field(ge=2, le=6)
+    estimated_scene_count: int = Field(ge=1, le=12)
 
     def signature_text(self) -> str:
         """Text used for distinctness. ``differentiator`` and ``risk_notes`` are excluded on

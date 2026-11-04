@@ -1,0 +1,55 @@
+# Ad format library (PLAN_V2 item 1, ADR-0018). Each format's grammar is DATA; the code only
+# reads it (domain/formats.py). The format of a run is resolved by code from the brief:
+# the request names one → that; a physical product → default_physical; else default_other.
+# The two montage references are described in docs/PLAN_V2.md; their measurements are here.
+
+default_physical = "montage"
+default_other = "narrative"
+
+[formats.montage]
+label = "Physics-led product montage"
+min_shots = 8
+max_shots = 12
+# What the ad keeps per shot. The video model renders its own minimum (Kling: 3 s) and the
+# kept window is cut from it at assembly (peak window, item 5).
+kept_s = [1.0, 1.5]
+hero_last = true
+max_person_shots = 1
+person_framing = ["detail", "silhouette"]
+person_position = "last_two"
+min_product_share = 0.7
+allowed_camera = ["static", "push_in", "dolly_in", "orbit", "tilt", "rack_focus"]
+speed_default = "slow_motion"
+max_settings = 3
+dialogue = false
+# Locked packshot + per-shot identity routing from the vocabulary (item 3), always on.
+identity = "reference"
+look = """dark, low-key product photography: black or deep charcoal backgrounds, one hard rim light tracing glass and metal edges, a soft low fill, crisp specular highlights, brushed metal and faceted glass textures, no readable text anywhere"""
+events = """one physical event per shot and nothing else: a light sweep, a water drop, droplets forming, a splash with rising bubbles, a ribbon of water, one spray burst, the cap lifting, a slow turntable glint; never a person acting"""
+risk_notes = [
+  "every shot is a separate generation; identity comes only from the locked product reference",
+  "8-12 keyframes per ad: more gate calls and stills money than a single take",
+]
+
+[formats.single_take]
+label = "Single-take hero"
+min_shots = 1
+max_shots = 1
+kept_s = [5.0, 15.0]
+hero_last = true
+identity = "reference"
+look = """one continuous take: a physical chain of action around the product, the product seen or teased early and filling the frame at the end"""
+events = """one causal chain of physical motion (bodies, liquids, objects in slow motion); no cuts"""
+risk_notes = ["one long generation: a weak key beat has no second chance"]
+
+[formats.narrative]
+# Today's multi-scene rules, unchanged: 1 scene = single take, else 2-6 scenes of 1.5-8 s.
+label = "Narrative scenes"
+min_shots = 1
+max_shots = 6
+kept_s = [1.5, 8.0]
+hero_last = true
+identity = "optional"
+look = """cinematic scenes with a character and a setting; the product teased early and the hero at the end"""
+events = """one primary action per scene, filmable as one continuous shot"""
+risk_notes = ["the same face or object must look identical across separately generated scenes"]

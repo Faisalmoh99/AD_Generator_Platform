@@ -18,6 +18,8 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from adsmith.domain.formats import FormatLibrary
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
@@ -224,7 +226,7 @@ class Settings(BaseSettings):
     # composite: plain keyframe first (product at its in-scene size), then Kontext multi swaps in
     # the reference product at that size (ADR-0003 addendum 4).
     product_reference_mode: Literal["direct", "composite"] = "direct"
-    max_total_attempts: int = Field(default=40, ge=1)
+    max_total_attempts: int = Field(default=80, ge=1)  # 12 shots x 3 keyframe tries + clips
     qa_threshold: float = Field(default=0.7, ge=0, le=1)
     scene_concurrency: int = Field(default=3, ge=1, le=16)
     chaos: bool = False
@@ -262,6 +264,12 @@ class Settings(BaseSettings):
     @cached_property
     def catalog(self) -> ModelCatalog:
         return ModelCatalog.load(self.config_dir / "models.toml")
+
+    @cached_property
+    def formats(self) -> FormatLibrary:
+        """Ad format grammars (config/formats.toml, ADR-0018)."""
+        with (self.config_dir / "formats.toml").open("rb") as fh:
+            return FormatLibrary.model_validate(tomllib.load(fh))
 
     @cached_property
     def chaos_config(self) -> ChaosConfig:

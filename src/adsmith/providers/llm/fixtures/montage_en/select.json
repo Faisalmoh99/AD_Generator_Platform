@@ -1,0 +1,47 @@
+[
+  {
+    "output": {
+      "scores": [
+        {
+          "concept_number": 1,
+          "brief_fit": 9,
+          "producibility": 9,
+          "product_hero": 9,
+          "cultural_fit": 8,
+          "originality": 8,
+          "insight": 7,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "Pure physics around the product, exactly what the model renders well; risk: very dark frames."
+        },
+        {
+          "concept_number": 2,
+          "brief_fit": 7,
+          "producibility": 7,
+          "product_hero": 6,
+          "cultural_fit": 7,
+          "originality": 7,
+          "insight": 6,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "Strong mood, but rain over a city needs wide shots the model handles less well."
+        },
+        {
+          "concept_number": 3,
+          "brief_fit": 7,
+          "producibility": 7,
+          "product_hero": 7,
+          "cultural_fit": 9,
+          "originality": 7,
+          "insight": 7,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "Culturally warm, but heat shimmer is a light-only effect the model often ignores."
+        }
+      ]
+    }
+  }
+]

@@ -7,6 +7,7 @@ from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept
 from adsmith.domain.enums import Language, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.scene import Scene
 from adsmith.domain.scene_flags import Flag, FlagOverride
 from adsmith.domain.storyboard import Storyboard
@@ -26,6 +27,7 @@ def brief_block(b: Brief) -> str:
         f"Duration: {b.duration_s:g} seconds",
         f"Aspect ratio: {b.aspect_ratio}",
         *([f"Requested shots: exactly {b.requested_shots}"] if b.requested_shots else []),
+        f"Ad format: {b.format.value}",
         f"User language: {language_name(b.language)} (dialect: {b.dialect.value})",
     ]
     if b.must_include:
@@ -73,18 +75,26 @@ def _video_endpoint(settings: Settings, video_model: str | None = None) -> FalVi
 
 
 def scene_duration_bounds(
-    settings: Settings, video_model: str | None = None
+    settings: Settings, video_model: str | None = None, fmt: AdFormat = AdFormat.NARRATIVE
 ) -> tuple[float, float, float]:
-    """(per-scene minimum, per-scene maximum in a multi-scene ad, maximum for a single-take ad)
-    that the *real* video model can produce, so plans made in mock mode stay producible on fal.
-    Clips are trimmed to the scene duration at assembly."""
-    from adsmith.domain.scene import MAX_SCENE_S, MIN_SCENE_S, MULTI_SCENE_MAX_S  # noqa: PLC0415
+    """(per-scene minimum, per-scene maximum in a multi-scene ad, maximum for a single-take ad).
+
+    Narrative: what the *real* video model can produce, so plans made in mock mode stay
+    producible on fal (clips are trimmed to the scene duration at assembly). Montage: the kept
+    window of each shot (formats.toml); the model still renders its own minimum, and assembly keeps
+    only the window (``render_window``)."""
+    from adsmith.domain.scene import MAX_SCENE_S, MULTI_SCENE_MAX_S  # noqa: PLC0415
 
     endpoint = _video_endpoint(settings, video_model)
-    model_min = endpoint.min_duration_s or min(endpoint.allowed_durations_s or [MIN_SCENE_S])
     model_max = endpoint.max_duration_s or max(endpoint.allowed_durations_s or [MAX_SCENE_S])
     single = endpoint.profile.max_single_shot_s if endpoint.profile else model_max
-    return max(MIN_SCENE_S, model_min), MULTI_SCENE_MAX_S, min(single, model_max, MAX_SCENE_S)
+    single_max = min(single, model_max, MAX_SCENE_S)
+    if fmt is AdFormat.MONTAGE:
+        g = settings.formats.grammar(fmt)
+        return g.kept_min, g.kept_max, g.kept_max
+    narrative = settings.formats.grammar(AdFormat.NARRATIVE)
+    model_min = endpoint.min_duration_s or min(endpoint.allowed_durations_s or [narrative.kept_min])
+    return max(narrative.kept_min, model_min), MULTI_SCENE_MAX_S, single_max
 
 
 def video_profile_block(settings: Settings, video_model: str | None = None) -> str:
