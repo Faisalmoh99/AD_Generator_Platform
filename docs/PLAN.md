@@ -668,3 +668,8 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - Frames sampled from the played part of the clip only; `frames_inspected` set by code; consistency rules (failed check ⇒ issue, frame index in range) go through repair (ADR-0016).
 - QA rejection evicts the rejected clip (and keyframe for look issues) from the cache; keyframe retries use `seed = attempt_no - 1`.
 - **Reordered:** M11 (fal provider) runs right after M6, before M7, with a cheap "dev" video model (LTX-2.3 Fast) next to Kling. Hard spend ceiling: the user's $10 prepaid fal balance; per-run cap $5 for the full ad.
+
+### M11 (fal provider): done; real-media work frozen
+- Direct queue client (no `fal-client`), wallet ledger with a hard ceiling, account-level refusal pauses the run, keyframe QA gate before video (ADR-0003 addendum), hard/soft QA severity (ADR-0016 addendum 3), minimal `edit_scene_spec` (first M7 use case).
+- Defaults after real testing: keyframes FLUX dev, video Kling v3 Pro (LTX-2.3 Fast kept as the cheap dev model).
+- Remaining milestones use mock media for the demo flow plus the real clips produced in M11.

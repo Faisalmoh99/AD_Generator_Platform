@@ -460,3 +460,59 @@ budget plan.
 - **Finding**: the bottleneck is now the keyframe model's adherence (layout, light side, prop
   placement), not the video model or the critic. "Dust motes → smoke" could not be tested (no
   clips were produced).
+
+### M11 final: severity calibration + final real ad (2026-11-04). Real-media work FROZEN after this.
+**Built**: account-level provider refusal pauses the whole run (`AccountLockedError` → fal circuit
+breaker + scene back to pending + run `errored`, resumable); hard/soft QA severity split
+(`qa_keyframe` v2, `qa_critic` v5, `text_free` check; soft categories capped at minor by code;
+pass = no hard failure, no blocker, score ≥ threshold); `scripts/gate_recalibrate.py`. 414 tests.
+
+**Calibration story** (ADR-0016 addenda 1–3): too lenient (a clip with 2 majors passed at 0.72) →
+stricter rule + critic v2/v3 + keyframe gate → too strict (10/10 keyframes rejected in the first
+full run) → hard/soft split. Re-judging the 14 stored keyframes: 1/14 → 11/14 passing; my eyeball
+check says 12/14 of the new verdicts are right (the 2 misses are false passes on a round cap).
+
+**Final real ad** (`run_01M6JF4T2D78QNQJ7ZSE8GA8WR`, Kling v3 Pro + FLUX dev + keyframe gate,
+fal hard cap $3.00 via the wallet ceiling): `done_partial`, **3/4 scenes**, 11.0 s, 720×1280:
+`data/runs/run_01M6JF4T2D78QNQJ7ZSE8GA8WR/final.mp4`.
+
+| Scene | Keyframe gate | Clip QA | fal |
+|---|---|---|---|
+| S1 man leaves the majlis | PASS 0.78 (try 1) | PASS 0.72 | $0.585 |
+| S2 ghutra, dallah, bottle tease | FAIL 0.45 (round decanter: hard identity) → PASS 0.72 | PASS 0.72 | $0.61 |
+| S3 curtain leans to the door | PASS 0.74 | FAIL 0.62 → FAIL 0.50 (smoke rising out of the bottle cap) → regeneration refused by budget | $1.145 |
+| S4 hero push-in (simplified spec) | PASS 0.80 | PASS 0.80 | $0.585 |
+
+fal this round: $2.925 (cap $3.00); Anthropic $0.28. Real recoveries: S2 keyframe gate reject →
+prompt revised from the critic's fixes → new keyframe passed (no video spent on the bad one,
+~$0.56 saved); S3 two QA regenerations with motion-only rewrites (keyframe kept); then the budget
+guard refused the third clip and the scene failed in isolation; assembly skipped it.
+
+**Honest critique of the final video.** The look is consistent (warm golden-hour majlis, amber/brown
+grade) and the story still reads (he leaves → his things linger → the bottle), but the S3 "lingering
+presence" beat is missing. Same bottle? *Same family, not identical*: S2 and S4 both show a
+rectangular amber bottle with a squared gold cap, but S2's is more faceted and decanter-like and
+S4's has a taller ribbed collar. Same man? Only S1 shows him (thobe, ghutra, agal match the bible;
+he half-turns and his beard shows, where the bible says his face is never clearly shown). S1's
+doorway shifts between keyframe and clip. No end card or music yet (M8).
+
+**LTX-2.3 Fast vs Kling v3 Pro** (same S4): LTX is cheap and fast (~35 s, $0.36 for a 6 s minimum
+render) but rendered a passing shadow as a veil over the product 2/3 times and its push-in was barely
+visible. Kling is slower (4–8 min, $0.56 for 4 s), keeps the product crisp and stable, has real
+parallax, but ignores light-only actions and adds smoke when particles or smoke are mentioned near the
+product (S3 again; S4 with no particle words had none: weak support for the "dust motes → smoke"
+hypothesis).
+
+**Keyframe gate savings**: across M11 the gate stopped 21 keyframes before animation (~$0.56 each
+on Kling). The 10 in the first full run were mostly false rejects of the too-strict gate; with the
+calibrated gate, 1 of 5 was rejected, correctly.
+
+**Main known limitation**: keyframe-model layout adherence (FLUX dev ignores light side, prop and
+doorway placement, and sometimes product shape), plus fine product-identity perception in the critic.
+Fix: product reference image (MORE_TIME.md #3, #7).
+
+**Wallet (ledger estimate)**: $10.00 − $5.625 = **$4.375**. The dashboard is authoritative; one
+"exhausted balance" 403 was seen earlier while the ledger showed $7.30.
+
+**Next**: resume the plan at M7 (edits), M8 (assembly + Arabic end card), M9, M10, M12, M13, with
+mock media for the demo flow plus the real clips above.
