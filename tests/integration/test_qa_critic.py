@@ -490,3 +490,14 @@ def test_fine_product_details_are_soft_salient_identity_is_hard() -> None:
     salient = verdict(0.8, issues=[issue("product", "minor", 0)], frames=1)["output"]
     v = QAVerdict.from_draft(gate_draft(QAVerdictDraft.model_validate(salient)), threshold=0.7)
     assert not v.passed  # cap colour/shape, form, liquid, text: still hard
+
+
+async def test_final_rejection_keeps_the_critic_reasons(tmp_path: Path) -> None:
+    h = harness(tmp_path, [REJECT_MOTION] * 8, qa_max_regenerations=0)
+    state = await run_auto(h)
+    events = [
+        e for e in h.rt.storage.events.tail(state.id, limit=10_000) if "failed QA" in e.summary
+    ]
+    assert events and all(e.payload.get("issues") and e.payload.get("fail_reasons") for e in events)
+    failed = scenes(state)[0]
+    assert failed.failure is not None and "score 0.50" in failed.failure.reason_debug

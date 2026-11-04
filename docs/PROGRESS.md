@@ -679,3 +679,20 @@ clone (data/ is gitignored) → the gallery falls back to the committed clips in
 (`/docs-media/{name}`, file names only); the teaser shows 3 cards. History: `.env`, `data/`, `*.db`
 never committed; the real key values have 0 matches in `git log -p`. `docs/DEMO_SCRIPT.md`: 4:45 script
 (Arabic narration, English terms) + likely interview questions. 470 tests. Done.
+
+## Hero v2: locked product reference, real run (2026-11-05)
+**Built:** product reference + FLUX Kontext keyframes (ADR-0003 add. 3), Kling v3 Standard in the
+catalog, `adsmith budget`, `qa_max_regenerations` (0 = one take), requested shot count enforced,
+no effects as product details, salient-vs-fine identity (`product_detail` soft, ADR-0016 add. 5),
+adopt a re-gated packshot, user `shows_product` override, final QA rejection keeps its reasons. 483 tests.
+**Run** `run_01M6MAK00158YYA7JN2YBD0VSR` (fork of `run_01M6M9AG90D4ZBB7TE9GHTNZ37` @ v69), concept
+«يسبقك ريحك», 3 × 3 s, Kling v3 Standard, one take per shot. Reference = stored packshot 2,
+re-judged under the salient/fine gate (0.50 → 0.85, $0 fal). Keyframes: S1 Kontext 0.78, S3 Kontext
+0.84 (same bottle as the reference), S2 mist FLUX dev 0.85 (third try; FLUX ignored "horizontal
+burst", see MORE_TIME 13). Clips: S2 QA 0.82 ✓, S3 0.84 ✓, **S1 0.45 ✗ "the spritz never happens"**,
+but a mist burst is visible at ~2 s: 3 sampled frames missed a brief action (critic error).
+Final (partial): `data/runs/run_01M6MAK00158YYA7JN2YBD0VSR/final.mp4`, 8 s (S2 + S3 + end card «نفحة المجلس»,
+placeholder). fal ledger for the round $1.765 (cap $1.80; ledger prices Kling at the API's $0.14/s,
+page says $0.084/s, so the real bill is likely ~$1.26). Contact sheet: `docs/screenshots/hero_v2_contact_sheet.png`.
+**Lessons:** the reference works (identical bottle in S1, S3 and the reference); the gate swung
+strict again until salient/fine; brief actions need denser frame sampling around the action.

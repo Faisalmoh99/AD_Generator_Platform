@@ -32,12 +32,19 @@ evidence prompted it. M12 folds this list into the README.
    simpler shot specs written with the keyframe model's limits in mind.
 8. **Account-level failures should pause the run.** An "exhausted balance" 403 currently fails
    the one scene that hit it. It should pause all paid work and surface a single clear message.
-9. **Critic: geometry stability.** Flag objects or architecture that appear or disappear between
+9. ~~**Critic: geometry stability.**~~ **Done** (ADR-0016 add. 4). Flag objects or architecture that appear or disappear between
    the keyframe and the clip frames (seen: a doorway materialising in the majlis S1 wall).
-10. **Critic: wardrobe and anatomy plausibility** (seen: an unnatural ghutra drape in S1).
-11. **HARD check: no alcohol resemblance.** The single-take bottle (round body, tall black cap)
+10. ~~**Critic: wardrobe and anatomy plausibility**~~ **Done** (ADR-0016 add. 4) (seen: an unnatural ghutra drape in S1).
+11. ~~**HARD check: no alcohol resemblance.**~~ **Done** (`alcohol_free`, ADR-0016 add. 4). The single-take bottle (round body, tall black cap)
     reads as whisky. For Gulf audiences this is brand safety, not style. Make it a hard keyframe-gate
     and clip check, and tell the prompt writer to avoid decanter/whisky silhouettes for perfume.
 12. ~~**Crash-safe fal resubmission.**~~ **Done** (ADR-0015 addendum): the request id is persisted at submit and resumed by polling. Persist the fal request id (and idempotency key) in the account
     ledger at submit time; on resume, poll the existing request instead of submitting again. Today
     the in-flight handle lives in memory, so a process killed mid-call pays twice for that clip.
+13. **Money-shot composition should be a hard check.** Composition is soft (a viewer forgives a
+    prop on the left instead of the right), but for the shot the whole ad hangs on, the
+    composition IS the spec. In the hero v2 round the gate passed an S2 mist keyframe at 0.72 while
+    listing "vertical glitter column, not a horizontal burst" and "large bokeh discs" as minor.
+    Mark one scene as the money shot (storyboard field or user flag) and make its
+    spec-defining composition items hard at the keyframe gate and clip QA. Also: FLUX dev ignores
+    "burst from the left edge" for mist; try FLUX.2 flex (stronger prompt adherence) for that shot.

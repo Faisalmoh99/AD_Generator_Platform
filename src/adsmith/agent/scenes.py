@@ -1120,9 +1120,10 @@ class SceneStageRunner:
                         s,
                         FailureKind.QUALITY_REJECTED,
                         Stage.QA,
-                        f"QA rejected {rejections + 1} times",
+                        f"QA rejected {rejections + 1} times: " + "; ".join(verdict.fail_reasons),
                     )
                 )
+                # Keep the final verdict: the reasons must survive the failure (hero v2 lost them).
                 events.append(
                     _ev(
                         run_id,
@@ -1130,8 +1131,13 @@ class SceneStageRunner:
                         sc,
                         EventType.SCENE_STATUS,
                         level="error",
-                        summary=f"Scene {sc.order} failed QA {rejections + 1}×; "
-                        "marked failed, other scenes continue",
+                        summary=f"Scene {sc.order} failed QA {rejections + 1}× "
+                        f"({'; '.join(verdict.fail_reasons)}); marked failed, others continue",
+                        score=verdict.score,
+                        fail_reasons=list(verdict.fail_reasons),
+                        issues=[
+                            f"[{i.severity}] {i.category}: {i.observation}" for i in verdict.issues
+                        ],
                     )
                 )
                 return events
