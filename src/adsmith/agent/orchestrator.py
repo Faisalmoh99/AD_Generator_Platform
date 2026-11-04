@@ -13,6 +13,7 @@ idempotent with respect to committed state, so re-running a stage is always safe
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import traceback
 from collections.abc import Sequence
@@ -33,6 +34,7 @@ from adsmith.agent.nodes.understand import understand
 from adsmith.agent.recovery.errors import AgentError
 from adsmith.agent.transitions import next_stage
 from adsmith.config import Settings
+from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.enums import AWAITING_STAGES, TERMINAL_STAGES, FailureKind, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
@@ -177,6 +179,15 @@ class Orchestrator:
             released = []
             for scene in s.storyboard.scenes if s.storyboard else []:
                 if scene.status is SceneStatus.GENERATING:  # lease from a crashed process
+                    # Close the interrupted attempt and free its budget reservation; finished
+                    # generations are in the cache, so the retry costs nothing for them.
+                    for att in scene.attempts:
+                        if att.outcome is None:
+                            att.outcome, att.finished_at = "failed", utcnow()
+                            att.failure_kind = FailureKind.TRANSIENT
+                            att.error_message = "interrupted (process stopped); resumed"
+                            with contextlib.suppress(KeyError):
+                                s.budget.release(att.id)
                     scene.release_lease()
                     released.append(scene.order)
             if released:

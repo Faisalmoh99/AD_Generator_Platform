@@ -584,3 +584,22 @@ tagline ~1.6× (8.3%), 8% margins. Both real ads re-assembled and checked by eye
 - **Proposed critic additions**: (1) objects appearing/disappearing between the keyframe and the
   clip frames; (2) wardrobe and anatomy plausibility (drape, hands); (3) a HARD check "the product
   must not resemble an alcohol bottle or drink" (keyframe gate and clip QA). See MORE_TIME.md #9–11.
+
+## M9: CLI + one-command demo (2026-11-05)
+**Built**: `cli/live.py` (live Rich trace tailed from the event store: stages, scene progress,
+retries, rewrites, QA verdicts, cache hits, edits, cost; also `trace --follow`), rewritten
+`cli/main.py` (live output for run/resume/choose/approve/edit/retry/assemble; new `retry`, `list`,
+`demo`, `serve` hook for M10), `cli/demo.py` + `make demo`: Arabic request `--auto --chaos` →
+transient retry, policy rewrite and QA regeneration, all labelled → end card → edit "خل المشهد الثاني
+أبطأ" (S2 clip only, others 0 calls) → a child run SIGKILLed mid-generation and resumed (clips done
+before the kill are not regenerated; $0 reservations leaked). ~16 s total, zero keys.
+`commands.retry_scene` (re-arms a failed scene with a fresh attempt budget, keeping an approved keyframe).
+**Bugs found by the demo** (fixed + tests): `resume` released the lease of an interrupted scene but
+left its attempt open and its budget reservation leaked; the first fix then closed the attempt
+without a `failure_kind` (rejected by the domain). Also: demo recovery counts were double-counted,
+and the crash run shared the cache with the first run so nothing was left to kill (now its own data dir).
+**Smoke-tested commands**: run, choose, approve, run --auto, retry, edit, assemble [--partial slate],
+show, trace, export, list, history, resume. `serve` arrives in M10.
+**Known limit**: with real fal, a job in flight when the process dies is still billed and resume
+resubmits it (the in-flight handle lives in memory). Fix: persist the fal request id in the account
+ledger at submit time and resume polling it (MORE_TIME #12).

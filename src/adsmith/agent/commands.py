@@ -161,3 +161,41 @@ def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None
         ]
 
     return storage.runs.update(run_id, mutate, reason="reassemble").state
+
+
+def retry_scene(storage: Storage, run_id: str, scene_order: int) -> RunState:
+    """Re-arm one failed scene (e.g. after a top-up or a transient outage) with a fresh attempt
+    budget. It resumes from the deepest still-valid artifact: an approved keyframe is kept."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.storyboard is None:
+            raise CommandRejectedError("the run has no storyboard yet")
+        if s.stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}:
+            raise CommandRejectedError(f"run is at {s.stage}; retry applies to a finished run")
+        matches = [sc for sc in s.storyboard.scenes if sc.order == scene_order]
+        if not matches or matches[0].status is not SceneStatus.FAILED:
+            raise CommandRejectedError(f"scene {scene_order} has not failed")
+        sc = matches[0]
+        if sc.prompt is None:
+            depth = StaleFrom.PROMPT
+        elif sc.keyframe_approved:
+            depth = StaleFrom.CLIP
+        else:
+            depth = StaleFrom.KEYFRAME
+        sc.bump_version("retry after failure")  # fresh per-version attempt and QA budgets
+        sc.mark_stale(depth)
+        if sc.prompt is not None:
+            sc.requeue()
+        s.error = None
+        s.stage = Stage.PROMPT if sc.prompt is None else Stage.GENERATE
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                scene_id=sc.id,
+                type=EventType.DECISION,
+                summary=f"Retrying scene {scene_order} from {depth.value} (v{sc.version}).",
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason=f"retry scene {scene_order}").state

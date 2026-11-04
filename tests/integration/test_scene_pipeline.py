@@ -308,3 +308,49 @@ async def test_fal_queue_breaker_refuses_paid_calls_after_a_lock(tmp_path: Path)
         with pytest.raises(AccountLockedError):
             await queue.run("fal-ai/flux/dev", {"prompt": "x"}, est_usd=0.0, ref="t")
     assert calls == 1  # the breaker stopped the 2nd and 3rd paid submits
+
+
+async def test_resume_after_a_crash_mid_generation_releases_the_lease_and_money(
+    tmp_path: Path,
+) -> None:
+    from adsmith.domain.generation import GenerationAttempt  # noqa: PLC0415
+
+    h = make_harness(fast_settings(tmp_path))
+    run = h.orch.create_run(REQUEST, interactive=False)
+    paused = await h.orch.run_until_blocked(run.id, stop_before=Stage.GENERATE)
+    assert paused.storyboard is not None
+    victim = paused.storyboard.scenes[3]
+
+    def crash(s: RunState) -> list[AgentEvent]:  # what a killed process leaves behind
+        assert s.storyboard is not None
+        sc = s.storyboard.by_id(victim.id)
+        att = GenerationAttempt(
+            scene_id=sc.id, scene_version=sc.version, phase=ScenePhase.CLIP, attempt_no=2,
+            provider="mock", model="mock-i2v", request_hash="0" * 64, prompt_used="x",
+        )  # fmt: skip
+        s.budget.reserve(att.id, "video", 0.56, sc.id)
+        sc.start()
+        sc.attempts.append(att)
+        return []
+
+    h.rt.storage.runs.update(run.id, crash, reason="simulated crash")
+    calls_before = h.video.calls
+    done = await h.orch.resume(run.id)
+    assert done.stage is Stage.DONE
+    assert done.budget.reserved_usd == pytest.approx(0.0)
+    assert done.storyboard is not None
+    interrupted = next(a for a in done.storyboard.scenes[3].attempts if a.attempt_no == 2)
+    assert interrupted.outcome == "failed" and "interrupted" in (interrupted.error_message or "")
+    assert h.video.calls - calls_before == 4  # every clip once; no keyframe was redone
+
+
+async def test_retry_rearms_a_failed_scene_and_finishes(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path), fail_plan="3:clip:permanent*1")
+    partial = await run_auto(h)
+    assert partial.stage is Stage.DONE_PARTIAL
+    commands.retry_scene(h.rt.storage, partial.id, 3)
+    done = await h.orch.run_until_blocked(partial.id)
+    assert done.stage is Stage.DONE and statuses(done) == [SceneStatus.APPROVED] * 4
+    assert done.storyboard is not None and done.storyboard.scenes[2].version == 2
+    with pytest.raises(commands.CommandRejectedError, match="has not failed"):
+        commands.retry_scene(h.rt.storage, done.id, 1)

@@ -1,4 +1,4 @@
-.PHONY: setup lint format typecheck test check serve
+.PHONY: setup lint format typecheck test check serve demo
 
 setup:
 	uv sync
@@ -22,3 +22,7 @@ check: lint typecheck test
 
 serve:
 	uv run adsmith serve
+
+# Zero-key showcase (~1 min): chaos run + recovery + end card, one edit, kill/resume.
+demo:
+	uv run adsmith demo
