@@ -67,12 +67,17 @@ class OpenAIModels(_Frozen):
 
 class FalImageEndpoint(_Frozen):
     endpoint: str
-    usd_per_megapixel: float = Field(ge=0)
+    usd_per_megapixel: float = Field(default=0.0, ge=0)
+    usd_per_image_flat: float | None = Field(default=None, ge=0)  # e.g. FLUX Kontext: per image
     round_up_megapixels: bool = True  # fal bills started megapixels on some endpoints
+    # Reference-conditioned (image + prompt → image) endpoints name their input image field.
+    image_field: str | None = None
     # Endpoint-specific request fields (verified against each schema), merged into the payload.
     params: dict[str, int | float | str | bool] = Field(default_factory=dict)
 
     def usd_for(self, width: int, height: int) -> float:
+        if self.usd_per_image_flat is not None:
+            return self.usd_per_image_flat
         mp = width * height / 1_000_000
         billed = math.ceil(mp - 1e-9) if self.round_up_megapixels else mp
         return round(max(billed, 0.0) * self.usd_per_megapixel, 6)
@@ -113,6 +118,8 @@ class FalVideoEndpoint(_Frozen):
 
 class FalImageCatalog(_Frozen):
     default: str
+    # Image + prompt → image endpoint for keyframes that show the product (locked reference).
+    reference: str | None = None
     endpoints: dict[str, FalImageEndpoint]
 
 
@@ -144,6 +151,11 @@ class ModelCatalog(_Frozen):
                     raise ValueError(f"{name}.{node}: no price for model {nm.model!r}")
         if self.fal.image.default not in self.fal.image.endpoints:
             raise ValueError("fal.image.default not in endpoints")
+        ref = self.fal.image.reference
+        if ref is not None and (
+            ref not in self.fal.image.endpoints or self.fal.image.endpoints[ref].image_field is None
+        ):
+            raise ValueError("fal.image.reference must name an endpoint with an image_field")
         if self.fal.video.default not in self.fal.video.endpoints:
             raise ValueError("fal.video.default not in endpoints")
         return self
@@ -201,6 +213,8 @@ class Settings(BaseSettings):
     max_attempts_per_scene: int = Field(default=8, ge=1)  # 3 keyframe tries + clips
     keyframe_max_tries: int = Field(default=3, ge=1, le=6)  # keyframe gate (ADR-0003)
     clip_candidates: int = Field(default=1, ge=1, le=4)  # best-of-N clips (2 with --hero)
+    # Locked product reference + reference-conditioned keyframes (ADR-0003 addendum 3).
+    product_reference: bool = False
     max_total_attempts: int = Field(default=40, ge=1)
     qa_threshold: float = Field(default=0.7, ge=0, le=1)
     scene_concurrency: int = Field(default=3, ge=1, le=16)

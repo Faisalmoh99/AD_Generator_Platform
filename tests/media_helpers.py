@@ -41,6 +41,7 @@ class Harness:
     video: MockVideoProvider
     sleeps: list[float] = field(default_factory=list)
     llm: ScriptedLLMProvider | None = None
+    reference: MockImageProvider | None = None
 
     @property
     def provider_calls(self) -> int:
@@ -83,6 +84,9 @@ def make_harness(
     )
     policy = ChaosPolicy(chaos or settings.chaos_config, enabled=chaos is not None)
 
+    reference = MockImageProvider(usd_per_image=0.04, latency_s=0, sleep=no_wait, fail_plan=plan)
+    reference.model = "mock-reference"
+
     def factory(run: RunState) -> MediaGateway:
         return MediaGateway(
             image=image,
@@ -91,7 +95,9 @@ def make_harness(
             storage=rt.storage,
             chaos=policy,
             long_side=settings.media_long_side,
+            reference=reference if run.config.product_reference else None,
+            reference_prompt=rt._reference_prompt,
         )
 
     rt.media_factory = factory
-    return Harness(Orchestrator(rt), rt, image, video, sleeps, llm)
+    return Harness(Orchestrator(rt), rt, image, video, sleeps, llm, reference)

@@ -87,6 +87,7 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         endcard_s=settings.endcard_s,
         partial_mode=settings.partial_mode,
         clip_candidates=settings.clip_candidates,
+        product_reference=settings.product_reference,
         music_path=str(settings.music_path) if settings.music_path else None,
     )
 
@@ -122,11 +123,14 @@ class Orchestrator:
         interactive: bool = True,
         chaos: bool | None = None,
         hero: bool = False,
+        product_reference: bool | None = None,
     ) -> RunState:
         s = self.rt.settings
         config = run_config_from_settings(s, request, interactive=interactive)
         if chaos is not None:
             config = config.model_copy(update={"chaos": chaos})
+        if product_reference is not None:  # locked product still (ADR-0003 addendum 3)
+            config = config.model_copy(update={"product_reference": product_reference})
         if hero:  # best-of-2 clips from the same approved keyframe (ADR-0003 addendum 2)
             config = config.model_copy(update={"clip_candidates": max(2, config.clip_candidates)})
         limit = s.budget_usd

@@ -135,6 +135,7 @@ function render(v) {
   $("#pipeline").innerHTML = v.pipeline.map((p, i) => `<li class="${p.state}"><span class="n">${String(i + 1).padStart(2, "0")}</span>${esc(p.en)}</li>`).join("");
   renderConcepts(v);
   renderBoard(v);
+  renderProductRef(v);
   renderFinal(v);
   renderBudget(v.budget);
   showError(v.error || "");
@@ -172,6 +173,19 @@ function renderConcepts(v) {
   }).join("");
   $("#concepts").onclick = (ev) => { const n = ev.target.dataset.pick; if (n) act("choose", { concept: n }); };
   $("#selection").textContent = v.selection || "";
+}
+
+function renderProductRef(v) {
+  const el = $("#product-ref"), pr = v.product_reference;
+  if (!pr || !pr.url) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  const status = pr.approved
+    ? `<span class="chip s-approved">locked · gate ${pr.score?.toFixed(2) ?? ""}</span>`
+    : `<span class="chip s-failed">rejected · try ${pr.tries}</span>`;
+  el.innerHTML = `<img src="${pr.url}" alt="product reference">
+    <div><div class="eyebrow">Product reference</div>
+    <div class="pr-text">One gated packshot. Every keyframe that shows the product is generated from it, so the product is identical in every shot.</div>
+    <div class="pr-meta">${status}<span>${pr.tries} ${pr.tries === 1 ? "try" : "tries"} · ${money(pr.cost)}</span></div></div>`;
 }
 
 function renderBoard(v) {

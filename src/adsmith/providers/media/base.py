@@ -66,6 +66,8 @@ class ImageJob:
     seed: int
     label: MediaLabel
     remote: RemoteControl | None = None
+    # Reference-conditioned generation: the locked product still the model must keep unchanged.
+    reference_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)

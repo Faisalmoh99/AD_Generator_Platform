@@ -94,6 +94,8 @@ server_fallback = false
 #     FLUX.1 dev:   API $0.025/megapixel; page: "billed by rounding up to the nearest megapixel".
 [fal.image]
 default = "flux_dev"
+# Image + prompt → image, for keyframes that show the product (locked product reference).
+reference = "kontext_pro"
 
 [fal.image.endpoints.flux_dev]
 endpoint = "fal-ai/flux/dev"
@@ -111,6 +113,19 @@ endpoint = "fal-ai/flux-2-flex"
 usd_per_megapixel = 0.05
 round_up_megapixels = true
 params = { num_inference_steps = 28, guidance_scale = 3.5 }
+
+[fal.image.endpoints.kontext_pro]
+# Verified 2026-11-05 (model page + /api schema): FLUX.1 Kontext [pro], image + prompt → image.
+# Input: prompt (required), image_url (required), seed, guidance_scale (default 3.5), num_images
+# (default 1), output_format jpeg|png, safety_tolerance "1".."6" (default "2"), enhance_prompt,
+# aspect_ratio 21:9|16:9|4:3|3:2|1:1|2:3|3:4|9:16|9:21. No negative prompt, no image_size.
+# Output: images[0].url. Price: $0.04 per image (page and pricing API agree).
+# Chosen over FLUX.2 [dev] edit ($0.012/processed MP, up to 4 image_urls): Kontext is built for
+# keeping one object's identity while changing the scene around it, which is exactly the job.
+endpoint = "fal-ai/flux-pro/kontext"
+usd_per_image_flat = 0.04
+image_field = "image_url"
+params = { guidance_scale = 3.5, num_images = 1, safety_tolerance = "2" }
 
 [fal.video]
 default = "kling_v3_pro"
@@ -142,6 +157,42 @@ weaknesses = [
   "light-only events (a shadow passing, light changing) are often ignored [observed]",
   "invents smoke or steam near the product when smoke, dust or particles are mentioned [observed]",
   "renders 4-8 min per clip and costs ~$0.14/s: few retries affordable [observed]",
+  "identity across separate scenes: each scene is a new generation, so the same man or bottle drifts between scenes [observed]",
+  "small background objects and precise prop or doorway placement [observed in keyframes]",
+  "readable text, logos, signage; crowds; lip-sync; fine finger-level hand-object manipulation in close-up [expected]",
+]
+
+
+[fal.video.endpoints.kling_v3_standard]
+# Verified 2026-11-05: same schema as v3 Pro. Page price $0.084/s audio off ($0.126 on); the
+# pricing API reports $0.14/s for every Kling tier, so we budget $0.14 (worst case) and expect
+# the page price on the bill. Resolution tier not stated on the page.
+# Schema: start_image_url (required), prompt (<=2500 chars), negative_prompt, cfg_scale 0..1,
+# duration "3".."15" (string enum), generate_audio (default true: we send false). Aspect ratio
+# comes from the start image.
+endpoint = "fal-ai/kling-video/v3/standard/image-to-video"
+adapter = "kling"
+image_field = "start_image_url"
+usd_per_second = 0.14
+min_duration_s = 3
+max_duration_s = 15
+
+[fal.video.endpoints.kling_v3_standard.profile]
+# max_single_shot_s: duration enum "3".."15" in the verified schema. [observed] = seen in our M11
+# real runs; [expected] = vendor docs / general experience, not yet verified by us.
+max_single_shot_s = 15
+strengths = [
+  "keeps a product crisp, stable and true to the start frame through the whole clip [observed]",
+  "a single person in natural motion (walking, turning, a simple gesture like spraying) renders convincingly: the majlis man [observed]",
+  "smooth continuous camera moves with real parallax: push-in, dolly, orbit [observed]",
+  "one continuous take up to 15 s, no cuts needed [expected]",
+  "physical motion: liquids splashing and pouring, fabric, objects tumbling or flying toward or past the lens [expected]",
+  "slow motion of one clear physical event [expected]",
+]
+weaknesses = [
+  "light-only events (a shadow passing, light changing) are often ignored [observed]",
+  "invents smoke or steam near the product when smoke, dust or particles are mentioned [observed]",
+  "standard tier: same v3 model, lower tier than Pro; finer detail and sharpness not yet observed by us [expected]",
   "identity across separate scenes: each scene is a new generation, so the same man or bottle drifts between scenes [observed]",
   "small background objects and precise prop or doorway placement [observed in keyframes]",
   "readable text, logos, signage; crowds; lip-sync; fine finger-level hand-object manipulation in close-up [expected]",

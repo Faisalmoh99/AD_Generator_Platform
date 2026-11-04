@@ -26,6 +26,7 @@ from adsmith.domain.edit import ScenePatch
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.enums import FailureKind, Stage
 from adsmith.domain.generation import Artifact
+from adsmith.domain.qa import QAVerdict
 from adsmith.domain.similarity import detect_language
 from adsmith.domain.storyboard import Storyboard
 
@@ -50,6 +51,7 @@ class RunConfig(DomainModel):
     endcard_s: float = Field(default=2.0, ge=0, le=6)
     partial_mode: Literal["skip", "slate"] = "skip"  # failed scenes in done_partial
     clip_candidates: int = Field(default=1, ge=1, le=4)  # best-of-N clips per scene
+    product_reference: bool = False  # locked product still conditions product keyframes
     scripted_scenario: str | None = None  # which canned fixtures the scripted LLM replays
     # Catalog keys (config/models.toml) of the media models: resume never switches model.
     image_model: str | None = None
@@ -73,6 +75,24 @@ _NEEDS_STORYBOARD = _NEEDS_SELECTION - {Stage.STORYBOARD}
 _NEEDS_BIBLE = _NEEDS_STORYBOARD - {Stage.CONTINUITY}
 
 
+class ProductReference(DomainModel):
+    """The run's locked product still (ADR-0003 addendum 3): one packshot of the bible's product,
+    passed by the keyframe gate, that conditions every keyframe showing the product so the
+    product is identical everywhere. Tied to a bible version: a product edit makes it stale."""
+
+    bible_version: int = Field(ge=1)
+    prompt: str = Field(min_length=1)
+    tries: int = Field(default=0, ge=0)
+    cost_usd: float = Field(default=0.0, ge=0)
+    artifact: Artifact | None = None  # the approved still (None until one passes the gate)
+    rejected: list[Artifact] = Field(default_factory=list)  # kept in the CAS for the record
+    verdict: QAVerdict | None = None  # the gate verdict of the last reviewed still
+
+    @property
+    def approved(self) -> bool:
+        return self.artifact is not None
+
+
 class RunState(DomainModel):
     id: str = Field(default_factory=lambda: new_id("run"))
     created_at: datetime = Field(default_factory=utcnow)
@@ -89,6 +109,7 @@ class RunState(DomainModel):
     patches: list[ScenePatch] = Field(default_factory=list)
     final: Artifact | None = None
     endcard: EndCardCopy | None = None
+    product_reference: ProductReference | None = None
     budget: BudgetLedger
     error: RunError | None = None
 

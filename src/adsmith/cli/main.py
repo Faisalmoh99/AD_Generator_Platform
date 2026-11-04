@@ -169,10 +169,19 @@ def run(
     hero: Annotated[
         bool, typer.Option("--hero", help="Best-of-2 clips per scene from the approved keyframe.")
     ] = False,
+    product_ref: Annotated[
+        bool | None,
+        typer.Option(
+            "--product-ref/--no-product-ref",
+            help="Lock one gated product still and condition product keyframes on it.",
+        ),
+    ] = None,
 ) -> None:
     """Start a new run."""
     orch = _orchestrator()
-    state = orch.create_run(request, interactive=not auto, chaos=chaos, hero=hero)
+    state = orch.create_run(
+        request, interactive=not auto, chaos=chaos, hero=hero, product_reference=product_ref
+    )
     console.print(f"Run [bold]{state.id}[/] created.")
     print_state(orch, follow(orch, state.id, orch.run_until_blocked(state.id, stop_before=until)))
 

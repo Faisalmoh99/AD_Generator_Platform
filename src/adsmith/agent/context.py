@@ -94,8 +94,13 @@ class AgentRuntime:
         ]
         long_side = run.config.media_long_side or s.media_long_side
         chaos = ChaosPolicy(s.chaos_config, enabled=run.config.chaos)
+        ref_ep = (
+            fal.image.endpoints[fal.image.reference]
+            if run.config.product_reference and fal.image.reference
+            else None
+        )
         if run.config.media_provider == "fal":
-            return self._fal_media(img_ep, vid_ep, chaos, long_side)
+            return self._fal_media(img_ep, vid_ep, chaos, long_side, ref_ep)
         plan = FailPlan(parse_fail_plan(s.mock_fail_plan))
         # Mock media is priced at the real endpoints' rates and obeys their duration rules, so
         # the budget guard and duration snapping behave exactly as they will with fal.
@@ -118,6 +123,22 @@ class AgentRuntime:
             storage=self.storage,
             chaos=chaos,
             long_side=long_side,
+            reference=None
+            if ref_ep is None
+            else MockImageProvider(
+                usd_per_image=ref_ep.usd_per_image,
+                latency_s=s.mock_latency_s,
+                sleep=self.sleep,
+                fail_plan=plan,
+            ),
+            reference_prompt=self._reference_prompt,
+        )
+
+    def _reference_prompt(self, keyframe_prompt: str, product_name: str) -> str:
+        return (
+            self.prompts.get("keyframe_reference")
+            .render(keyframe_prompt=keyframe_prompt, name=product_name)
+            .user
         )
 
     def fal_account(self) -> SpendAccount:
@@ -140,6 +161,7 @@ class AgentRuntime:
         vid_ep: FalVideoEndpoint,
         chaos: ChaosPolicy,
         long_side: int,
+        ref_ep: FalImageEndpoint | None = None,
     ) -> MediaGateway:
         from adsmith.agent.media import MediaGateway  # noqa: PLC0415
         from adsmith.media.frames import probe_video  # noqa: PLC0415
@@ -167,6 +189,8 @@ class AgentRuntime:
                 self._fal_queue, vid_ep, video_capabilities(vid_ep), probe_video
             ),
             adapter=ADAPTERS[vid_ep.adapter],
+            reference=None if ref_ep is None else FalImageProvider(self._fal_queue, ref_ep),
+            reference_prompt=self._reference_prompt,
             storage=self.storage,
             chaos=chaos,
             long_side=long_side,

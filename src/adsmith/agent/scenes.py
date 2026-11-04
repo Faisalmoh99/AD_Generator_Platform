@@ -42,10 +42,10 @@ from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError, CostCategory
 from adsmith.domain.enums import FailureKind, RecoveryAction, ScenePhase, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
-from adsmith.domain.generation import GenerationAttempt, RemoteRequest
+from adsmith.domain.generation import Artifact, GenerationAttempt, RemoteRequest
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.qa import QAVerdict
-from adsmith.domain.run import RunState
+from adsmith.domain.run import ProductReference, RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt
 from adsmith.logging import get_logger
 from adsmith.providers.media.base import RemoteControl, VideoJob
@@ -65,6 +65,10 @@ class Critic(Protocol):
 
     async def review_keyframe(
         self, state: RunState, scene: Scene
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]: ...
+
+    async def review_product_reference(
+        self, state: RunState, image: Artifact, prompt: str
     ) -> tuple[QAVerdict, list[LLMCallRecord]]: ...
 
 
@@ -108,6 +112,8 @@ class SceneStageRunner:
         state = self.storage.runs.load(run_id)
         assert state.storyboard is not None
         targets = [s.id for s in state.storyboard.scenes if self._wants(s, stage)]
+        if targets and stage in {Stage.KEYFRAME, Stage.GENERATE}:
+            await self._product_reference(run_id, stage)
         sem = asyncio.Semaphore(self.concurrency)
 
         async def guarded(scene_id: str) -> None:
@@ -171,6 +177,149 @@ class SceneStageRunner:
                 await self._best_of_n(run_id, scene_id, stage, n)
             else:
                 await self._phase(run_id, scene_id, ScenePhase.CLIP, stage)
+
+    # ------------------------------------------------------------------------ product reference
+    async def _product_reference(self, run_id: str, stage: Stage) -> None:
+        """ADR-0003 addendum 3: before any product keyframe, make ONE packshot of the bible's
+        product and pass it through the gate. It then conditions every keyframe that shows the
+        product (reference model), so the product is identical everywhere. If no still passes in
+        ``keyframe_max_tries``, product keyframes fall back to plain text-to-image (logged)."""
+        state = self.storage.runs.load(run_id)
+        if not state.config.product_reference or state.bible is None or state.brief is None:
+            return
+        assert state.storyboard is not None
+        if not any(sc.shows_product for sc in state.storyboard.scenes):
+            return
+        bible_v, max_tries = state.bible.version, self.node_ctx.settings.keyframe_max_tries
+        current = state.product_reference
+        same = current is not None and current.bible_version == bible_v
+        if same and current is not None and (current.approved or current.tries >= max_tries):
+            return
+        product = state.bible.product
+        base = self.node_ctx.prompts.get("product_reference").render(
+            name=product.name, form=product.form, materials=product.materials,
+            colors=product.colors, features=product.distinctive_features,
+        ).user  # fmt: skip
+        tries = current.tries if same and current is not None else 0
+        prompt = current.prompt if tries and current is not None else base
+        while tries < max_tries:
+            tries += 1
+            outcome = await self._product_reference_try(
+                run_id, stage, prompt, tries, bible_v, max_tries, state.brief.aspect_ratio
+            )
+            if outcome == "stop" or (isinstance(outcome, QAVerdict) and outcome.passed):
+                return
+            if isinstance(outcome, QAVerdict) and outcome.revised_prompt_hint:
+                prompt = f"{base} {outcome.revised_prompt_hint}"
+        self._ref_event(
+            run_id, stage,
+            f"No product reference passed in {max_tries} tries: product keyframes fall back to "
+            "plain text-to-image",
+        )  # fmt: skip
+
+    async def _product_reference_try(
+        self,
+        run_id: str,
+        stage: Stage,
+        prompt: str,
+        n: int,
+        bible_v: int,
+        max_tries: int,
+        aspect: str,
+    ) -> QAVerdict | Literal["failed", "stop"] | None:
+        prepared = self.gateway.prepare_product_reference(prompt, aspect, n)
+        ref = f"product_ref_v{bible_v}_t{n}"
+
+        def reserve(s: RunState) -> list[AgentEvent]:
+            s.budget.reserve(ref, "image", prepared.est_usd, None)
+            pr = s.product_reference
+            if pr is None or pr.bible_version != bible_v:
+                pr = ProductReference(bible_version=bible_v, prompt=prompt)
+            s.product_reference = pr.model_copy(update={"tries": n, "prompt": prompt})
+            return [
+                _ev(
+                    run_id, stage, None, EventType.ATTEMPT_STARTED,
+                    f"Product reference: generating the locked packshot (try {n}/{max_tries}, "
+                    f"${prepared.est_usd:.3f})",
+                    est_usd=prepared.est_usd,
+                )
+            ]  # fmt: skip
+
+        def release(s: RunState) -> list[AgentEvent]:
+            s.budget.release(ref)
+            return []
+
+        try:
+            self.storage.runs.update(run_id, reserve, reason="product reference")
+        except BudgetRefusedError as exc:
+            self._ref_event(run_id, stage, f"Product reference refused by the budget: {exc}")
+            return "stop"
+        try:
+            res = await retry_transient(
+                functools.partial(self.gateway.run, prepared, self._scratch(run_id)),
+                sleep=self.sleep, rng=self.rng,
+            )  # fmt: skip
+        except AccountLockedError:
+            self.storage.runs.update(run_id, release, reason="product reference paused")
+            raise
+        except AgentError as exc:
+            self.storage.runs.update(run_id, release, reason="product reference failed")
+            self._ref_event(run_id, stage, f"Product reference try {n} failed: {exc.message}")
+            return "failed"
+        state = self.storage.runs.load(run_id)
+        verdict: QAVerdict | None
+        try:
+            verdict, calls = await self.critic.review_product_reference(state, res.artifact, prompt)
+        except AgentError as exc:
+            verdict, calls = None, exc.llm_calls
+
+        def record(s: RunState) -> list[AgentEvent]:
+            s.budget.settle(ref, res.cost_usd)
+            events = []
+            for c in calls:
+                s.budget.record_actual("llm", c.cost_usd, ref=c.id, scene_id=None)
+                events.append(c.as_event(s.id, stage, None))
+            assert s.product_reference is not None and s.storyboard is not None
+            pr = s.product_reference
+            cost = round(pr.cost_usd + res.cost_usd, 6)
+            if verdict is not None and verdict.passed:
+                s.product_reference = pr.model_copy(
+                    update={"artifact": res.artifact, "verdict": verdict, "cost_usd": cost}
+                )
+                shows = [sc.order for sc in s.storyboard.scenes if sc.shows_product]
+                msg = (
+                    f"Product reference approved by the gate (score {verdict.score:.2f}); it "
+                    f"now conditions the product keyframes of scenes {shows}"
+                )
+                events.append(
+                    _ev(run_id, stage, None, EventType.DECISION, msg, score=verdict.score)
+                )
+                return events
+            s.product_reference = pr.model_copy(
+                update={
+                    "rejected": [*pr.rejected, res.artifact],
+                    "verdict": verdict,
+                    "cost_usd": cost,
+                }
+            )
+            why = "; ".join(verdict.fail_reasons) if verdict else "critic error"
+            events.append(
+                _ev(
+                    run_id, stage, None, EventType.RECOVERY, level="warn",
+                    summary=f"Product reference try {n} rejected by the gate ({why})",
+                    issues=[i.observation for i in verdict.issues] if verdict else [],
+                )
+            )  # fmt: skip
+            return events
+
+        self.storage.runs.update(run_id, record, reason="product reference reviewed")
+        if verdict is None or not verdict.passed:
+            self.storage.cache.evict(prepared.request.cache_key())
+        return verdict
+
+    def _ref_event(self, run_id: str, stage: Stage, summary: str) -> None:
+        ev = _ev(run_id, stage, None, EventType.RECOVERY, summary, level="error")
+        self.storage.runs.update(run_id, lambda s: [ev], reason="product reference event")
 
     # ------------------------------------------------------------------------ best-of-N clips
     async def _best_of_n(self, run_id: str, scene_id: str, stage: Stage, n: int) -> None:  # noqa: PLR0915
@@ -1049,12 +1198,20 @@ class SceneStageRunner:
             and a.phase is phase
             and not (a.error_message or "").startswith("interrupted")
         )
+        ref = state.product_reference
+        locked = (
+            ref.artifact
+            if ref is not None and ref.approved and ref.bible_version == state.bible.version
+            else None
+        )
         return self.gateway.prepare(
             scene,
             phase,
             aspect_ratio=state.brief.aspect_ratio,
             palette=tuple(state.bible.color_grade.palette),
             attempt_no=phase_attempts + 1,
+            product_reference=locked,
+            product_name=state.bible.product.name,
         )
 
     def _update(self, run_id: str, mutate: Mutation, reason: str) -> bool:

@@ -11,7 +11,8 @@ they change run state; the gateway only executes.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from adsmith.agent.recovery.errors import ContentPolicyError, TransientProviderError
@@ -56,9 +57,14 @@ class MediaGateway:
         storage: Storage,
         chaos: ChaosPolicy,
         long_side: int,
+        reference: ImageProvider | None = None,
+        reference_prompt: Callable[[str, str], str] | None = None,
     ) -> None:
         self.image, self.video, self.adapter = image, video, adapter
         self.storage, self.chaos, self.long_side = storage, chaos, long_side
+        # Image + prompt → image provider for keyframes that show the product, and the wrapper
+        # that tells it to keep the reference product unchanged (ADR-0003 addendum 3).
+        self.reference, self.reference_prompt = reference, reference_prompt
 
     # ------------------------------------------------------------------------ preparation
     def prepare(
@@ -69,6 +75,8 @@ class MediaGateway:
         aspect_ratio: str,
         palette: tuple[str, ...],
         attempt_no: int,
+        product_reference: Artifact | None = None,
+        product_name: str = "product",
     ) -> PreparedJob:
         assert scene.prompt is not None
         label = MediaLabel(
@@ -81,7 +89,10 @@ class MediaGateway:
             palette=palette,
         )
         if phase is ScenePhase.KEYFRAME:
-            return self._prepare_image(scene.prompt, aspect_ratio, label)
+            plain = self._prepare_image(scene.prompt, aspect_ratio, label)
+            if product_reference is not None and scene.shows_product:
+                return self._condition_on(plain, product_reference, product_name)
+            return plain
         assert scene.keyframe is not None
         return self._prepare_video(scene, scene.prompt, aspect_ratio, label)
 
@@ -101,6 +112,41 @@ class MediaGateway:
         )
         job = ImageJob(prompt.keyframe_prompt, prompt.negative_prompt, w, h, seed, label)
         return PreparedJob(request, job, self.image.estimate_usd(w, h))
+
+    def prepare_product_reference(self, prompt: str, aspect: str, attempt_no: int) -> PreparedJob:
+        """The run's locked product still: text-to-image with the default image model. Label
+        scene 0, so traces and fal refs read "s0" (no scene owns it)."""
+        label = MediaLabel(
+            scene_order=0, scene_version=1, phase=ScenePhase.KEYFRAME, attempt_no=attempt_no,
+            shot="product", camera="static", palette=(),
+        )  # fmt: skip
+        still = ScenePrompt(
+            keyframe_prompt=prompt, motion_prompt="(still)", template_version="product_reference",
+            bible_version=1,
+        )  # fmt: skip
+        return self._prepare_image(still, aspect, label)
+
+    def _condition_on(
+        self, plain: PreparedJob, reference: Artifact, product_name: str
+    ) -> PreparedJob:
+        """Same keyframe, generated from the locked product still by the reference model. The
+        reference's sha256 is part of the request, so a new reference is a new cache key."""
+        if self.reference is None or self.reference_prompt is None:
+            return plain
+        assert isinstance(plain.job, ImageJob)
+        prompt = self.reference_prompt(plain.job.prompt, product_name)
+        request = plain.request.model_copy(
+            update={
+                "provider": self.reference.name,
+                "model": self.reference.model,
+                "prompt": prompt,
+                "input_image_sha256": reference.sha256,
+            }
+        )
+        job = replace(
+            plain.job, prompt=prompt, reference_path=self.storage.artifacts.resolve(reference)
+        )
+        return PreparedJob(request, job, self.reference.estimate_usd(job.width, job.height))
 
     def _prepare_video(
         self, scene: Scene, prompt: ScenePrompt, aspect: str, label: MediaLabel
@@ -157,7 +203,11 @@ class MediaGateway:
             raise err
 
         job = prepared.job
-        if isinstance(job, ImageJob):
+        if isinstance(job, ImageJob) and job.reference_path is not None:
+            assert self.reference is not None
+            out = await self.reference.generate_image(job, scratch)
+            provider = self.reference.name
+        elif isinstance(job, ImageJob):
             out = await self.image.generate_image(job, scratch)
             provider = self.image.name
         else:

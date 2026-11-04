@@ -269,6 +269,18 @@ class FalQueue:
 
 
 # ------------------------------------------------------------------------------ providers
+# FLUX Kontext [pro] aspect_ratio enum (schema verified 2026-11-05).
+KONTEXT_ASPECTS = ("21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21")
+
+
+def nearest_aspect(width: int, height: int) -> str:
+    def ratio(a: str) -> float:
+        w, h = a.split(":")
+        return int(w) / int(h)
+
+    return min(KONTEXT_ASPECTS, key=lambda a: abs(ratio(a) - width / height))
+
+
 def _ext(url: str, default: str) -> str:
     tail = url.rsplit("?", 1)[0].rsplit(".", 1)
     return f".{tail[1]}" if len(tail) == 2 and len(tail[1]) <= 4 else default
@@ -288,18 +300,31 @@ class FalImageProvider:
         payload: dict[str, Any] = {
             **self.endpoint.params,  # endpoint-specific fields, from the verified schema
             "prompt": job.prompt,
-            "image_size": {"width": job.width, "height": job.height},
             "seed": job.seed,
             "output_format": "png",
-            "enable_safety_checker": True,
         }
+        if self.endpoint.image_field is not None:
+            # Reference-conditioned (FLUX Kontext): the input image + an aspect-ratio enum; the
+            # output size follows the model, not image_size (schema verified).
+            if job.reference_path is None:
+                raise PermanentProviderError(f"fal {self.model}: needs a reference image")
+            payload[self.endpoint.image_field] = await asyncio.to_thread(
+                data_uri, job.reference_path
+            )
+            payload["aspect_ratio"] = nearest_aspect(job.width, job.height)
+        else:
+            payload["image_size"] = {"width": job.width, "height": job.height}
+            payload["enable_safety_checker"] = True
         lbl = job.label
         est = self.estimate_usd(job.width, job.height)
         result, handle = await self.queue.run(
             self.model,
             payload,
             est_usd=est,
-            ref=f"s{lbl.scene_order}v{lbl.scene_version} keyframe a{lbl.attempt_no}",
+            ref=(
+                f"s{lbl.scene_order}v{lbl.scene_version} "
+                f"{'ref-keyframe' if job.reference_path else 'keyframe'} a{lbl.attempt_no}"
+            ),
             remote=job.remote,
         )
         nsfw = result.get("has_nsfw_concepts") or []

@@ -514,3 +514,31 @@ async def test_a_resumed_request_that_is_gone_is_resubmitted_once(tmp_path: Path
     assert out.meta["request_id"] == "req1"
     summary = acct.summary()  # stale reservation released, the new one settled
     assert summary.reserved_usd == 0 and summary.settled_usd == pytest.approx(0.025)
+
+
+async def test_kontext_payload_sends_the_reference_and_an_aspect_enum(tmp_path: Path) -> None:
+    s, acct = settings(tmp_path), account(tmp_path)
+    ref = tmp_path / "ref.png"
+    ref.write_bytes(b"\x89PNG reference")
+    fake = FakeFal(IMAGE_RESULT)
+    queue, _ = make_queue(fake, acct)
+    provider = FalImageProvider(queue, s.catalog.fal.image.endpoints["kontext_pro"])
+    job = replace(image_job(), reference_path=ref)
+    out = await provider.generate_image(job, tmp_path)
+    body = fake.submitted[0]
+    assert fake.paths[0] == "POST https://queue.fal.run/fal-ai/flux-pro/kontext"
+    assert body["image_url"].startswith("data:image/png;base64,")
+    assert body["aspect_ratio"] == "9:16" and "image_size" not in body
+    assert body["safety_tolerance"] == "2" and body["guidance_scale"] == 3.5
+    assert out.cost_usd == pytest.approx(0.04)  # flat per image, whatever the size
+    assert acct.summary().settled_usd == pytest.approx(0.04)
+
+
+async def test_kontext_without_a_reference_is_refused_before_any_spend(tmp_path: Path) -> None:
+    s, acct = settings(tmp_path), account(tmp_path)
+    fake = FakeFal(IMAGE_RESULT)
+    queue, _ = make_queue(fake, acct)
+    provider = FalImageProvider(queue, s.catalog.fal.image.endpoints["kontext_pro"])
+    with pytest.raises(PermanentProviderError):
+        await provider.generate_image(image_job(), tmp_path)
+    assert fake.submitted == [] and acct.summary().settled_usd == 0

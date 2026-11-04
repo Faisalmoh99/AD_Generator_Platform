@@ -223,6 +223,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
         "scenes": scenes,
         "blast": _blast(state, events),
         "endcard": state.endcard.model_dump(mode="json") if state.endcard else None,
+        "product_reference": _product_reference(state),
         "final": media_url(state.final.path if state.final else None),
         "final_duration": state.final.duration_s if state.final else None,
         "error": state.error.reason_user if state.error else None,
@@ -235,4 +236,19 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
         },
         "busy": stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}
         and stage not in _GATE_POSITION,
+    }
+
+
+def _product_reference(state: RunState) -> dict[str, Any] | None:
+    pr = state.product_reference
+    if pr is None:
+        return None
+    shown = pr.artifact or (pr.rejected[-1] if pr.rejected else None)
+    return {
+        "url": media_url(shown.path) if shown else None,
+        "approved": pr.approved,
+        "score": pr.verdict.score if pr.verdict else None,
+        "tries": pr.tries,
+        "reasons": pr.verdict.fail_reasons if pr.verdict else [],
+        "cost": round(pr.cost_usd, 3),
     }

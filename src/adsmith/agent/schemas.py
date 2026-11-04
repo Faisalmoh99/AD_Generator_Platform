@@ -28,5 +28,6 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "conflict_check": ConflictReport,
     "qa_critic": QAVerdictDraft,
     "qa_keyframe": QAVerdictDraft,
+    "qa_product_ref": QAVerdictDraft,
     "endcard_copy": EndCardCopyDraft,
 }
