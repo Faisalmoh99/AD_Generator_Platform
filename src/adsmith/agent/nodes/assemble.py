@@ -47,7 +47,8 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:
                 decision(ctx.run_id, Stage.ASSEMBLE, f"Nothing to assemble: scenes {failed} failed")
             ],
         )
-    w, h = frame_size(state.brief.aspect_ratio, long_side=ctx.settings.media_long_side)
+    long_side = state.config.media_long_side or ctx.settings.media_long_side  # the run's size
+    w, h = frame_size(state.brief.aspect_ratio, long_side=long_side)
     work: Path = ctx.artifacts.scratch_dir(ctx.run_id) / "assemble"
     await asyncio.to_thread(work.mkdir, parents=True, exist_ok=True)
     parts = []

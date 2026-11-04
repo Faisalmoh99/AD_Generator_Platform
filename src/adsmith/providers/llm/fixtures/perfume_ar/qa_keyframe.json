@@ -1,0 +1,18 @@
+[
+  {
+    "output": {
+      "score": 0.88,
+      "checks": {
+        "product_visible": true,
+        "matches_shot_spec": true,
+        "lighting_matches": true,
+        "continuity_ok": true,
+        "artifacts_free": true,
+        "brand_safe": true
+      },
+      "issues": [],
+      "revised_prompt_hint": "",
+      "frames_inspected": 1
+    }
+  }
+]

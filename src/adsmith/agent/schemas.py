@@ -25,4 +25,5 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "prompt_rewrite": ScenePromptDraft,
     "edit_parser": ScenePatchDraft,
     "qa_critic": QAVerdictDraft,
+    "qa_keyframe": QAVerdictDraft,
 }

@@ -61,6 +61,10 @@ class Critic(Protocol):
         self, state: RunState, scene: Scene
     ) -> tuple[QAVerdict, list[LLMCallRecord]]: ...
 
+    async def review_keyframe(
+        self, state: RunState, scene: Scene
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]: ...
+
 
 def _ev(
     run_id: str,
@@ -133,13 +137,168 @@ class SceneStageRunner:
         if stage is Stage.QA:
             await self._qa(run_id, scene_id)
             return
-        scene = self._load(run_id, scene_id)
-        if scene.phase is ScenePhase.KEYFRAME and not await self._phase(
-            run_id, scene_id, ScenePhase.KEYFRAME, stage
-        ):
-            return
+        # Keyframe-first with a gate (ADR-0003): keyframe → keyframe QA → (retry keyframe | clip).
+        # Only an approved keyframe is ever animated, so a bad still never costs a clip.
+        while True:
+            scene = self._load(run_id, scene_id)
+            if scene.status is not SceneStatus.PENDING or scene.prompt is None:
+                return
+            if scene.phase is ScenePhase.KEYFRAME:
+                if not await self._phase(run_id, scene_id, ScenePhase.KEYFRAME, stage):
+                    return
+                continue
+            if scene.keyframe_approved:
+                break
+            outcome = await self._keyframe_gate(run_id, scene_id, stage)
+            if outcome == "stop":
+                return
+            if outcome == "approved":
+                break
         if stage is Stage.GENERATE:
             await self._phase(run_id, scene_id, ScenePhase.CLIP, stage)
+
+    # ------------------------------------------------------------------------ keyframe gate
+    async def _keyframe_gate(
+        self, run_id: str, scene_id: str, stage: Stage
+    ) -> Literal["approved", "retry", "stop"]:
+        state = self.storage.runs.load(run_id)
+        scene = self._find(state, scene_id)
+        assert scene.keyframe is not None
+        try:
+            verdict, calls = await self.critic.review_keyframe(state, scene)
+        except AgentError as exc:
+            self._fail_scene(
+                run_id, stage, scene_id, exc.kind, f"keyframe critic: {exc.message}", exc.llm_calls
+            )
+            return "stop"
+        kf = scene.keyframe
+        kf_att = next(
+            (
+                a
+                for a in reversed(scene.attempts)
+                if a.phase is ScenePhase.KEYFRAME and a.artifact and a.artifact.sha256 == kf.sha256
+            ),
+            None,
+        )
+        rejected = sum(
+            1
+            for a in scene.attempts
+            if a.scene_version == scene.version
+            and a.phase is ScenePhase.KEYFRAME
+            and a.qa_passed is False
+        )
+        max_tries = self.node_ctx.settings.keyframe_max_tries
+        render_s, _ = render_window(self.node_ctx.settings, state, scene.duration_s)
+        clip_usd = round(self.gateway.video.usd_per_second * render_s, 4)
+
+        def record(s: RunState) -> Scene:
+            sc = self._same_version(s, scene)
+            if kf_att is not None:
+                att = self._attempt(sc, kf_att.id)
+                att.qa_score, att.qa_passed = verdict.score, verdict.passed
+            return sc
+
+        if verdict.passed:
+
+            def approve(s: RunState) -> list[AgentEvent]:
+                sc = record(s)
+                events = self._book(s, calls, stage, sc)
+                sc.approve_keyframe(verdict)
+                events.append(
+                    _ev(
+                        run_id,
+                        stage,
+                        sc,
+                        EventType.SCENE_STATUS,
+                        f"Scene {sc.order} keyframe approved by the gate "
+                        f"(score {verdict.score:.2f}); video may start",
+                        gate="keyframe",
+                        score=verdict.score,
+                    )
+                )
+                return events
+
+            return "approved" if self._update(run_id, approve, "keyframe approved") else "stop"
+
+        reasons = "; ".join(verdict.fail_reasons)
+        issues = "; ".join(f"{i.category}: {i.observation}" for i in verdict.issues)
+        if rejected + 1 >= max_tries:
+
+            def give_up(s: RunState) -> list[AgentEvent]:
+                sc = record(s)
+                events = self._book(s, calls, stage, sc)
+                sc.keyframe_qa = verdict
+                sc.fail(
+                    self._failure(
+                        s,
+                        FailureKind.QUALITY_REJECTED,
+                        stage,
+                        f"keyframe rejected {rejected + 1}× by the gate ({reasons})",
+                    )
+                )
+                events.append(
+                    _ev(
+                        run_id,
+                        stage,
+                        sc,
+                        EventType.SCENE_STATUS,
+                        level="error",
+                        summary=f"Scene {sc.order} keyframe rejected {rejected + 1}×; scene "
+                        f"failed without spending on video (saved ~${clip_usd:.2f}). "
+                        "Other scenes continue.",
+                        gate="keyframe",
+                        saved_usd=clip_usd,
+                    )
+                )
+                return events
+
+            self._update(run_id, give_up, "keyframe gate exhausted")
+            self._evict_keyframe(scene)
+            return "stop"
+
+        def reject(s: RunState) -> list[AgentEvent]:
+            sc = record(s)
+            events = self._book(s, calls, stage, sc)
+            sc.reject_keyframe(verdict)
+            events.append(
+                _ev(
+                    run_id,
+                    stage,
+                    sc,
+                    EventType.RECOVERY,
+                    level="warn",
+                    summary=f"Scene {sc.order} keyframe rejected by the gate ({reasons}): "
+                    f"{issues[:300]}. No video spent (saved ~${clip_usd:.2f}); regenerating "
+                    f"the keyframe ({rejected + 2}/{max_tries})",
+                    strategy="keyframe_regenerate",
+                    gate="keyframe",
+                    score=verdict.score,
+                    saved_usd=clip_usd,
+                    fail_reasons=verdict.fail_reasons,
+                )
+            )
+            return events
+
+        if not self._update(run_id, reject, "keyframe rejected"):
+            return "stop"
+        self._evict_keyframe(scene)
+        detail = "Keyframe rejected because: " + reasons + "\n"
+        detail += "\n".join(
+            f"- [{i.severity}] {i.category}: {i.observation} → fix: {i.fix}" for i in verdict.issues
+        ) + (f"\nHint: {verdict.revised_prompt_hint}" if verdict.revised_prompt_hint else "")
+        if not await self._revise(run_id, stage, scene_id, "keyframe_feedback", detail):
+            return "stop"
+        return "retry"
+
+    def _evict_keyframe(self, scene: Scene) -> None:
+        for a in scene.attempts:
+            if (
+                a.phase is ScenePhase.KEYFRAME
+                and a.artifact is not None
+                and scene.keyframe is not None
+                and a.artifact.sha256 == scene.keyframe.sha256
+            ):
+                self.storage.cache.evict(a.request_hash)
 
     # ------------------------------------------------------------------------ one phase
     async def _phase(self, run_id: str, scene_id: str, phase: ScenePhase, stage: Stage) -> bool:  # noqa: PLR0911
@@ -431,7 +590,11 @@ class SceneStageRunner:
                 sc.reject(verdict)
             sc.set_prompt(prompt)
             kept = "kept the keyframe" if sc.keyframe is not None else "new keyframe needed"
-            label = "Policy rewrite" if reason == "content_policy" else "QA regeneration"
+            label, strategy = {
+                "content_policy": ("Policy rewrite", "policy_rewrite"),
+                "qa_feedback": ("QA regeneration", "qa_regenerate"),
+                "keyframe_feedback": ("Keyframe gate revision", "keyframe_regenerate"),
+            }[reason]
             events.append(
                 _ev(
                     run_id,
@@ -439,7 +602,7 @@ class SceneStageRunner:
                     sc,
                     EventType.RECOVERY,
                     f"{label} for scene {sc.order}: prompt revised ({kept})",
-                    strategy="policy_rewrite" if reason == "content_policy" else "qa_regenerate",
+                    strategy=strategy,
                     keyframe_kept=sc.keyframe is not None,
                 )
             )

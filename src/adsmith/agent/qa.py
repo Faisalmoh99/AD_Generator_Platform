@@ -57,6 +57,15 @@ CHECK_CATEGORIES: dict[str, frozenset[str]] = {
 
 
 class MockCritic:
+    async def review_keyframe(
+        self, state: RunState, scene: Scene
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """Mock keyframes are placeholder cards: always pass (no fault model for stills yet)."""
+        verdict = QAVerdict(
+            score=0.9, checks=_ALL_OK, frames_inspected=1, threshold=state.config.qa_threshold
+        )
+        return verdict, []
+
     async def review(self, state: RunState, scene: Scene) -> tuple[QAVerdict, list[LLMCallRecord]]:
         clip = scene.last_attempt(ScenePhase.CLIP)
         threshold = state.config.qa_threshold
@@ -139,11 +148,7 @@ class LLMCritic:
             motion_prompt=scene.prompt.motion_prompt,
             negative_prompt=scene.prompt.negative_prompt or "(none)",
             image_list="\n".join(f"- image {label}" for label in labels),
-            product_checklist=(
-                "\n".join(f"- {item}" for item in state.bible.product.checklist())
-                if scene.shows_product
-                else "(the product is not in this scene)"
-            ),
+            product_checklist=_product_checklist(state, scene),
             played_s=f"{played:g}",
         )
         threshold = state.config.qa_threshold
@@ -153,9 +158,59 @@ class LLMCritic:
             if problems:
                 raise ValueError("; ".join(problems))
             fixed = d.model_copy(update={"frames_inspected": n_images})
+            return QAVerdict.from_draft(
+                fixed, threshold=threshold, keyframe_approved=scene.keyframe_approved
+            )
+
+        res = await self.ctx.llm.call_and_convert(
+            LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
+        )
+        return res.value, res.calls
+
+    async def review_keyframe(
+        self, state: RunState, scene: Scene
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """Keyframe gate: the still alone, before any video spend (ADR-0003 addendum)."""
+        if scene.keyframe is None or scene.prompt is None:
+            raise PermanentProviderError(f"scene {scene.order} has no keyframe to review")
+        assert state.bible is not None
+        jpeg = await asyncio.to_thread(
+            image_to_jpeg, self.ctx.artifacts.resolve(scene.keyframe), long_side=self.long_side
+        )
+        parts: list[ImagePart | TextPart] = [
+            TextPart("Image 0: keyframe"),
+            ImagePart("image/jpeg", base64.b64encode(jpeg).decode("ascii")),
+        ]
+        rendered = self.ctx.prompts.get("qa_keyframe").render(
+            scene=scene_block(scene),
+            scene_bible=state.bible.prompt_block(scene.uses_bible_sections()),
+            product_checklist=_product_checklist(state, scene),
+            keyframe_prompt=scene.prompt.keyframe_prompt,
+        )
+        threshold = state.config.qa_threshold
+
+        def convert(d: QAVerdictDraft) -> QAVerdict:
+            problems = check_verdict(d, n_images=1)
+            if any(i.category == "motion" for i in d.issues):
+                problems.append("a still has no motion: use another category")
+            if problems:
+                raise ValueError("; ".join(problems))
+            fixed = d.model_copy(
+                update={
+                    "frames_inspected": 1,
+                    "issues": [i.model_copy(update={"frame_index": 0}) for i in d.issues],
+                }
+            )
             return QAVerdict.from_draft(fixed, threshold=threshold)
 
         res = await self.ctx.llm.call_and_convert(
             LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
         )
         return res.value, res.calls
+
+
+def _product_checklist(state: RunState, scene: Scene) -> str:
+    assert state.bible is not None
+    if not scene.shows_product:
+        return "(the product is not in this scene)"
+    return "\n".join(f"- {item}" for item in state.bible.product.checklist())

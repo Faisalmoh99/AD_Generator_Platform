@@ -29,3 +29,24 @@ want to review the look before paying for video.
 - − Two provider calls per scene and two failure surfaces (both covered by the same recovery
   layer).
 - − Motion is limited by what the I2V model can do from one frame.
+
+## Addendum (M11): keyframe QA gate
+**Context.** On real fal output most QA rejections were caused by the *keyframe* (key light on the
+wrong side, unrequested props, a filled tagline area, product details wrong). They were only found
+after paying for a clip ($0.36 on LTX, $0.56 on Kling), which defeats the point of keyframe-first.
+
+**Decision.** Right after a keyframe is generated, the critic reviews the keyframe ALONE
+(`qa_keyframe` template: key-light side, required negative space, unrequested objects, stray text,
+framing, and the bible-derived product checklist), with the same code pass rule as clips. A reject
+discards the keyframe, evicts it from the cache, revises `keyframe_prompt` from the critic's fixes
+(`prompt_rewrite`, reason `keyframe_feedback`) and regenerates it with a new seed, up to
+`keyframe_max_tries` (3). After that the scene fails *without any video spend*, and other scenes
+carry on. Only a keyframe whose sha256 the gate approved (`Scene.keyframe_approved_sha`) is
+animated. The approval survives motion-only clip rejections, so the same still is never judged twice.
+The post-clip critic (`qa_critic` v4) then judges motion, product readability in the played frames,
+continuity with the approved keyframe, and additions. A clip problem regenerates the keyframe only
+if the critic locates it in the keyframe itself.
+
+**Consequences.** + A bad still costs one critic call (~$0.01–0.02) instead of a clip. + Fewer
+post-clip rejections, which are more often truly about motion. − One extra LLM call per keyframe
+attempt. − The gate inherits the critic's limits (non-determinism, fine product detail; ADR-0016).

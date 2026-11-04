@@ -184,7 +184,8 @@ class Settings(BaseSettings):
     aspect_ratio: AspectRatio = "9:16"
     target_duration_s: float = Field(default=15.0, gt=0, le=60)
     budget_usd: float = Field(default=10.0, gt=0)
-    max_attempts_per_scene: int = Field(default=6, ge=1)
+    max_attempts_per_scene: int = Field(default=8, ge=1)  # 3 keyframe tries + clips
+    keyframe_max_tries: int = Field(default=3, ge=1, le=6)  # keyframe gate (ADR-0003)
     max_total_attempts: int = Field(default=40, ge=1)
     qa_threshold: float = Field(default=0.7, ge=0, le=1)
     scene_concurrency: int = Field(default=3, ge=1, le=16)

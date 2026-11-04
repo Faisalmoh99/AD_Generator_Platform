@@ -50,10 +50,15 @@ class QAVerdictDraft(DomainModel):
 
 class QAVerdict(QAVerdictDraft):
     threshold: float = Field(ge=0, le=1)
+    # True when the clip was animated from a keyframe the gate already approved: clip problems
+    # then regenerate the keyframe only if the critic located them in the keyframe itself.
+    keyframe_approved: bool = False
 
     @classmethod
-    def from_draft(cls, draft: QAVerdictDraft, *, threshold: float) -> QAVerdict:
-        return cls(**draft.model_dump(), threshold=threshold)
+    def from_draft(
+        cls, draft: QAVerdictDraft, *, threshold: float, keyframe_approved: bool = False
+    ) -> QAVerdict:
+        return cls(**draft.model_dump(), threshold=threshold, keyframe_approved=keyframe_approved)
 
     @property
     def fail_reasons(self) -> list[str]:
@@ -83,11 +88,15 @@ class QAVerdict(QAVerdictDraft):
         """The still itself is wrong: a non-minor look issue (product/character/composition), or
         any non-minor non-motion issue the critic located in image 0, which is the keyframe
         (e.g. key light from the wrong side is a "lighting" issue, but it lives in the still)."""
-        return any(
-            i.severity != "minor"
-            and (
-                i.category in KEYFRAME_ISSUE_CATEGORIES
-                or (i.frame_index == KEYFRAME_IMAGE_INDEX and i.category != "motion")
-            )
+        in_keyframe = [
+            i
             for i in self.issues
+            if i.severity != "minor"
+            and i.frame_index == KEYFRAME_IMAGE_INDEX
+            and i.category != "motion"
+        ]
+        if self.keyframe_approved:
+            return bool(in_keyframe)
+        return bool(in_keyframe) or any(
+            i.severity != "minor" and i.category in KEYFRAME_ISSUE_CATEGORIES for i in self.issues
         )

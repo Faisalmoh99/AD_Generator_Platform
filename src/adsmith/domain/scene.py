@@ -168,6 +168,10 @@ class Scene(SceneDraft):
     keyframe: Artifact | None = None
     clip: Artifact | None = None
     qa: QAVerdict | None = None
+    # Keyframe QA gate (ADR-0003 addendum): the verdict on the keyframe alone, and the sha256 of
+    # the keyframe it approved. Video is generated only from an approved keyframe.
+    keyframe_qa: QAVerdict | None = None
+    keyframe_approved_sha: str | None = None
     version: int = Field(default=1, ge=1)
     history: list[SceneVersion] = Field(default_factory=list)
     attempts: list[GenerationAttempt] = Field(default_factory=list)
@@ -265,6 +269,28 @@ class Scene(SceneDraft):
         self.qa, self.clip = verdict, None
         if verdict.needs_new_keyframe:
             self.keyframe, self.phase = None, ScenePhase.KEYFRAME
+        self.check_invariants()
+
+    @property
+    def keyframe_approved(self) -> bool:
+        return self.keyframe is not None and self.keyframe_approved_sha == self.keyframe.sha256
+
+    def approve_keyframe(self, verdict: QAVerdict) -> None:
+        if not verdict.passed or self.keyframe is None or self.phase is not ScenePhase.CLIP:
+            raise IllegalTransitionError("approve_keyframe needs a passing verdict and a keyframe")
+        self.keyframe_qa, self.keyframe_approved_sha = verdict, self.keyframe.sha256
+        self.check_invariants()
+
+    def reject_keyframe(self, verdict: QAVerdict) -> None:
+        """Keyframe gate rejected the still: discard it before any video is paid for."""
+        if verdict.passed:
+            raise IllegalTransitionError("cannot reject a keyframe with a passing verdict")
+        if self.status is not SceneStatus.PENDING or self.phase is not ScenePhase.CLIP:
+            raise IllegalTransitionError("reject_keyframe needs a pending scene with a keyframe")
+        if self.clip is not None:
+            raise IllegalTransitionError("the keyframe gate runs before any clip exists")
+        self.keyframe_qa, self.keyframe_approved_sha = verdict, None
+        self.keyframe, self.phase = None, ScenePhase.KEYFRAME
         self.check_invariants()
 
     def release_lease(self) -> None:

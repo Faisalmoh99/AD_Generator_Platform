@@ -71,9 +71,15 @@ REJECT_MOTION = verdict(0.5, issues=[issue("motion")], failed=("artifacts_free",
 REJECT_PRODUCT = verdict(0.3, issues=[issue("product", "blocker", 0)], failed=("product_visible",))
 
 
-def harness(tmp_path: Path, critic: list[dict[str, Any]], **over: object) -> Harness:
+def harness(
+    tmp_path: Path,
+    critic: list[dict[str, Any]],
+    keyframe: list[dict[str, Any]] | None = None,
+    **over: object,
+) -> Harness:
     settings = fast_settings(tmp_path, qa_mode="llm", scene_concurrency=1, **over)
-    return make_harness(settings, scripts={"qa_critic": critic})
+    scripts = {"qa_critic": critic} | ({"qa_keyframe": keyframe} if keyframe else {})
+    return make_harness(settings, scripts=scripts)
 
 
 async def run_auto(h: Harness) -> RunState:
