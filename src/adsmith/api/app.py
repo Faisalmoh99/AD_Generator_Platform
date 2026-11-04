@@ -13,6 +13,7 @@ HTML/CSS/JS in ``api/static`` and talks to these endpoints:
     GET  /api/runs/{id}/pack.zip      Production Pack
     GET  /api/gallery                 curated real fal runs
     GET  /files/{path}                CAS media (keyframes, clips, finals), path-checked
+    GET  /docs-media/{name}           committed real clips (fresh clone fallback)
 
 Zero keys by default (scripted LLM + mock media). Work runs as background asyncio tasks; the
 orchestrator's per-run lock serialises them, and every state change goes through the same
@@ -212,6 +213,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
     @app.get("/api/gallery")
     async def gallery() -> list[dict[str, Any]]:
         return load_gallery(s.config_dir, rt.storage)
+
+    @app.get("/docs-media/{name}")
+    async def docs_media(name: str) -> FileResponse:
+        # Committed real clips (docs/media) for a fresh clone without data/: plain file names only.
+        target = s.config_dir.parent / "docs" / "media" / name
+        if "/" in name or ".." in name or target.suffix.lower() != ".mp4" or not target.is_file():
+            raise HTTPException(404, "not found")
+        return FileResponse(target)
 
     @app.get("/files/{path:path}")
     async def files(path: str) -> FileResponse:

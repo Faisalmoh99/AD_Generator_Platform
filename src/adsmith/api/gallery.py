@@ -22,6 +22,9 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
         try:
             state = storage.runs.load(item["run"])
         except RunNotFoundError:
+            # Fresh clone: data/ is gitignored, but the clips are committed under docs/media.
+            if fallback := _committed(item, config_dir.parent / "docs" / "media"):
+                out.append(fallback)
             continue
         videos: list[dict[str, Any]] = []
         # kind "final": the assembled ad; "attempts": chosen clip attempts of one scene;
@@ -75,3 +78,28 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _committed(item: dict[str, Any], media_dir: Path) -> dict[str, Any] | None:
+    """A gallery card built from the committed copies (``media`` = file names in docs/media)."""
+    names = [n for n in item.get("media", []) if (media_dir / n).is_file()]
+    if not names:
+        return None
+    labels, posters = item.get("labels", ["Final ad"]), item.get("posters", [item.get("poster")])
+    return {
+        "key": item["key"],
+        "title": item["title"],
+        "subtitle": item.get("subtitle", ""),
+        "caption": item.get("caption", ""),
+        "defects": item.get("defects", ""),
+        "videos": [
+            {
+                "url": f"/docs-media/{n}",
+                "label": labels[i] if i < len(labels) else "",
+                "poster": posters[i] if i < len(posters) else None,
+            }
+            for i, n in enumerate(names)
+        ],
+        "endcard": None,
+        "spend": item.get("spend"),
+    }

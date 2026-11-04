@@ -1,8 +1,10 @@
 # Real fal runs shown in the web UI's "Real runs" gallery (M11). Each item points at a run in the
-# data dir; missing runs are skipped, so a fresh checkout simply shows an empty gallery.
+# data dir; when a run is not local (fresh clone), the committed copies in docs/media are shown.
 
 [[items]]
 key = "majlis"
+media = ["majlis_ad_final.mp4"]  # committed copies in docs/media (fresh clone)
+spend = 2.925
 title = "The majlis remembers him"
 subtitle = "4-scene ad · Kling v3 Pro · FLUX dev keyframes · gate on"
 run = "run_01M6JF4T2D78QNQJ7ZSE8GA8WR"
@@ -16,6 +18,8 @@ defects = "Seen by eye, passed by the critic: a doorway appears mid-clip in scen
 
 [[items]]
 key = "single_take"
+media = ["single_take_final.mp4"]  # committed copies in docs/media (fresh clone)
+spend = 1.425
 title = "Single take: the silk corridor"
 subtitle = "One continuous 10 s shot · Kling v3 Pro · ideated around the model's strengths"
 run = "run_01M6JH38ZT2WRDPSQ2GM833F7T"
@@ -29,6 +33,8 @@ defects = "Brand safety: the round bottle with a tall black cap reads like a whi
 
 [[items]]
 key = "curtain"
+media = ["curtain_before_rejected.mp4", "curtain_after_fixed.mp4"]  # committed copies in docs/media (fresh clone)
+spend = 0.745
 title = "Before → after: the curtain veil"
 subtitle = "Scene 4, LTX-2.3 Fast · a real failure the critic caught"
 run = "run_01M6JA6FP1Q7P2WE70C6GGVQTN"
@@ -45,6 +51,8 @@ defects = ""
 
 [[items]]
 key = "hero_spray"
+media = ["hero_candidate_1_rejected.mp4", "hero_candidate_2_rejected.mp4"]  # committed copies in docs/media (fresh clone)
+spend = 2.315
 title = "Hero attempt: the spray (best-of-2, both rejected)"
 subtitle = "Single take, 8 s · Kling v3 Pro · best-of-2 from one gated keyframe · fal $2.32"
 run = "run_01M6KJYGMWF7RHQY8B86T5G7JK"

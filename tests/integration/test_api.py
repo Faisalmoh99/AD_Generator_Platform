@@ -78,4 +78,11 @@ def test_events_stream_and_files_are_path_checked(tmp_path: Path) -> None:
         assert c.get("/files/../../etc/passwd").status_code == 404
         assert c.get("/files/adsmith.db").status_code == 404  # never the database
         assert c.get("/api/runs/run_nope").status_code == 404
-        assert c.get("/api/gallery").json() == []  # no real runs in a fresh data dir
+        # Fresh data dir: the gallery falls back to the clips committed in docs/media.
+        gallery = c.get("/api/gallery").json()
+        assert [g["key"] for g in gallery] == ["majlis", "single_take", "curtain", "hero_spray"]
+        assert all(v["url"].startswith("/docs-media/") for g in gallery for v in g["videos"])
+        first_clip = gallery[0]["videos"][0]["url"]
+        assert c.get(first_clip).headers["content-type"] == "video/mp4"
+        assert c.get("/docs-media/..%2F..%2FREADME.md").status_code == 404
+        assert c.get("/docs-media/nope.mp4").status_code == 404
