@@ -94,7 +94,9 @@ async def main() -> None:
     ap.add_argument("--long-side", type=int, default=1280)
     ap.add_argument("--edit", action="append", default=[], help="ORDER:path.json scene edit")
     ap.add_argument("--reprompt-all", action="store_true")
-    ap.add_argument("--budget", type=float, help="run budget (fal + LLM); fal is capped by the wallet")
+    ap.add_argument(
+        "--budget", type=float, help="run budget (fal + LLM); fal is capped by the wallet"
+    )
     args = ap.parse_args()
 
     rt = AgentRuntime.from_settings(Settings())
