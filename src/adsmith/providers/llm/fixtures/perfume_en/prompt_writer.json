@@ -26,5 +26,8 @@
       "motion_prompt": "Slow orbit of about 30 degrees around the bottle; gold reflections travel across the facets; bokeh lights shimmer softly.",
       "negative_prompt": "text, letters, watermark, logo, extra fingers, deformed hands, distorted face, duplicate bottle, alcohol, competitor brands"
     }
+  },
+  {
+    "transform": "scene_prompt"
   }
 ]

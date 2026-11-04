@@ -35,3 +35,18 @@ break continuity with its neighbours or with the continuity bible.
 - + The algorithm is pure and covered by a parametrised matrix plus a property test ("unaffected
   scenes' hashes never change").
 - − The field→depth table is a judgement call. It lives in one place and is documented.
+
+## Addendum (M7): what the implementation added
+- **`motion_change`** on the patch: motion-only adjustments the enums cannot express ("slower" for
+  a scene already in `slow_motion`). Clip depth; a `spec_edit` rewrite updates only the motion
+  prompt, and the kept keyframe is enforced byte-identical.
+- **References are resolved by code** (`agent/edit/refs.py`, AR/EN ordinals, Arabic-Indic digits,
+  "last"/"الأخير"). Low confidence, a clarification question or an unresolved reference ⇒ ask,
+  never guess. A bug caught by a test: "one" in the ordinal table made "the nice one" mean scene 1.
+- **Conflicts**: deterministic time-of-day findings are fed to the `conflict_check` LLM, which
+  keeps the real ones (a neighbour continuing the same moment) and drops separate moments.
+  Conflicts may name a scene by number; code maps it to the id with the same resolver.
+- **Apply is one atomic commit**; clip-depth scenes are requeued at once, prompt-depth scenes
+  re-enter at `prompt`. Untouched scenes are never re-entered, so they make zero provider calls (not
+  merely cache hits). A duration change rebalances the others at clip depth; when their rendered
+  length does not change, the clip is a cache hit.

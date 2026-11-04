@@ -121,7 +121,7 @@ async def test_content_policy_triggers_rewrite_and_recovers(tmp_path: Path) -> N
     assert state.stage is Stage.DONE and state.storyboard is not None
     scene = state.storyboard.scenes[1]
     assert scene.prompt is not None and "(revised" in scene.prompt.motion_prompt
-    assert scene.prompt.template_version == "prompt_rewrite@v4"
+    assert scene.prompt.template_version == "prompt_rewrite@v5"
     actions = [a.recovery_action for a in scene.attempts]
     assert RecoveryAction.POLICY_REWRITE in actions
     rec = [e for e in events(h, state.id) if e.type is EventType.RECOVERY]

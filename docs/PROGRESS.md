@@ -535,3 +535,24 @@ fully consistent (identical product for the whole take vs bottle drift across sc
 judge played it safe (chose producibility 8 / insight 5 over insight 9 / producibility 4), and a
 missing key action passed QA as "soft". Follow-ups noted, not built. **Next: resume the plan at M7
 (edits).**
+
+---
+
+## Plan update (2026-11-05)
+Order to finish: M7 → M8 → M9 → M10 → M12 → M13. **M12.5 (evals) is cut** for time. Mock media
+plus scripted/real LLM only; no fal spend unless the user approves it.
+
+## M7: Edits (2026-11-05)
+**Built**: `agent/edit/{refs,blast,service}.py`, `prompts/edit_parser/v1`, `conflict_check/v1`,
+`prompt_rewrite/v5` (`spec_edit`), CLI `adsmith edit <run> "<text>"` with a blast-radius table
+(depth, provider calls, cache hits per scene). Scripted provider: `"when"`/`"when_all"` steps and a
+spec-driven `scene_prompt` transform, so zero-key re-prompts behave like a real LLM. ADR-0005 addendum.
+**Plan examples, end to end (mock media, majlis scenario):** "خل المشهد الثاني أبطأ" → S2 clip only,
+1 video call, keyframe kept, S1/S3/S4 0 calls · "make scene 3 at night" → S3 prompt depth + S4
+propagated by the conflict check (S2 is a separate moment), 2+2 calls, S1/S2 0 · "غيّر لبسه لثوب
+أسود" → bible v2, S1–S3 (shows_character) regenerate, S4 product insert 0 calls.
+**Found while demoing**: a cross-process scripted replay served stale prompts (fixed with `when_all`
+markers); matching against the cached CONTEXT made every scene look like scene 1 (fixed: match the
+USER section only); the mock $5 budget (priced at Kling rates) ran out after three edits, which is
+the guard working (the demo uses `ADSMITH_BUDGET_USD=15` for simulated money).
+**Tests**: 433 passed, 2 skipped (11 in `tests/integration/test_edits.py`).

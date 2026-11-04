@@ -56,6 +56,12 @@ class ScenePatchDraft(DomainModel):
     shot: ShotSpecPatch = Field(default_factory=ShotSpecPatch)
     duration_s: float | None = Field(default=None, ge=MIN_SCENE_S, le=MAX_SCENE_S)
     description_change: str | None = Field(default=None, max_length=500)
+    motion_change: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Motion-only adjustment the enum fields cannot express (e.g. 'slower, "
+        "gentler'). English. Clip depth: rewrites the motion prompt only.",
+    )
     bible_changes: dict[str, Annotated[str, Field(max_length=300)]] | None = Field(
         default=None, description="Dotted paths into the bible, e.g. 'character.wardrobe'."
     )
@@ -82,6 +88,7 @@ class ScenePatchDraft(DomainModel):
             self.shot.changed_fields()
             or self.duration_s is not None
             or self.description_change
+            or self.motion_change
             or self.bible_changes
         )
         if not has_change:

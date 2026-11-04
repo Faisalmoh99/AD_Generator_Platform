@@ -20,7 +20,7 @@ from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.scene import Scene, ScenePrompt, ScenePromptDraft
 from adsmith.domain.shot_lint import negative_contradictions
 
-ReasonKind = Literal["content_policy", "qa_feedback", "keyframe_feedback"]
+ReasonKind = Literal["content_policy", "qa_feedback", "keyframe_feedback", "spec_edit"]
 
 KEEP_KEYFRAME = (
     "The approved keyframe is KEPT and reused. keyframe_prompt must stay byte-identical; fix "

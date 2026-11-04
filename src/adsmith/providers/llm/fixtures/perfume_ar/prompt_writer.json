@@ -1,5 +1,11 @@
 [
   {
+    "when_all": [
+      "Scene 1 (",
+      "A young man in a white thobe and ghutra walks away from came",
+      "time: golden_hour",
+      "Crisp creamy-white full-"
+    ],
     "output": {
       "keyframe_prompt": "Vertical 9:16 wide shot, 35mm lens, f/4, deep focus. A young Saudi man, seen only from behind, medium-brown skin tone, upright confident posture, slim athletic build, medium height, straight shoulders, wearing a crisp creamy-white full-length Saudi thobe with a mandarin collar and plain buttoned cuffs, a white ghutra folded neatly on the head held by a black agal, brown leather sandals, a slim dark-brown leather watch strap on the left wrist. He is mid-stride at the right edge of frame, walking away toward the doorway, face hidden. In a refined traditional Najdi majlis with floor cushions, a carved wooden side table, woven sadu textiles, a sand-toned patterned carpet and sand-colored walls. An empty armchair sits centered in the lower-middle third, with clear negative space around it. Hard 3200K golden-hour sunlight from a tall window camera-left casts long diagonal shadows across the carpet, warm bounce from the walls, faint dust motes in the beams. Warm sand, deep brown and amber palette, medium-high contrast, warm 35mm film grain, quiet anticipatory mood.",
       "motion_prompt": "Camera stays locked off, completely static. The man walks away at an unhurried pace and exits frame-right through the doorway, leaving the empty armchair. Dust motes drift slowly in the window light beams.",
@@ -7,6 +13,12 @@
     }
   },
   {
+    "when_all": [
+      "Scene 2 (",
+      "The hanging ghutra sways gently toward frame-right as if bru",
+      "time: golden_hour",
+      "Crisp creamy-white full-"
+    ],
     "output": {
       "keyframe_prompt": "Vertical 9:16 medium shot, 50mm lens at f/2, shallow depth of field. A white ghutra hangs from a wooden wall peg in the upper-center, its folds neatly draped, held by a black agal looped over the peg, with soft fabric texture raked by light. Lower-left, a brass dallah and a small cup rest on a low tray, with thin steam rising. In the soft-focus background at frame-right on a carved wooden side table, a Rectangular faceted glass bottle with thick beveled base, chamfered shoulders and a heavy squared cap, about hand-sized, made of thick transparent amber-tinted faceted glass with polished edges and a brushed-gold metal cap, completely wordless with a plain smooth glass front panel and an unmarked gold collar, is partly in view and catches a glint of gold light. Sand-colored walls and woven sadu textiles behind. Low warm 3000K window light from camera-left, soft amber rim on the steam, deep brown shadows on the right. Warm sand and brown grade, medium-high contrast, soft golden glints, fine 35mm film grain, quiet mysterious mood.",
       "motion_prompt": "Camera static. The hanging ghutra sways slowly and gently toward frame-right, as if brushed by someone passing. Steam rises in soft curls from the dallah and cup, catching amber rim light. Faint dust motes drift in the window light. Slow motion.",
@@ -14,6 +26,12 @@
     }
   },
   {
+    "when_all": [
+      "Scene 3 (",
+      "The sheer curtain leans slowly toward the doorway at frame-r",
+      "time: golden_hour",
+      "Crisp creamy-white full-"
+    ],
     "output": {
       "keyframe_prompt": "Vertical 9:16 medium-wide shot, 35mm lens, f/2.8, moderate depth of field. A sheer sand-colored curtain fills the left-center of frame, leaning toward the open doorway at frame-right, glowing where sunlight passes through it. A faint thin trail of oud smoke curls in the air beside it. In the far background, left of center, a small soft-focus silhouette of the Thick transparent amber-tinted faceted glass rectangular bottle with a brushed-gold cap stands on a carved wooden side table, completely wordless with no label. A patch of golden light on the patterned sand-toned carpet leads the eye to the doorway in the lower right. Sand-colored walls, woven sadu textiles. Golden 3200K sunlight from a tall window camera-left, long diagonal shadows, warm bounce from the carpet, subtle cool 5600K spill from the doorway at frame-right. Honey gold against deep brown shadows, restrained warm grade, warm 35mm film grain, soft highlight roll-off, graceful, haunting, quiet mood. Nobody in frame.",
       "motion_prompt": "Slow dolly-in toward the window and doorway area. The sheer curtain leans slowly toward the doorway at frame-right, fabric rippling softly. A light wisp of oud smoke drifts in the same direction. The golden light patch glides gently across the carpet, dust motes floating in the beams.",
@@ -21,10 +39,18 @@
     }
   },
   {
+    "when_all": [
+      "Scene 4 (",
+      "The soft shadow of the curtain drifts across the stationary ",
+      "time: golden_hour"
+    ],
     "output": {
       "keyframe_prompt": "Vertical 9:16 close-up, 100mm macro lens, f/2.8, shallow depth of field, crisp focus on the glass edges and cap. Rectangular faceted glass bottle with thick beveled base, chamfered shoulders and a heavy squared cap, about hand-sized; thick transparent amber-tinted faceted glass with polished edges, brushed-gold metal cap, glossy liquid inside; deep amber glass, warm honey liquid, brushed-gold cap; completely wordless: plain smooth glass front panel and an unmarked gold collar. Close eye-level three-quarter view, bottle upright and centered in the upper-middle of the frame on a carved wooden side table with polished tabletop. A faint soft curtain shadow rests across the table beside it. Softly blurred warm majlis interior behind, sand-gold bokeh. Soft 3200K golden key from camera-left grazing the facets, crisp warm edge highlights, thick base glowing amber, dark brown background falloff. Lower fifth of frame clear and empty. Warm 35mm film look, palette of amber, deep brown and sand gold, fine grain, soft highlight roll-off, luxurious still mood.",
       "motion_prompt": "Camera pushes in slowly and smoothly toward the bottle. A soft sheer-curtain shadow drifts gently left to right across the bottle and tabletop, then fades and settles. The bottle stays perfectly still. A few faint dust motes float in the golden light.",
       "negative_prompt": "text, letters, watermark, logo, label on bottle, extra fingers, deformed hands, distorted face, duplicate bottle, changed bottle shape, altered glass colour, alcohol, people, hands, cool blue light, neon, modern gadgets, flipped screen direction"
     }
+  },
+  {
+    "transform": "scene_prompt"
   }
 ]

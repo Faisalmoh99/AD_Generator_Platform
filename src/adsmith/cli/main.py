@@ -111,6 +111,57 @@ def approve(run_id: str) -> None:
 
 
 @app.command()
+def edit(
+    run_id: str,
+    instruction: Annotated[str, typer.Argument(help="The edit, in English or Arabic.")],
+    resolution: Annotated[
+        str | None,
+        typer.Option(help="Override: apply_local | propagate_neighbors | update_bible | reject"),
+    ] = None,
+) -> None:
+    """Edit a finished ad in natural language; only the blast radius is regenerated."""
+    from adsmith.agent.edit.service import EditService  # noqa: PLC0415
+    from adsmith.domain.events import EventType  # noqa: PLC0415
+
+    orch = _orchestrator()
+    store = orch.rt.storage
+    before = store.runs.load(run_id)
+    spent0 = before.budget.spent_usd
+    seq0 = max((e.seq for e in store.events.tail(run_id, limit=100_000)), default=0)
+    outcome = asyncio.run(
+        EditService(orch.rt).edit(run_id, instruction, resolution=resolution)  # type: ignore[arg-type]
+    )
+    if outcome.status != "applied":
+        console.print(f"[yellow]{outcome.status}:[/] {outcome.message}")
+        return
+    assert outcome.blast is not None and before.storyboard is not None
+    console.rule(f"[bold]Edit[/] {instruction}")
+    if outcome.patch is not None:
+        console.print(outcome.patch.model_dump_json(exclude_none=True, exclude={"confidence"}))
+    for c in outcome.conflicts.conflicts if outcome.conflicts else []:
+        console.print(f"[magenta]conflict[/] {c.against}: {c.description}")
+    console.print(f"resolution: [bold]{outcome.resolution}[/]  {outcome.message}")
+    final = asyncio.run(orch.run_until_blocked(run_id))
+    events = store.events.tail(run_id, after_seq=seq0, limit=100_000)
+    why = {ln.split(" ", 2)[1]: ln for ln in outcome.blast.explanation if ln.startswith("scene")}
+    table = Table("scene", "blast radius", "provider calls", "cache hits", "why")
+    for s in before.storyboard.scenes:
+        depth = outcome.blast.affected.get(s.id)
+        mine = [e for e in events if e.scene_id == s.id]
+        calls = sum(1 for e in mine if e.type is EventType.ATTEMPT_STARTED)
+        hits = sum(1 for e in mine if e.type is EventType.CACHE_HIT)
+        reason = why.get(str(s.order), "").split(": ", 1)[-1][:70] if depth else "$0"
+        label = f"[bold red]{depth.value}[/]" if depth else "[green]untouched[/]"
+        table.add_row(str(s.order), label, str(calls), str(hits), reason)
+    console.print(table)
+    if outcome.blast.bible_bump and final.bible is not None:
+        console.print(f"bible bumped to v{final.bible.version}")
+    console.print(f"edit cost ${final.budget.spent_usd - spent0:.3f} (incl. LLM) · {final.stage}")
+    if final.final is not None:
+        console.print(f"New final: {store.artifacts.run_dir(run_id) / 'final.mp4'}")
+
+
+@app.command()
 def history(run_id: str) -> None:
     """List the run's snapshots (for inspection or --from-version)."""
     table = Table("version", "stage", "reason", "size")

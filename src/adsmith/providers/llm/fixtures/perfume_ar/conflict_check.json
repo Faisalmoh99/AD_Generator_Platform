@@ -1,0 +1,25 @@
+[
+  {
+    "when": "\"time_of_day\": \"night\"",
+    "output": {
+      "conflicts": [
+        {
+          "against": "next_scene",
+          "scene_id": "4",
+          "field": "time_of_day",
+          "description": "Scene 4 continues the same moment: the curtain's light falls on the bottle in the same room, so it must also be at night.",
+          "severity": "warning"
+        }
+      ],
+      "suggested_resolution": "propagate_neighbors",
+      "explanation": "المشهد الرابع يكمل نفس اللحظة في نفس الغرفة، فبنخليه ليل مثل الثالث. المشهد الثاني لحظة سابقة ويبقى على ضوء العصر."
+    }
+  },
+  {
+    "output": {
+      "conflicts": [],
+      "suggested_resolution": "apply_local",
+      "explanation": "التعديل ما يتعارض مع المشاهد المجاورة."
+    }
+  }
+]
