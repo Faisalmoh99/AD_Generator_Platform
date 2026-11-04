@@ -17,6 +17,7 @@ import pytest
 from PIL import Image
 
 from adsmith.agent.qa import check_verdict
+from adsmith.domain.continuity import atomic_parts
 from adsmith.domain.enums import FailureKind, ScenePhase, SceneStatus, Stage
 from adsmith.domain.events import EventType
 from adsmith.domain.qa import QAVerdict, QAVerdictDraft
@@ -393,11 +394,26 @@ async def test_product_checklist_is_derived_from_the_bible_and_sent(tmp_path: Pa
     assert state.bible is not None
     product = state.bible.product
     items = product.checklist()
-    assert items[0].startswith("Form and shape:") and product.form in items[0]
+    assert items[0].startswith("Shape:") and items[0].removeprefix("Shape: ") in product.form
     wordless = product.model_copy(update={"branding_text": ""})
     assert "WORDLESS" in wordless.checklist()[-1]
     texted = product.model_copy(update={"branding_text": "NOOR"})
     assert "only the text 'NOOR'" in texted.checklist()[-1]
     sent = _requests(h, "qa_critic")
     with_product = [s for s, sc in zip(sent, scenes(state), strict=True) if sc.shows_product]
-    assert with_product and all(product.form in t for t in with_product)
+    assert with_product and all(items[0] in t for t in with_product)
+
+
+def test_composite_bible_fields_become_atomic_checks() -> None:
+    form = (
+        "Rectangular faceted glass bottle with thick beveled base, chamfered shoulders and a "
+        "heavy squared cap, about hand-sized"
+    )
+    assert atomic_parts(form) == [
+        "Rectangular faceted glass bottle",
+        "thick beveled base",
+        "chamfered shoulders",
+        "a heavy squared cap",
+        "about hand-sized",
+    ]
+    assert atomic_parts("matte") == ["matte"]

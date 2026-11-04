@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from pydantic import Field
@@ -44,9 +45,9 @@ class ProductSpec(DomainModel):
         mismatch is a major product issue (ADR-0016). Wordless branding (no branding_text) means
         no lettering of any kind is allowed on the product."""
         items = [
-            f"Form and shape: {self.form}",
-            f"Materials and finish: {self.materials}",
-            f"Colours: {self.colors}",
+            *(f"Shape: {p}" for p in atomic_parts(self.form)),
+            *(f"Material: {p}" for p in atomic_parts(self.materials)),
+            *(f"Colour: {p}" for p in atomic_parts(self.colors)),
             *(f"Detail: {f}" for f in self.distinctive_features),
         ]
         if self.branding_text:
@@ -148,3 +149,15 @@ class ContinuityBible(ContinuityBibleDraft):
         if self.forbidden:
             lines.append(f"AVOID: {'; '.join(self.forbidden)}.")
         return "\n".join(lines)
+
+
+_ATOM_SPLIT = re.compile(r"\s*(?:[,;]|\band\b|\bwith\b)\s*")
+
+
+def atomic_parts(text: str) -> list[str]:
+    """Split a composite bible field into atomic checks ("bottle with beveled base, chamfered
+    shoulders and a heavy squared cap" → bottle / beveled base / chamfered shoulders / heavy
+    squared cap). One composite item lets a critic tick it while missing one part (seen live:
+    a round cap passed under a single "Form and shape" item)."""
+    parts = [p.strip(" .") for p in _ATOM_SPLIT.split(text)]
+    return [p for p in parts if len(p) > 2] or [text]
