@@ -165,15 +165,17 @@ weaknesses = [
 
 [fal.video.endpoints.kling_v3_standard]
 # Verified 2026-11-05: same schema as v3 Pro. Page price $0.084/s audio off ($0.126 on); the
-# pricing API reports $0.14/s for every Kling tier, so we budget $0.14 (worst case) and expect
-# the page price on the bill. Resolution tier not stated on the page.
+# pricing API reports $0.14/s for every Kling tier. Billing check (hero v2 round): the dashboard
+# fell $2.00 → $0.90 = $1.10 for $0.505 of stills (page = API prices) + 9 s of this endpoint, i.e.
+# ≈ $0.066/s actually charged. So fal bills at most the page price; we budget the page price.
+# Resolution tier not stated on the page.
 # Schema: start_image_url (required), prompt (<=2500 chars), negative_prompt, cfg_scale 0..1,
 # duration "3".."15" (string enum), generate_audio (default true: we send false). Aspect ratio
 # comes from the start image.
 endpoint = "fal-ai/kling-video/v3/standard/image-to-video"
 adapter = "kling"
 image_field = "start_image_url"
-usd_per_second = 0.14
+usd_per_second = 0.084
 min_duration_s = 3
 max_duration_s = 15
 
