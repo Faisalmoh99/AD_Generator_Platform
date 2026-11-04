@@ -3,8 +3,8 @@
     "output": {
       "language": "ar",
       "dialect": "saudi_najdi",
-      "product": "Luxury men's fragrance",
-      "product_category": "Men's perfume",
+      "product": "Luxury men's perfume",
+      "product_category": "Men's fragrance",
       "brand_name": null,
       "target_audience": "Young men who care about style and luxury grooming",
       "tone": [
@@ -15,7 +15,7 @@
       "duration_s": 15.0,
       "aspect_ratio": "9:16",
       "must_include": [
-        "Luxury men's fragrance bottle as the hero product"
+        "Luxury men's perfume bottle as the hero product"
       ],
       "must_avoid": [
         "readable on-screen text inside the generated footage"
@@ -24,13 +24,13 @@
       "tagline_language": null,
       "cultural_notes": [],
       "assumptions": [
-        "المنتج عطر رجالي فاخر بدون اسم علامة تجارية محددة",
-        "الجمهور الشباب الذكور المهتمون بالأناقة",
-        "الأسلوب السينمائي يعني إضاءة درامية ولقطات بجودة إعلانية عالية",
-        "المدة 15 ثانية كما طلب العميل",
-        "لم تُحدد نسبة العرض لذا تُركت فارغة"
+        "المنتج عطر رجالي فاخر، والمقصود بالشباب الرجال الشباب المهتمون بالأناقة",
+        "الأسلوب السينمائي يعني إضاءة درامية وتصوير عالي الجودة",
+        "مدة الإعلان 15 ثانية كما طلب العميل",
+        "لم تُحدد منصة أو نسبة عرض، لذلك تُركت فارغة",
+        "اللهجة سعودية نجدية بناءً على صيغة 'سوّ لي' و'إعلان' دون مؤشرات واضحة، وقد تكون أقرب للغة البيضاء"
       ],
-      "normalized_request_en": "15-second cinematic ad for a luxury men's fragrance targeting young men who value style"
+      "normalized_request_en": "15-second cinematic ad for a luxury men's perfume targeting young men who care about style"
     }
   }
 ]

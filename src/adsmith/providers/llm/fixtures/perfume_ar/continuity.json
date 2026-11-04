@@ -2,68 +2,66 @@
   {
     "output": {
       "character": {
-        "description": "One young Saudi man in a dark tailored jacket, calm confident posture, appears small beside the monument in early scenes and standing behind the bottle on the table in the reveal",
-        "age_range": "22-27",
-        "appearance": "Light olive-brown skin, oval face with defined cheekbones, straight dark eyebrows, dark brown eyes, calm composed expression with a faint confident nod",
-        "hair": "Short black hair in a low fade at the sides, slightly longer textured top swept back",
-        "grooming": "Neatly trimmed black beard with a sharp cheek line and clean neckline, no jewelry except a slim dark watch",
-        "build": "Slim athletic build, about 178 cm, straight shoulders, upright posture",
+        "description": "One young Saudi man seen only in profile and from behind, calm and composed, face kept mostly in shadow as he crosses the frame and exits into darkness.",
+        "age_range": "mid 20s",
+        "appearance": "Warm olive skin, strong defined jawline, straight nose in profile, calm composed expression, face turned away from camera and mostly in shadow",
+        "hair": "Short black hair with a tight skin fade at the sides, neatly styled and slightly longer on top",
+        "grooming": "Neatly trimmed black beard with a sharp, clean line along the cheek and neck, clean eyebrows",
+        "build": "Lean athletic build, broad shoulders, upright confident posture, around 178 cm tall",
         "wardrobe": [
-          "Black tailored single-breasted jacket with a slim fit and matte finish",
-          "Dark charcoal fine-knit crew-neck top underneath",
-          "Black tailored trousers",
-          "Black leather dress shoes with a subtle polish",
-          "Slim dark watch with a black leather strap"
+          "Dark charcoal-black tailored jacket with structured shoulders and a subtle fabric sheen",
+          "Black fitted crew-neck knit top under the jacket",
+          "Dark tailored trousers",
+          "No visible logos, no jewelry except a slim dark watch with a plain unmarked face"
         ]
       },
       "product": {
         "name": "the fragrance",
-        "form": "Heavy rectangular faceted flacon with thick glass walls, beveled shoulders and a squat, weighty base; a monumental amber glass obelisk at giant scale in scenes 1-2, revealed as the same bottle on a table in scenes 3-4",
-        "materials": "Polished amber glass with crisp cut facets that catch light, thick glass base, solid heavy cap in brushed gold-toned metal with a polished edge",
-        "colors": "Deep amber glass glowing honey-orange from within, brushed gold cap, black marble surroundings",
+        "form": "Tall rectangular faceted glass bottle with weighty thick base, sharp beveled shoulders and a slim rectangular cap",
+        "materials": "Thick polished clear glass with smooth dark liquid inside, brushed metal cap with satin finish",
+        "colors": "Deep amber-brown liquid, smoky glass tint, brushed antique gold cap",
         "branding_text": "",
-        "branding_style": "No visible lettering or logos; wordless, with a plain smooth glass face and the label side turned away from camera",
+        "branding_style": "Wordless: plain unmarked glass surface with no label, no lettering and no logo, only a small embossed geometric facet detail on the glass",
         "distinctive_features": [
-          "Inner amber glow that makes the glass look lit from within",
-          "Sharp faceted edges that carry a thin golden highlight",
-          "Heavy brushed-gold cap with a crisp polished rim"
+          "Faceted glass edges catching long amber highlights",
+          "Heavy glass base that refracts golden light",
+          "Brushed gold cap with crisp rim light outline"
         ],
-        "hero_angle": "Straight-on, slightly low camera angle, bottle centered on polished black marble with a sharp mirror reflection beneath it"
+        "hero_angle": "Close-up at slight low angle, bottle centered in the upper two thirds of the 9:16 frame, standing on dark polished stone with a faint mirror reflection, camera slowly pushing in"
       },
       "color_grade": {
         "palette": [
-          "#E8962E",
-          "#C9A24B",
-          "#0B0F12",
-          "#0F2A2E",
-          "#1E5558",
-          "#F2D9A0"
+          "#0B2A30",
+          "#123F45",
+          "#C98A2B",
+          "#E8B04A",
+          "#050708",
+          "#6FA6A3"
         ],
-        "contrast": "High contrast with rich deep blacks, controlled highlights and no clipped whites",
-        "saturation": "Saturated amber and gold against restrained desaturated teal-black shadows",
-        "film_emulation": "Cinematic anamorphic look with soft horizontal flares and fine film grain, similar to a Kodak Vision3 500T print"
+        "contrast": "High contrast low-key chiaroscuro with deep crushed blacks, bright amber highlights and soft highlight roll-off",
+        "saturation": "Moderate saturation with rich amber and teal, muted neutrals, skin tones kept warm and natural",
+        "film_emulation": "Cinematic 35mm film look with fine grain and subtle oval anamorphic flares"
       },
       "location": {
-        "primary": "A vast, endless black marble hall with towering columns, a mirror-polished floor and no other light sources",
+        "primary": "Dark polished marble corridor in a luxurious private residence with tall columns, heavy silk drapery, a tall window and a reflective floor",
         "secondary": [
-          "A black marble table in the same dark hall holding the bottle",
-          "A polished black marble surface in a dark void for the final close-up"
+          "Dark marble hall with a single candle on a stone surface and a crystal chandelier glow refracting on the wall",
+          "Dark stone tabletop in the marble room with soft mist and faint golden dust in the background"
         ],
         "era": "contemporary"
       },
-      "mood": "Mysterious, monumental and awe-inspiring, becoming confident, revelatory and premium by the end",
-      "lighting": "Single hard amber key (2700-3000K) from the glowing glass source, with a thin cool teal rim (6000-7000K) and very low teal ambient fill, deep black shadows and long amber reflections on polished marble; scenes only deviate in key direction",
-      "audio_mood": "Deep cinematic sub-bass drone with a slow rising swell, soft airy reverb in the hall, a single resonant chime at the reveal, and a warm low resolving tone on the final shot, no voices",
+      "mood": "Mysterious, hushed, anticipatory luxury with quiet confidence and a presence felt before it is seen",
+      "lighting": "Low-key chiaroscuro: hard warm amber (1900-3200K) key from a window, candle or side source against very low cool teal (6000-6500K) ambient fill, backlight catching floating golden dust and mist, deep black shadows, faint specular sheen on polished marble",
+      "audio_mood": "Deep sub-bass drone with soft silk rustle, a faint crystal shimmer and a single low warm cello note, hushed room tone, slow swell to a quiet resolved final note, no voices",
       "forbidden": [
-        "No readable text, letters, numbers or logos anywhere in the frame",
-        "No invented brand name or lettering on the bottle or label",
-        "No additional people in frame",
-        "No alcohol, bars or drinks",
-        "No other light sources or colourful neon",
-        "No bright daylight or windows",
-        "No cartoonish or plastic-looking glass",
-        "No cheap gold chains or flashy jewelry",
-        "No revealing or tight clothing on the man"
+        "no readable text, lettering, signage or logos anywhere in frame",
+        "no brand name or label on the bottle",
+        "no alcohol or drinks",
+        "no additional people in frame beyond the single young man",
+        "no visible face close-up of the man",
+        "no bright daylight or flat even lighting",
+        "no cheap plastic or glossy neon looks",
+        "no cluttered background"
       ]
     }
   }

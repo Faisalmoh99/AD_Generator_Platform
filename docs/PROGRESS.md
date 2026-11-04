@@ -290,3 +290,26 @@ e2e with Arabic pack), descriptor regression, harvested fixtures validated.
 
 **Next**: M5: media providers (mock image/video), prompt adapters, cache, chaos, budget guard,
 recovery strategies, scene scheduler, keyframe + generate nodes.
+
+---
+
+## M4c: Creative/production quality fixes (2026-11-04)
+
+**Built**: shot lints (one primary action; negative-prompt contradictions) wired into the storyboard and
+prompt `convert` → repair; `insight` field and rubric weight; `single_shot_plausible` judge flag
+with a −1.5 penalty; deterministic Gulf dialect fallback; prompts v2; `perfume_ar` re-harvested.
+
+**Real re-runs (balanced, auto)**, M4b → M4c:
+
+| Run | Winner before | Winner now | Multi-action / contradictions / repairs |
+|---|---|---|---|
+| AR perfume | النصب (scale-trick monument) | قبل لا توصل (the room senses him before he arrives) | 1 / 0 / 0 → 0 / 0 / 0 |
+| EN coffee | The Lattice Hour (drink montage) | The Last Sip of the Evening | 0 / 0 / 0 → 0 / 0 / 0 |
+| AR delivery | كشتة ما نسيت شي | المعدة تهز البيت (hunger as an earthquake) | 1 / 1 / 0 → 0 / 0 / 0 |
+
+Time 74–96 s, $0.15–0.16 per run. Dialect for "أبي إعلان…" is now `saudi_najdi`.
+
+**Tests**: 307 passed, 2 skipped. New: lint cases from verbatim real-run text (busy and fine),
+contradiction and legitimate-negative cases, dialect, judge insight/plausibility, fixture lints.
+
+**Next**: M5.

@@ -8,6 +8,7 @@ from adsmith.agent.nodes.base import NodeResult
 from adsmith.agent.nodes.common import decision
 from adsmith.config import LLMNode
 from adsmith.domain.brief import Brief, BriefDraft
+from adsmith.domain.dialect import corrected_dialect
 from adsmith.domain.enums import Dialect, Language, Stage
 from adsmith.domain.run import RunState
 from adsmith.domain.similarity import detect_language
@@ -46,6 +47,20 @@ async def understand(state: RunState, ctx: NodeContext) -> NodeResult:
         brief = Brief.model_validate(
             brief.model_dump() | {"language": detected, "dialect": dialect}
         )
+
+    fix = corrected_dialect(state.request, brief.dialect) if brief.language is Language.AR else None
+    if fix is not None:
+        dialect, cues = fix
+        events.append(
+            decision(
+                ctx.run_id,
+                Stage.UNDERSTAND,
+                f"Corrected dialect {brief.dialect.value}→{dialect.value} from cues {cues}.",
+                llm_dialect=brief.dialect.value,
+                cues=cues,
+            )
+        )
+        brief = Brief.model_validate(brief.model_dump() | {"dialect": dialect})
 
     events.append(
         decision(

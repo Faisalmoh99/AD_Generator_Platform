@@ -47,6 +47,7 @@ def concept_block(c: Concept, number: int | None = None) -> str:
             f"Logline: {c.logline}",
             f"Beats: {' → '.join(c.narrative_arc)}",
             f"Visual hook: {c.visual_hook}",
+            f"Insight: {c.insight}",
             f"Emotional driver: {c.emotional_driver}",
             f"Style: {', '.join(c.style_references) or '-'}",
         ]

@@ -7,7 +7,12 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from adsmith.domain.concept import CLICHE_PENALTY, JUDGE_WEIGHTS, ConceptJudgementDraft
+from adsmith.domain.concept import (
+    CLICHE_PENALTY,
+    IMPLAUSIBLE_SHOT_PENALTY,
+    JUDGE_WEIGHTS,
+    ConceptJudgementDraft,
+)
 
 
 def score(n: int, *, cliche: bool = False, **over: int) -> dict[str, Any]:
@@ -15,6 +20,8 @@ def score(n: int, *, cliche: bool = False, **over: int) -> dict[str, Any]:
         "concept_number": n,
         "brief_fit": 7,
         "originality": 7,
+        "insight": 7,
+        "single_shot_plausible": True,
         "producibility": 7,
         "product_hero": 7,
         "cultural_fit": 7,
@@ -58,3 +65,20 @@ def test_tie_breaks_on_brief_fit_then_lowest_number() -> None:
 def test_one_score_per_concept() -> None:
     with pytest.raises(ValidationError, match="exactly one score"):
         judge(score(1), score(1), score(3))
+
+
+def test_insight_has_real_weight() -> None:
+    assert JUDGE_WEIGHTS["insight"] >= 0.15
+    j = judge(score(1, insight=9), score(2, insight=3), score(3))
+    assert j.winner().concept_number == 1
+
+
+def test_unfilmable_single_shot_is_penalised() -> None:
+    """The perfume 'monument is the bottle' case: strong scores, but needs an edit to work."""
+    j = judge(
+        score(1, single_shot_plausible=False, originality=9, product_hero=9),
+        score(2),
+        score(3),
+    )
+    assert j.scores[1].weighted() - j.scores[0].weighted() > 0
+    assert IMPLAUSIBLE_SHOT_PENALTY == 1.5 and j.winner().concept_number == 2

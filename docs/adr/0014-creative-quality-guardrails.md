@@ -44,3 +44,21 @@ and a habit of checking real outputs, not just green tests.
 - − The cliché list is self-generated, so it shares the model's blind spots. A lexical blind spot
   also remains (ADR-0009). Mitigation: the judge is a separate call with its own rubric.
 - − A fixed penalty is a blunt instrument. It's tunable in `domain/concept.py` and covered by tests.
+
+## Addendum: M4c (before any video spend)
+- **Insight** (`Concept.insight`, the human truth behind the idea) is required and scored
+  (weight 0.15). Rubric: brief fit 0.20, originality 0.20, insight 0.15, producibility 0.20, product
+  hero 0.15, cultural fit 0.10.
+- **Single-shot plausibility**: ideate and storyboard prompts require every scene to be one
+  continuous, filmable take (scale tricks and reveals happen on a cut). The judge sets
+  `single_shot_plausible`; false costs a fixed **1.5** points, like the cliché flag.
+- **Deterministic lints → repair loop** (`domain/shot_lint.py`): one primary action per shot
+  (sequence words; >3 simultaneous action clauses) in the storyboard `convert`; negative prompt
+  must not exclude what the shot requires (bare nouns; people rule for "additional people") in
+  the prompt `convert`. Both are tuned conservatively on verbatim real-run examples, and fixtures
+  must pass them.
+- **Dialect**: v2 understand prompt defines "other" as non-Gulf; a deterministic Gulf-cue
+  fallback (`domain/dialect.py`) corrects `msa`/`other` with a decision event.
+- Prompts bumped to v2 (understand, ideate, select, storyboard, prompt_writer); v1 is kept.
+- Re-run result: 0 multi-action scenes, 0 contradictions, 0 repairs across 3 runs. The implausible
+  "statue turns its head" perfume concept and the coffee "aroma montage" are now penalised.

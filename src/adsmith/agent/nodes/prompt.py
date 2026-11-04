@@ -25,6 +25,7 @@ from adsmith.domain.enums import Stage
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt, ScenePromptDraft
+from adsmith.domain.shot_lint import negative_contradictions
 from adsmith.domain.storyboard import Storyboard
 
 
@@ -67,7 +68,7 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
             LLMNode.PROMPT_WRITER,
             rendered,
             ScenePromptDraft,
-            _to_prompt(template.template_id, bible),
+            _to_prompt(template.template_id, bible, scene),
         )
 
     outcomes: list[StructuredResult[ScenePrompt] | BaseException] = []
@@ -111,9 +112,18 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
 
 
 def _to_prompt(
-    template_id: str, bible: ContinuityBible
+    template_id: str, bible: ContinuityBible, scene: Scene
 ) -> Callable[[ScenePromptDraft], ScenePrompt]:
     def convert(d: ScenePromptDraft) -> ScenePrompt:
+        clashes = negative_contradictions(
+            scene.shot.subject_action, scene.shot.composition, d.negative_prompt
+        )
+        if clashes:
+            raise ValueError(
+                "negative_prompt contradicts this shot: "
+                + "; ".join(clashes)
+                + ". Remove or narrow those terms (e.g. 'crowds', 'bystanders')."
+            )
         return ScenePrompt(
             **d.model_dump(), template_version=template_id, bible_version=bible.version
         )

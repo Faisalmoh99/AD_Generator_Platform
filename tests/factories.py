@@ -143,6 +143,7 @@ def _concept(title: str, signature: str, cid: str) -> Concept:
         logline=sentences[1],
         narrative_arc=sentences[4:7],
         visual_hook=sentences[2],
+        insight="A human truth the audience recognises.",
         emotional_driver=sentences[3],
         differentiator="Different premise and setting.",
         estimated_scene_count=4,

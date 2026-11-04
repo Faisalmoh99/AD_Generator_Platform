@@ -22,6 +22,7 @@ from adsmith.domain.brief import Brief, BriefDraft
 from adsmith.domain.concept import ConceptSet, ConceptSetDraft
 from adsmith.domain.continuity import ContinuityBible, ContinuityBibleDraft
 from adsmith.domain.scene_flags import enforce_scene_flags
+from adsmith.domain.shot_lint import multi_action_problem, negative_contradictions
 from adsmith.domain.storyboard import Storyboard, StoryboardDraft
 from adsmith.providers.llm.scripted import FIXTURES_DIR
 
@@ -92,3 +93,17 @@ def test_scenario_is_coherent_through_domain_conversions(scenario: Path) -> None
     # Fixtures should already be honest about what each scene shows.
     assert enforce_scene_flags(storyboard.scenes, bible) == []
     assert any(s.shows_product for s in storyboard.scenes), "no product shot in the storyboard"
+
+
+@pytest.mark.parametrize("scenario", SCENARIOS, ids=lambda p: p.name)
+def test_scenario_passes_production_lints(scenario: Path) -> None:
+    """Fixtures must pass the same lints the nodes enforce (else the scripted run would fail)."""
+    scenes = StoryboardDraft.model_validate(_outputs(scenario, "storyboard")[0]).scenes
+    for i, s in enumerate(scenes, 1):
+        assert multi_action_problem(s.shot.subject_action) is None, f"scene {i}"
+    prompts = _outputs(scenario, "prompt_writer")
+    for i, (s, p) in enumerate(zip(scenes, prompts, strict=False), 1):
+        clashes = negative_contradictions(
+            s.shot.subject_action, s.shot.composition, p["negative_prompt"]
+        )
+        assert clashes == [], f"scene {i}: {clashes}"

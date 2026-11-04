@@ -22,6 +22,10 @@ class ConceptDraft(DomainModel):
         min_length=3, max_length=5
     )
     visual_hook: UserText
+    insight: UserText = Field(
+        description="The human truth behind the idea: what the audience feels or knows that "
+        "makes this ad land (not a description of the visuals)."
+    )
     emotional_driver: Annotated[str, Field(min_length=1, max_length=120)]
     differentiator: UserText = Field(description="Why this concept differs from the other two.")
     style_references: list[Annotated[str, Field(max_length=80)]] = Field(
@@ -119,15 +123,17 @@ class ConceptSet(DomainModel):
 
 # ------------------------------------------------------------------------------ auto-selection
 JUDGE_WEIGHTS: dict[str, float] = {
-    "brief_fit": 0.25,
-    "originality": 0.25,  # fresh idea vs. the category clichés listed at ideation
+    "brief_fit": 0.20,
+    "originality": 0.20,  # fresh idea vs. the category clichés listed at ideation
+    "insight": 0.15,  # a real human truth, not just a striking visual (M4c)
     "producibility": 0.20,  # can current video models render it well in ≤15 s?
     "product_hero": 0.15,
-    "cultural_fit": 0.15,
+    "cultural_fit": 0.10,
 }
-# Subtracted from the weighted score when the judge itself says the core idea is a cliché, so a
-# concept the judge flags can't win on its other strengths alone.
+# Fixed deductions when the judge itself flags a problem, so a flagged concept can't win on its
+# other strengths alone (ADR-0014).
 CLICHE_PENALTY = 1.5
+IMPLAUSIBLE_SHOT_PENALTY = 1.5
 Score = Annotated[int, Field(ge=1, le=10)]
 
 
@@ -138,6 +144,11 @@ class ConceptScore(DomainModel):
     product_hero: Score
     cultural_fit: Score
     originality: Score
+    insight: Score
+    single_shot_plausible: bool = Field(
+        description="True only if every beat can be filmed as one continuous shot per scene. "
+        "Scale tricks, transformations and reveals that need an edit make this false."
+    )
     uses_category_cliche: bool = Field(
         description="True if the concept's core idea or main visual relies on a category cliché "
         "(listed or otherwise)."
@@ -148,6 +159,8 @@ class ConceptScore(DomainModel):
         total: float = sum(float(getattr(self, k)) * w for k, w in JUDGE_WEIGHTS.items())
         if self.uses_category_cliche:
             total -= CLICHE_PENALTY
+        if not self.single_shot_plausible:
+            total -= IMPLAUSIBLE_SHOT_PENALTY
         return round(total, 4)
 
 

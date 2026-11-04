@@ -653,3 +653,6 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - Latency (ADR-0007): balanced `understand` → low (3.5 s); `ideate` stays high (measured quality regression at medium/low).
 - Domain fixes from real runs: category-neutral `ProductSpec` (`form`, `materials`, `colors`, `branding_text`, `branding_style`); relaxed length limits; descriptor-filtered bible terms; bible `prompt_block` as labelled `key: value` lines.
 - Arabic fixtures `perfume_ar` harvested from a real run (`scripts/harvest_fixtures.py`).
+
+### M4c (quality fixes before video spend)
+- `domain/shot_lint.py` (multi-action + negative contradictions → repair), `domain/dialect.py`; `Concept.insight`; judge `insight` weight + `single_shot_plausible` penalty; prompts v2. Item 2 (keyframe prompt length) deferred to M11, to be judged on real Kling output.

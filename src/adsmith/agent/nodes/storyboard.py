@@ -18,6 +18,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags
+from adsmith.domain.shot_lint import multi_action_problem
 from adsmith.domain.storyboard import Storyboard, StoryboardDraft
 
 
@@ -38,6 +39,13 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
                 f"scenes shorter than the video model's {min_s:g}s minimum: {', '.join(short)}. "
                 f"Use at most {max_scenes} scenes and redistribute the time."
             )
+        busy = [
+            f"scene {i} subject_action {problem}"
+            for i, s in enumerate(draft.scenes, 1)
+            if (problem := multi_action_problem(s.shot.subject_action))
+        ]
+        if busy:
+            raise ValueError("; ".join(busy))
         return Storyboard.from_draft(draft, concept_id=concept.id, target_duration_s=duration)
 
     prompt = ctx.prompts.get("storyboard").render(

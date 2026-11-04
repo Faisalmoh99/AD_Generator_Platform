@@ -68,7 +68,7 @@ async def test_storyboard_rejects_scenes_below_video_model_minimum(settings: Set
     run = orch.create_run(REQUEST, interactive=False)
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.KEYFRAME
-    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v1") + 1]
+    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v2") + 1]
     assert "video model's 3s minimum" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]
 
 

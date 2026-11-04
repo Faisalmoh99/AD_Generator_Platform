@@ -10,7 +10,9 @@
           "cultural_fit": 8,
           "rationale": "Strongest fit for young men and a clear story arc; driving shots carry some motion risk.",
           "originality": 7,
-          "uses_category_cliche": false
+          "uses_category_cliche": false,
+          "insight": 8,
+          "single_shot_plausible": true
         },
         {
           "concept_number": 2,
@@ -20,7 +22,9 @@
           "cultural_fit": 7,
           "rationale": "Very producible and product-centric, but abstract liquid-gold imagery is a category cliché.",
           "originality": 6,
-          "uses_category_cliche": true
+          "uses_category_cliche": true,
+          "insight": 6,
+          "single_shot_plausible": true
         },
         {
           "concept_number": 3,
@@ -30,7 +34,9 @@
           "cultural_fit": 9,
           "rationale": "Warm and culturally resonant, but two characters and hand interactions raise continuity risk.",
           "originality": 8,
-          "uses_category_cliche": false
+          "uses_category_cliche": false,
+          "insight": 8,
+          "single_shot_plausible": true
         }
       ]
     }
