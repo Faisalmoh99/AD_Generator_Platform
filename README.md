@@ -213,8 +213,8 @@ src/adsmith/providers/  Claude · scripted · fal · mock + adapters  storage/  
 src/adsmith/api/        FastAPI + SSE + single page                cli/         Typer + Rich live trace, demo
 src/adsmith/media/      frames, ffmpeg, Arabic end card            prompts/     versioned Jinja templates
 config/                 models.toml (models, prices, profiles), chaos.toml, real_runs.toml
-docs/                   PLAN · PROGRESS · ADRs · MORE_TIME · screenshots · media
+docs/                   PLAN · PROGRESS · ADRs · MORE_TIME · DEMO_SCRIPT · screenshots · media
 ```
 
-`make check` = ruff + ruff format + **mypy --strict** + pytest: **455 tests** (2 live tests run
+`make check` = ruff + ruff format + **mypy --strict** + pytest: **470 tests** (2 live tests run
 with `--live`). Recovery paths, edits, the wallet, crash/resume and the API all have tests.

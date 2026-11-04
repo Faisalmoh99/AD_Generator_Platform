@@ -285,7 +285,7 @@ async function loadTeaser() {
   const el = $("#teaser");
   if (!items.length) { el.classList.add("hidden"); return; }
   el.innerHTML = `<div class="teaser-head"><span class="eyebrow">Made with real models</span><button class="link" id="teaser-all">See all real runs →</button></div>
-    <div class="teaser-row">${items.map((it) => { const v = it.videos[it.videos.length > 1 ? 0 : 0];
+    <div class="teaser-row">${items.slice(0, 3).map((it) => { const v = it.videos[0];
       return `<button class="teaser-card" data-key="${esc(it.key)}"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" muted playsinline preload="auto"></video><span>${esc(it.title)}</span></button>`; }).join("")}</div>`;
   el.onclick = (ev) => { if (ev.target.closest(".teaser-card") || ev.target.id === "teaser-all") showView("gallery"); };
 }

@@ -670,3 +670,12 @@ not prompt); `qa_keyframe` v4 keeps size/placement under "composition". `continu
 (→ schema repair; negated mentions such as "no label" are fine; stored bibles still load). Re-judged
 the stored hero keyframes (`scripts/gate_recalibrate.py`, $0.05): a3 **PASS 0.78 → FAIL 0.45** for
 the black cap; a1/a2 still fail. Real-media work frozen for good.
+
+## M13: fresh-clone check + demo script (2026-11-05)
+Fresh clone (`env -i`, no `.env`, no `data/`): `make setup` → `make demo` (23 s: chaos recoveries,
+end card, edit blast radius, SIGKILL + resume, $0 leaked) → `adsmith serve` (zero-key badge, Arabic
+chaos run to `done`, pack 200). **Fixed:** the Real runs tab and landing teaser were empty in a fresh
+clone (data/ is gitignored) → the gallery falls back to the committed clips in `docs/media`
+(`/docs-media/{name}`, file names only); the teaser shows 3 cards. History: `.env`, `data/`, `*.db`
+never committed; the real key values have 0 matches in `git log -p`. `docs/DEMO_SCRIPT.md`: 4:45 script
+(Arabic narration, English terms) + likely interview questions. 470 tests. Done.
