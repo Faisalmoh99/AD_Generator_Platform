@@ -427,3 +427,19 @@ async def test_locked_account_is_a_budget_failure_not_a_key_problem(tmp_path: Pa
     with pytest.raises(BudgetExceededError, match="no usable balance"):
         await flux(s, queue).generate_image(image_job(), tmp_path)
     assert acct.summary().reserved_usd == 0
+
+
+async def test_flux_2_flex_payload_has_only_its_schema_fields(tmp_path: Path) -> None:
+    s, acct = settings(tmp_path), account(tmp_path)
+    result = {"images": [{"url": f"{CDN}/kf.png", "width": 720, "height": 1280}], "seed": 0}
+    fake = FakeFal(result, polls_in_progress=0)  # flex output has no has_nsfw_concepts
+    queue, _ = make_queue(fake, acct)
+    ep = s.catalog.fal.image.endpoints["flux_2_flex"]
+    out = await FalImageProvider(queue, ep).generate_image(image_job(), tmp_path)
+    body = fake.submitted[0]
+    assert fake.paths[0] == "POST https://queue.fal.run/fal-ai/flux-2-flex"
+    assert body["guidance_scale"] == 3.5 and body["num_inference_steps"] == 28
+    assert "num_images" not in body and "negative_prompt" not in body
+    assert out.cost_usd == pytest.approx(0.05)  # 0.92 MP rounds up to 1 MP at $0.05
+    flux_dev = s.catalog.fal.image.endpoints["flux_dev"]
+    assert flux_dev.params == {"num_inference_steps": 28, "num_images": 1}

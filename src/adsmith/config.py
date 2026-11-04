@@ -68,6 +68,8 @@ class FalImageEndpoint(_Frozen):
     endpoint: str
     usd_per_megapixel: float = Field(ge=0)
     round_up_megapixels: bool = True  # fal bills started megapixels on some endpoints
+    # Endpoint-specific request fields (verified against each schema), merged into the payload.
+    params: dict[str, int | float | str | bool] = Field(default_factory=dict)
 
     def usd_for(self, width: int, height: int) -> float:
         mp = width * height / 1_000_000

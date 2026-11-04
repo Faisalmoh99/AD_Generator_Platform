@@ -221,9 +221,8 @@ def _ext(url: str, default: str) -> str:
 class FalImageProvider:
     name = "fal"
 
-    def __init__(self, queue: FalQueue, endpoint: FalImageEndpoint, *, steps: int = 28) -> None:
+    def __init__(self, queue: FalQueue, endpoint: FalImageEndpoint) -> None:
         self.queue, self.endpoint, self.model = queue, endpoint, endpoint.endpoint
-        self.steps = steps
 
     def estimate_usd(self, width: int, height: int) -> float:
         return self.endpoint.usd_for(width, height)
@@ -231,11 +230,10 @@ class FalImageProvider:
     async def generate_image(self, job: ImageJob, out_dir: Path) -> MediaOutput:
         # FLUX dev has no negative_prompt field (schema verified): the positive prompt stands alone.
         payload: dict[str, Any] = {
+            **self.endpoint.params,  # endpoint-specific fields, from the verified schema
             "prompt": job.prompt,
             "image_size": {"width": job.width, "height": job.height},
-            "num_inference_steps": self.steps,
             "seed": job.seed,
-            "num_images": 1,
             "output_format": "png",
             "enable_safety_checker": True,
         }

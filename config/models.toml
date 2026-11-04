@@ -96,11 +96,18 @@ default = "flux_dev"
 endpoint = "fal-ai/flux/dev"
 usd_per_megapixel = 0.025
 round_up_megapixels = true
+params = { num_inference_steps = 28, num_images = 1 }
 
 [fal.image.endpoints.flux_2_flex]
+# Verified M11 (schema + page): prompt, image_size {width,height}, seed, guidance_scale 1.5..10
+# (default 3.5; higher = more literal), num_inference_steps 2..50 (default 28), safety_tolerance
+# "1".."5", output_format, enable_safety_checker. No negative prompt, no num_images, no
+# has_nsfw_concepts in the output. Page: $0.05 per megapixel, input + output, rounded up
+# (a 720x1280 text-to-image keyframe = 1 MP = $0.05).
 endpoint = "fal-ai/flux-2-flex"
-usd_per_megapixel = 0.05       # API unit: "processed megapixels"
+usd_per_megapixel = 0.05
 round_up_megapixels = true
+params = { num_inference_steps = 28, guidance_scale = 3.5 }
 
 [fal.video]
 default = "kling_v3_pro"
