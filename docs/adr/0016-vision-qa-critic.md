@@ -66,3 +66,17 @@ internally consistent, and must never turn a rejection into a free re-serve of t
 5. Known limits seen on real output: the critic is not deterministic (the same clip scored 0.72,
    then 0.62, under v1), and v2 still missed product-identity drift (cap shape, engraved
    lettering on the collar) on a regenerated keyframe.
+
+## Addendum 2 (M11): known limitations, measured on real output
+- **Non-determinism.** The same critic and template on the same inputs scored the same LTX clip
+  0.72 and then 0.62 (v1). v2 caught the wrong key-light side on one input and missed it on another
+  with the identical keyframe, when a dominant clip defect (the veil) drew its attention. The pass
+  rule is deterministic, but its inputs are not. Borderline verdicts can therefore flip between runs.
+  *Mitigation ("more time", not built):* ask for a second opinion only when the score is within
+  ±0.1 of the threshold or the verdict hangs on a single major issue, and decide by agreement
+  (both must pass). It costs about $0.02–0.03 per borderline clip and nothing elsewhere.
+- **Fine product identity.** v3's bible-derived checklist (split into atomic items) caught the engraved
+  collar lettering on 2 of 2 runs, but missed a cylindrical cap that should be squared on 2 of 2
+  runs. At 768 px in a three-quarter view a cylinder and a squared block have nearly the same
+  outline. *Mitigation ("more time"):* give the critic a product reference image (an approved
+  hero keyframe or a real product photo) to compare against, instead of text alone.

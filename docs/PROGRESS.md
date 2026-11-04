@@ -388,3 +388,50 @@ scenario end to end with `qa_mode=llm`.
 
 **Next (reordered by the user)**: M11 fal provider (LTX-2.3 Fast dev model + Kling v3 Pro + Flux,
 endpoints verified from fal docs), then M7.
+
+---
+
+## M11 (in progress): fal provider, real S4 calibration (2026-11-04)
+
+**Built so far**
+- `providers/media/fal.py`: direct queue REST client (no `fal-client`: it retries internally,
+  including submits). One request per step, errors classified. A transient error after submit keeps
+  the handle, so a retry *resumes* that request and never resubmits it (no double spend).
+- `storage/account.py`: cross-run wallet ledger (reserve → settle/release in `BEGIN IMMEDIATE`). A
+  submit is refused if it would exceed the prepaid balance. An ambiguous submit timeout keeps the
+  reservation open. Fal runs get budget = min(run cap $5, wallet remaining).
+- Endpoints and prices verified from fal's OpenAPI schemas and pricing API (models.toml). Prices
+  differ from the model pages (LTX $0.06/s vs $0.04/s on the page; Kling $0.14/s vs $0.112/s); we
+  budget with the higher figure. LTX-2.3 Fast renders 6–20 s only, and neither LTX nor FLUX dev has a
+  negative-prompt field. Adapters `kling`, `ltx`.
+- Prompts plan motion for the visible window (render 6 s, show 3.5 s); literal-noun rule for keyframe
+  and motion prompts (`prompt_writer` v4, `prompt_rewrite` v3); code decides keyframe reuse and
+  enforces it on the rewrite.
+- QA: stricter code pass rule; rule applied at decision time (an older approved snapshot became
+  unloadable when the rule tightened; fixed and tested); `qa_critic` v2 (keyframe checklist,
+  `product_visible` = readable in every shown frame) and v3 (bible-derived atomic product checklist).
+- `commands.edit_scene_spec`: minimal scene edit (bump version → stale from prompt → re-prompt only
+  that scene). First real use: the S4 simplification. The full NL edit flow is M7.
+- Scripts: `fal_scene.py` (one real scene through the pipeline; `--loop`, `--reprompt`,
+  `--edit-json`, `--stop-on-reject`) and `qa_calibrate.py` (critic versions on identical stored inputs).
+
+**Real S4 (hero bottle) results**
+
+| Try | Video | What happened | Critic | fal |
+|---|---|---|---|---|
+| 1 | LTX | curtain rendered as a veil over the bottle | v1 reject 0.50 | $0.385 |
+| 2 | LTX | clean bottle, shadow action missing | v1 pass 0.72 (fails new rule) | $0.36 |
+| 3 | LTX | new keyframe (light side fixed; round cap + collar lettering); veil again | v2 reject 0.45 | $0.385 |
+| 4 | Kling | no veil, crisp product, shadow ignored, smoke wisp; keyframe light/plant wrong | v3 reject 0.45 | $0.585 |
+| 5 | Kling, simplified spec | best so far: squared cap, clean push-in; prop with garbled letters, lower fifth busy, smoke | v3 reject 0.50 | $0.585 |
+
+Wallet (ledger estimate): $10.00 − $2.30 = **$7.70** remaining. LLM (Anthropic) for critic and
+rewrites in these runs: about $0.39.
+
+**Known limitations recorded**: critic non-determinism (0.72 vs 0.62 on the same clip; mitigation:
+second opinion near the threshold); fine product identity (round cap missed 2/2). Both in the
+ADR-0016 addendum. "More time" list started in `docs/MORE_TIME.md` (escalation ladder,
+product reference image, keyframe-model adherence, "dust motes" → smoke).
+
+**Next**: step 4 (full 4-scene ad) after review: model choice, the keyframe-model problem, and the
+budget plan.
