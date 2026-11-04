@@ -24,3 +24,11 @@ evidence prompted it. M12 folds this list into the README.
    that hypothesis before adding it as a rule.
 6. **Cross-scene consistency check** (same man, same bottle across scenes): compare each approved
    keyframe with the first approved one of the same subject (deferred in ADR-0016).
+7. **Keyframe generation that obeys layout.** In the first full real run FLUX dev produced 0 approved
+   keyframes out of 10 (doorway on the wrong side, the hero product in the foreground instead of
+   small in the background, props carrying letters). Options: a stronger or layout-controllable
+   image model, image-conditioned keyframes (a reference composition or product photo), editing a
+   near-miss keyframe (inpainting the one wrong region) instead of re-rolling the whole image, or
+   simpler shot specs written with the keyframe model's limits in mind.
+8. **Account-level failures should pause the run.** An "exhausted balance" 403 currently fails
+   the one scene that hit it. It should pause all paid work and surface a single clear message.

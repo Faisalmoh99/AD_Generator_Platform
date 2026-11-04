@@ -435,3 +435,28 @@ product reference image, keyframe-model adherence, "dust motes" → smoke).
 
 **Next**: step 4 (full 4-scene ad) after review: model choice, the keyframe-model problem, and the
 budget plan.
+
+### M11 update: keyframe gate, keyframe model A/B, first full real run (2026-11-04)
+- **Keyframe gate built** (ADR-0003 addendum): `qa_keyframe` v1 reviews the still alone; reject →
+  revise keyframe prompt, new seed, evict, max 3 tries, then fail without video spend; only a
+  gate-approved keyframe (sha256) is animated. Post-clip `qa_critic` v4 judges the clip against
+  the approved keyframe. `prompt_writer` v5 / `prompt_rewrite` v4: no atmospheric particles in
+  product shots unless the spec asks. Per-endpoint image params. 410 tests.
+- **Keyframe A/B (simplified S4, ≤2 tries each, same prompt)**: FLUX dev FAIL 0.50 → PASS 0.80
+  ($0.05); flux-2-flex FAIL 0.50 → FAIL 0.62 ($0.10). FLUX dev stays the default (passed, half
+  price). flux-2-flex got the squared cap right 2/2 vs 1/2 for FLUX dev, but its tabletop reflections filled
+  the tagline area. n=2: weak evidence.
+- **Full 4-scene run on Kling with the gate** (`run_01M6JDRTH4FR6AA2D31QM5RZ8D`): **0 of 10 reviewed
+  keyframes approved, no video generated, no final video**; `done_partial` with 4 failed scenes.
+  Manual check agrees with the rejections (S1 doorway on the wrong side, S2/S3 bottle large in
+  the foreground, smoke from the bottle, a label-like mark, S4 light side / busy lower fifth). Spend:
+  $0.25 fal (keyframes) + $0.32 Anthropic. Without the gate, each rejected still would have been
+  animated first: ~10 × $0.56 = $5.60 of Kling clips (the $4.85 run budget would have stopped it
+  first).
+- **fal account refused one call mid-run** with HTTP 403 "User is locked. Reason: Exhausted
+  balance". Later calls in the same run succeeded. Our ledger says $7.30 remains, so the real
+  balance and our estimate disagree; the dashboard is the source of truth. The scene hit by the 403
+  failed as `budget_exceeded`; the others continued (isolation held).
+- **Finding**: the bottleneck is now the keyframe model's adherence (layout, light side, prop
+  placement), not the video model or the critic. "Dust motes → smoke" could not be tested (no
+  clips were produced).
