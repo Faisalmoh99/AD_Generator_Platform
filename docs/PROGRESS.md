@@ -629,3 +629,15 @@ DB; now media folders and media types only.
 **Screenshots**: `docs/screenshots/{1_concepts,2_storyboard_midrun,3_final_player,
 4_edit_blast_radius,4b_edit_done,5_real_runs_gallery}.png` (Playwright + installed Chrome,
 `scripts/ui_screenshots.py`). 455 tests.
+
+## M10 review + M12: README (2026-11-05)
+**UI review as a first-time evaluator** (Playwright walkthrough at 1600 and 1280 px; screenshots in
+`docs/screenshots/review/`, local only): fixed gallery poster frames (the before/after pair showed
+identical first frames), a "made with real models" teaser on the landing page, a "simulated" label on
+the mock budget, no absolute local paths in the trace, an honest pick hint (user vs agent), compact
+scene meta at 1280 px, a favicon, and the mock clip debug badge moved behind `ADSMITH_MOCK_DEBUG_BADGE`. Left:
+mock keyframes all read as silhouettes (mock by design). **Process slip:** one commit went in with a
+red lint (`;` instead of `&&`); amended locally before anything else.
+**README** rewritten for a 3–5 minute skim (pitch + hero screenshot, two quickstarts, the brain with
+3 Mermaid diagrams, error matrix, edits table, "what real runs taught me", ADR one-liners,
+limitations, repo map). Real clips committed under `docs/media/` (~9 MB) so the README links work.
