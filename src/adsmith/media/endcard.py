@@ -136,13 +136,14 @@ def render_endcard(
         img.save(out)
         return out
     draw = ImageDraw.Draw(img)
-    margin = int(width * 0.1)
+    margin = int(width * 0.08)
     max_w = width - 2 * margin
 
-    brand_font = font(int(width * 0.13), "Bold")
-    while brand_font.getlength(shape(brand)) > max_w and brand_font.size > width * 0.06:
+    # Phone-readable sizes: brand ~26% of the width (shrunk only to fit), tagline ~8.3%.
+    brand_font = font(int(width * 0.26), "Bold")
+    while brand_font.getlength(shape(brand)) > max_w and brand_font.size > width * 0.12:
         brand_font = font(int(brand_font.size * 0.9), "Bold")
-    tag_font = font(int(width * 0.052), "Medium")
+    tag_font = font(int(width * 0.083), "Medium")
     tag_lines = wrap(tagline, tag_font, max_w)[:3]
     for content, f in ((brand, brand_font), (tagline, tag_font)):
         if missing := missing_glyphs(content, f):
@@ -154,7 +155,7 @@ def render_endcard(
         draw.text(((width - (right - left)) / 2 - left, y - top), shaped, font=f, fill=fill)
         return int(y + (bottom - top))
 
-    y = int(height * 0.40)
+    y = int(height * 0.33)
     y = centred(brand, brand_font, y, st.text)
     y += int(height * 0.03)
     rule_w = int(width * 0.16)

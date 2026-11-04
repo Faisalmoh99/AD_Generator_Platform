@@ -32,3 +32,9 @@ evidence prompted it. M12 folds this list into the README.
    simpler shot specs written with the keyframe model's limits in mind.
 8. **Account-level failures should pause the run.** An "exhausted balance" 403 currently fails
    the one scene that hit it. It should pause all paid work and surface a single clear message.
+9. **Critic: geometry stability.** Flag objects or architecture that appear or disappear between
+   the keyframe and the clip frames (seen: a doorway materialising in the majlis S1 wall).
+10. **Critic: wardrobe and anatomy plausibility** (seen: an unnatural ghutra drape in S1).
+11. **HARD check: no alcohol resemblance.** The single-take bottle (round body, tall black cap)
+    reads as whisky. For Gulf audiences this is brand safety, not style. Make it a hard keyframe-gate
+    and clip check, and tell the prompt writer to avoid decanter/whisky silhouettes for perfume.

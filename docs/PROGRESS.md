@@ -572,3 +572,15 @@ dissolve plate showed the accent rule; a dark-only palette gave low-contrast gol
 `data/runs/run_01M6JF4T2D78QNQJ7ZSE8GA8WR/final.mp4` (13.0 s, placeholder «أثر المجلس — العطر اللي
 يبقى بعدك، والناس تسأل عنك»); single take → `data/runs/run_01M6JH38ZT2WRDPSQ2GM833F7T/final.mp4`
 (12.0 s, placeholder «نبض الليل — يحسّون بك قبل لا تدخل»).
+**End card resized for phones (M8 follow-up)**: brand ~2× (26% of the width, shrunk only to fit),
+tagline ~1.6× (8.3%), 8% margins. Both real ads re-assembled and checked by eye.
+
+### Real defects found by eye that the critic PASSED (targets for the "hero ad" pass; not fixed yet)
+- **Majlis S1**: a doorway/arch appears in the right wall mid-clip that is not in the keyframe
+  (scene geometry not stable); the ghutra drapes unnaturally.
+- **Majlis S2 vs S4**: different bottle shapes (cross-scene product identity).
+- **Single take**: the bottle (round body, tall black cap) reads like a liquor/whisky bottle. For a
+  Saudi perfume ad this is a brand-safety failure and must be a HARD check.
+- **Proposed critic additions**: (1) objects appearing/disappearing between the keyframe and the
+  clip frames; (2) wardrobe and anatomy plausibility (drape, hands); (3) a HARD check "the product
+  must not resemble an alcohol bottle or drink" (keyframe gate and clip QA). See MORE_TIME.md #9–11.
