@@ -71,6 +71,9 @@ class GenerationAttempt(DomainModel):
     artifact: Artifact | None = None
     qa_score: float | None = Field(default=None, ge=0, le=1)
     chaos_injected: bool = False
+    injected_fault: FailureKind | None = Field(
+        default=None, description="Chaos Mode fault injected into this attempt, if any."
+    )
 
     @model_validator(mode="after")
     def _outcome_consistent(self) -> Self:

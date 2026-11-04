@@ -58,6 +58,7 @@ ignore = [
     "PLR2004",  # magic values are acceptable in tests and validators
     "RUF001", "RUF002", "RUF003",  # Arabic is a first-class language here, not a confusable
     "SIM905",   # word lists read better as a split string
+    "PLR0917",  # private helpers (e.g. event builders) read better with positional args
 ]
 
 [tool.ruff.lint.per-file-ignores]

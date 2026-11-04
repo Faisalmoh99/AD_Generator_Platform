@@ -14,6 +14,9 @@ ad. It recovers from failures and applies targeted scene edits without redoing t
 make setup                         # uv sync (Python 3.12 via uv)
 uv run adsmith --help              # CLI
 uv run adsmith run "<request>"     # start a run (zero-key by default: scripted LLM + mock media)
+uv run adsmith run "<request>" --auto --chaos   # live recovery demo (seed 66)
+ADSMITH_MOCK_FAIL_PLAN="2:clip:permanent" uv run adsmith run "<request>" --auto  # isolation demo
+uv run adsmith resume <run> --from-version N    # fork from a past snapshot (cache demo)
 uv run adsmith serve               # web UI
 make test                          # uv run pytest
 make lint                          # ruff check + ruff format --check

@@ -17,7 +17,7 @@ from tests.unit.test_orchestrator import REQUEST, full_scripts, make_orch, steps
 async def test_full_planning_pipeline_and_production_pack(settings: Settings) -> None:
     orch, provider = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=False)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
 
     assert state.stage is Stage.KEYFRAME
     assert state.storyboard and state.bible and state.storyboard.total_duration_s == 15.0
@@ -38,7 +38,7 @@ async def test_full_planning_pipeline_and_production_pack(settings: Settings) ->
 async def test_prompt_cache_is_warmed_by_first_scene(settings: Settings) -> None:
     orch, provider = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=False)
-    await orch.run_until_blocked(run.id)
+    await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     writes = [r for r in provider.requests if r.template.startswith("prompt_writer")]
     contexts = {r.messages[0].parts[0].text for r in writes}  # type: ignore[union-attr]
     assert len(contexts) == 1  # identical cached CONTEXT for every scene
@@ -50,7 +50,7 @@ async def test_one_scene_prompt_failure_is_isolated(settings: Settings) -> None:
     scripted = [pw[0], {"raw": "nope"}, {"raw": "nope"}, {"raw": "nope"}, pw[2], pw[3]]
     orch, _ = make_orch(settings, full_scripts(prompt_writer=scripted))
     run = orch.create_run(REQUEST, interactive=False)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME and state.storyboard is not None  # stage not failed
     statuses = [s.status for s in state.storyboard.scenes]
     assert statuses.count(SceneStatus.FAILED) == 1 and statuses.count(SceneStatus.PENDING) == 3
@@ -66,7 +66,7 @@ async def test_storyboard_rejects_scenes_below_video_model_minimum(settings: Set
     short[0]["output"]["scenes"][1]["duration_s"] = 5.5  # still sums to 15
     orch, provider = make_orch(settings, full_scripts(storyboard=[short[0], good[0]]))
     run = orch.create_run(REQUEST, interactive=False)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME
     repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v3") + 1]
     assert "video model's 3s minimum" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]
@@ -83,7 +83,7 @@ async def test_continuity_upgrades_flags_with_bible_terms(settings: Settings) ->
     scene["shot"]["composition"] = "car centered on the lower third"
     orch, _ = make_orch(settings, full_scripts(storyboard=sb))
     run = orch.create_run(REQUEST, interactive=False)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.storyboard is not None and state.storyboard.scenes[0].shows_character
     overrides = [
         e
@@ -98,7 +98,7 @@ async def test_zero_key_arabic_run_uses_arabic_scenario_and_pack(settings: Setti
     orch = Orchestrator(AgentRuntime.from_settings(settings))  # no provider override
     run = orch.create_run("سوّ لي إعلان 15 ثانية لعطر رجالي فاخر", interactive=False)
     assert run.config.scripted_scenario == "perfume_ar"
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME and state.brief is not None
     assert state.brief.language.value == "ar"
     md = (

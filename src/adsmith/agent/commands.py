@@ -51,3 +51,26 @@ def choose_concept(
     return storage.runs.update(
         run_id, mutate, reason="concept chosen", expected_version=expected_version
     ).state
+
+
+def approve_storyboard(
+    storage: Storage, run_id: str, *, expected_version: int | None = None
+) -> RunState:
+    """Approve the keyframes at the storyboard gate; video generation (and spend) starts after."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.stage is not Stage.AWAITING_STORYBOARD_APPROVAL:
+            raise CommandRejectedError(f"run is at {s.stage}, not waiting for storyboard approval")
+        s.stage = GATE_EXITS[Stage.AWAITING_STORYBOARD_APPROVAL]
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.AWAITING_STORYBOARD_APPROVAL,
+                type=EventType.DECISION,
+                summary="User approved the storyboard keyframes; generating clips.",
+            )
+        ]
+
+    return storage.runs.update(
+        run_id, mutate, reason="storyboard approved", expected_version=expected_version
+    ).state

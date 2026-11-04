@@ -320,3 +320,33 @@ contradiction and legitimate-negative cases, dialect, judge insight/plausibility
 Product must be shown or teased in ≥2 scenes with the hero last: deterministic lint → repair, plus
 judge flag `product_only_at_end` (−1.0); prompts v3. Real perfume re-run: the bottle is teased in
 S2/S3 before the S4 hero (ADR-0014 addendum). `perfume_ar` re-harvested. 311 tests passed.
+
+---
+
+## M5: Media, recovery, chaos, budget, scene scheduler (2026-11-04)
+
+**Built**: `providers/media/{base,mock,chaos}.py`, `providers/adapters/base.py` (kling / seedance /
+veo / mock), `agent/media.py` (MediaGateway), `agent/scenes.py` (SceneStageRunner + strategies),
+`agent/qa.py` (MockCritic), `agent/nodes/{rewrite,assemble}.py`, `prompts/prompt_rewrite/v1.md`,
+budget reserve/settle/release, `approve_storyboard`, CLI `--chaos` / `approve` / `history` /
+`resume --from-version`. Decisions are in ADR-0015.
+
+**Evidence (zero-key CLI runs)**
+- Chaos (seed 66): S4 transient → backoff retry; S3 policy → LLM rewrite (keyframe kept) → attempt
+  2 ok; S2 quality → QA rejected 0.45 → revision with the critic's fix → regenerated → approved; S1
+  untouched. Result: `done`, 4/4 approved, 15 s.
+- Isolation (`2:clip:permanent`): S2 failed with a plain reason; S1/S3/S4 approved; `done_partial`;
+  11.0 s ad (failed scene skipped).
+- Cache: forking the same storyboard (from the pre-keyframe snapshot) → **0 provider calls, 8 cache
+  hits, $0 media** (original: 8 calls, $1.892).
+
+**Bugs/UX found while demoing (fixed)**: scene-stage `stage_completed` showed $0 (it ignored
+media spend); "attempt 2" in clip events counted the keyframe attempt; the mock badge overlapped the
+heading; the CLI pointed to the CAS path instead of `runs/<id>/final.mp4`.
+
+**Tests**: 342 passed, 2 skipped. 6 s total, with real mock media at reduced size. New:
+`tests/integration/test_scene_pipeline.py` (12 end-to-end recovery/isolation/budget/cache/gate/
+resume tests) and `tests/unit/test_media_units.py` (chaos determinism, fail plan, duration
+snapping, adapters, budget ledger).
+
+**Next**: M6: LLM vision QA critic (frame sampling).

@@ -22,6 +22,10 @@ class BudgetEntry(DomainModel):
     ref: str = Field(description="attempt id / llm call id")
 
 
+class BudgetRefusedError(ValueError):
+    """A reservation would exceed the run's money or attempt limits (no call is made)."""
+
+
 class BudgetLedger(DomainModel):
     limit_usd: float = Field(gt=0)
     max_attempts_per_scene: int = Field(ge=1)
@@ -58,3 +62,43 @@ class BudgetLedger(DomainModel):
         )
         self.spent_usd = round(self.spent_usd + usd, USD_DECIMALS)
         self.by_category[category] = round(self.by_category.get(category, 0.0) + usd, USD_DECIMALS)
+
+    # ------------------------------------------------------------------ reserve → settle/release
+    # Reservations are made inside the atomic state update that also starts the attempt, so
+    # concurrent scenes can never jointly overshoot the limit (ADR-0011 single-writer).
+    def reserve(
+        self, ref: str, category: CostCategory, est_usd: float, scene_id: str | None
+    ) -> None:
+        if self.attempts_total >= self.max_total_attempts:
+            raise BudgetRefusedError(
+                f"run attempt limit reached ({self.attempts_total}/{self.max_total_attempts})"
+            )
+        if est_usd > self.remaining_usd + 1e-9:
+            raise BudgetRefusedError(
+                f"estimated ${est_usd:.3f} exceeds the remaining ${self.remaining_usd:.3f} "
+                f"of the ${self.limit_usd:g} budget"
+            )
+        self.entries.append(
+            BudgetEntry(category=category, scene_id=scene_id, est_usd=est_usd, ref=ref)
+        )
+        self.reserved_usd = round(self.reserved_usd + est_usd, USD_DECIMALS)
+        self.attempts_total += 1
+
+    def _open(self, ref: str) -> BudgetEntry:
+        for e in self.entries:
+            if e.ref == ref and e.actual_usd is None:
+                return e
+        raise KeyError(f"no open reservation {ref!r}")
+
+    def settle(self, ref: str, actual_usd: float) -> None:
+        entry = self._open(ref)
+        entry.actual_usd = actual_usd
+        self.reserved_usd = max(0.0, round(self.reserved_usd - entry.est_usd, USD_DECIMALS))
+        self.spent_usd = round(self.spent_usd + actual_usd, USD_DECIMALS)
+        self.by_category[entry.category] = round(
+            self.by_category.get(entry.category, 0.0) + actual_usd, USD_DECIMALS
+        )
+
+    def release(self, ref: str) -> None:
+        """The call failed before incurring cost: free the reservation (actual = 0)."""
+        self.settle(ref, 0.0)

@@ -51,7 +51,7 @@ def types(orch: Orchestrator, run_id: str) -> list[str]:
 async def test_interactive_run_stops_at_concept_gate(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=True)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
 
     assert state.stage is Stage.AWAITING_CONCEPT_CHOICE
     assert state.brief is not None and state.concepts is not None
@@ -79,7 +79,7 @@ async def test_interactive_run_stops_at_concept_gate(settings: Settings) -> None
 async def test_llm_cost_is_booked_and_matches_trace(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=True)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     calls = [
         e for e in orch.rt.storage.events.tail(run.id, limit=100) if e.type is EventType.LLM_CALL
     ]
@@ -95,7 +95,7 @@ async def test_llm_cost_is_booked_and_matches_trace(settings: Settings) -> None:
 async def test_choose_concept_then_continue(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=True)
-    gate = await orch.run_until_blocked(run.id)
+    gate = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     state = commands.choose_concept(orch.rt.storage, run.id, 3, expected_version=gate.state_version)
     assert state.stage is Stage.STORYBOARD
     assert state.concepts is not None and state.concepts.selected_by == "user"
@@ -109,7 +109,7 @@ async def test_commands_validate_stage_and_version(settings: Settings) -> None:
     run = orch.create_run(REQUEST, interactive=True)
     with pytest.raises(commands.CommandRejectedError, match="not waiting"):
         commands.choose_concept(orch.rt.storage, run.id, 1)
-    gate = await orch.run_until_blocked(run.id)
+    gate = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     with pytest.raises(commands.CommandRejectedError, match="between 1 and 3"):
         commands.choose_concept(orch.rt.storage, run.id, 4)
     with pytest.raises(ConcurrencyConflictError):
@@ -119,7 +119,7 @@ async def test_commands_validate_stage_and_version(settings: Settings) -> None:
 async def test_auto_mode_selects_with_judge(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=False)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME  # planning complete; keyframe node arrives in M5
     assert state.concepts is not None and state.concepts.selected_by == "agent"
     assert state.concepts.selected_id == state.concepts.concepts[0].id  # highest weighted score
@@ -155,7 +155,7 @@ async def test_typed_failure_marks_errored_and_resume_recovers(settings: Setting
         settings, full_scripts(understand=[{"error": "permanent"}, *steps("understand")])
     )
     run = orch.create_run(REQUEST, interactive=True)
-    failed = await orch.run_until_blocked(run.id)
+    failed = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert failed.stage is Stage.ERRORED and failed.error is not None
     assert failed.error.stage is Stage.UNDERSTAND and failed.error.kind is FailureKind.PERMANENT
     assert failed.error.reason_user.startswith("Failed while understanding the request")
@@ -169,7 +169,7 @@ async def test_typed_failure_marks_errored_and_resume_recovers(settings: Setting
 async def test_failed_calls_are_still_booked(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts(ideate=[{"raw": "not json"}]))
     run = orch.create_run(REQUEST, interactive=True)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.ERRORED and state.error is not None
     assert state.error.kind is FailureKind.INVALID_OUTPUT
     # understand (1 call) + ideate (1 + 2 repairs), all booked
@@ -179,7 +179,7 @@ async def test_failed_calls_are_still_booked(settings: Settings) -> None:
 async def test_arabic_failure_message_before_brief_exists(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts(understand=[{"error": "permanent"}]))
     run = orch.create_run(AR_REQUEST, interactive=True)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.error is not None and state.error.reason_user.startswith("تعذّر فهم الطلب")
 
 
@@ -192,7 +192,7 @@ async def test_unexpected_exception_becomes_run_error(
     monkeypatch.setitem(orchestrator.NODES, Stage.UNDERSTAND, broken)
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST)
-    state = await orch.run_until_blocked(run.id)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.ERRORED and state.error is not None
     assert "KeyError" in state.error.reason_debug
 

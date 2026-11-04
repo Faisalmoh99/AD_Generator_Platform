@@ -22,6 +22,7 @@ from adsmith.agent.context import AgentRuntime
 from adsmith.agent.deltas import apply_delta
 from adsmith.agent.export import write_production_pack
 from adsmith.agent.i18n import failure_message, stage_label
+from adsmith.agent.nodes.assemble import assemble
 from adsmith.agent.nodes.base import Node, NodeResult
 from adsmith.agent.nodes.continuity import continuity
 from adsmith.agent.nodes.ideate import ideate
@@ -52,10 +53,13 @@ NODES: dict[Stage, Node] = {
     Stage.STORYBOARD: storyboard,
     Stage.CONTINUITY: continuity,
     Stage.PROMPT: prompt,
+    Stage.ASSEMBLE: assemble,
 }
+# Per-scene stages: run by the SceneStageRunner, which commits each scene's progress itself.
+SCENE_STAGES: frozenset[Stage] = frozenset({Stage.KEYFRAME, Stage.GENERATE, Stage.QA})
 
 # Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
-EXPORT_AFTER: frozenset[Stage] = frozenset({Stage.PROMPT})
+EXPORT_AFTER: frozenset[Stage] = frozenset({Stage.PROMPT, Stage.ASSEMBLE})
 
 
 def run_config_from_settings(settings: Settings, request: str, *, interactive: bool) -> RunConfig:
@@ -102,10 +106,15 @@ class Orchestrator:
         self._locks: dict[str, asyncio.Lock] = {}
 
     # ------------------------------------------------------------------------ lifecycle
-    def create_run(self, request: str, *, interactive: bool = True) -> RunState:
+    def create_run(
+        self, request: str, *, interactive: bool = True, chaos: bool | None = None
+    ) -> RunState:
         s = self.rt.settings
+        config = run_config_from_settings(s, request, interactive=interactive)
+        if chaos is not None:
+            config = config.model_copy(update={"chaos": chaos})
         state = RunState(
-            config=run_config_from_settings(s, request, interactive=interactive),
+            config=config,
             request=request,
             budget=BudgetLedger(
                 limit_usd=s.budget_usd,
@@ -133,7 +142,7 @@ class Orchestrator:
                 state.stage not in AWAITING_STAGES
                 and state.stage not in TERMINAL_STAGES
                 and state.stage is not stop_before
-                and state.stage in NODES
+                and (state.stage in NODES or state.stage in SCENE_STAGES)
             ):
                 state = await self.step(state.id)
             return state
@@ -177,6 +186,8 @@ class Orchestrator:
     async def step(self, run_id: str) -> RunState:
         state = self.rt.storage.runs.load(run_id)
         stage = state.stage
+        if stage in SCENE_STAGES:
+            return await self._scene_step(state)
         node = NODES[stage]
         lang = state.language
         self.rt.storage.events.append(
@@ -271,8 +282,48 @@ class Orchestrator:
         )
         return path
 
-    def _commit(self, run_id: str, stage: Stage, result: NodeResult, started: float) -> RunState:
+    async def _scene_step(self, state: RunState) -> RunState:
+        run_id, stage = state.id, state.stage
+        self.rt.storage.events.append(
+            run_id,
+            [
+                _event(
+                    run_id, stage, EventType.STAGE_STARTED, f"Started: {stage_label(stage, 'en')}"
+                )
+            ],
+        )
+        started = time.monotonic()
+        spent_before = state.budget.spent_usd
+        try:
+            await self.rt.scene_runner(state).run(run_id, stage)
+        except Exception as exc:
+            log.exception("scene stage crashed", run_id=run_id, stage=stage.value)
+            return self._fail(
+                run_id,
+                stage=stage,
+                kind=FailureKind.PERMANENT,
+                debug=f"{type(exc).__name__}: {exc}",
+                calls=[],
+                lang=state.language,
+                started=started,
+            )
+        spent = self.rt.storage.runs.load(run_id).budget.spent_usd - spent_before
+        return self._commit(run_id, stage, NodeResult(), started, stage_cost=spent)
+
+    def _commit(
+        self,
+        run_id: str,
+        stage: Stage,
+        result: NodeResult,
+        started: float,
+        *,
+        stage_cost: float | None = None,
+    ) -> RunState:
         duration_ms = int((time.monotonic() - started) * 1000)
+
+        llm_cost = sum(c.cost_usd for c in result.llm_calls)
+        # Scene stages book media + rewrite costs per scene; report the stage's whole spend.
+        cost = llm_cost if stage_cost is None else stage_cost
 
         def mutate(s: RunState) -> list[AgentEvent]:
             if s.stage is not stage:
@@ -287,9 +338,9 @@ class Orchestrator:
                     stage,
                     EventType.STAGE_COMPLETED,
                     f"Completed {stage_label(stage, 'en')} in {duration_ms / 1000:.1f}s "
-                    f"(${sum(c.cost_usd for c in result.llm_calls):.4f}) → {s.stage}",
+                    f"(${cost:.4f}) → {s.stage}",
                     duration_ms=duration_ms,
-                    cost_usd=round(sum(c.cost_usd for c in result.llm_calls), 6),
+                    cost_usd=round(cost, 6),
                     llm_calls=len(result.llm_calls),
                     repairs=sum(1 for c in result.llm_calls if c.kind == "repair"),
                     next_stage=s.stage.value,
@@ -302,6 +353,19 @@ class Orchestrator:
                         s.stage,
                         EventType.AWAITING_INPUT,
                         f"Waiting for the user: {s.stage}",
+                    )
+                )
+            if s.stage in TERMINAL_STAGES and s.storyboard is not None:
+                statuses = [sc.status.value for sc in s.storyboard.scenes]
+                events.append(
+                    _event(
+                        run_id,
+                        s.stage,
+                        EventType.RUN_COMPLETED,
+                        f"Run {s.stage}: {statuses.count('approved')} approved, "
+                        f"{statuses.count('failed')} failed; spent ${s.budget.spent_usd:.3f}",
+                        statuses=statuses,
+                        spent_usd=s.budget.spent_usd,
                     )
                 )
             return events

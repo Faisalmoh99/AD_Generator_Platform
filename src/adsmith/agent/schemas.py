@@ -22,6 +22,7 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "storyboard": StoryboardDraft,
     "continuity": ContinuityBibleDraft,
     "prompt_writer": ScenePromptDraft,
+    "prompt_rewrite": ScenePromptDraft,
     "edit_parser": ScenePatchDraft,
     "qa_critic": QAVerdictDraft,
 }

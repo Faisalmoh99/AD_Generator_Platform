@@ -656,3 +656,10 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 
 ### M4c (quality fixes before video spend)
 - `domain/shot_lint.py` (multi-action + negative contradictions → repair), `domain/dialect.py`; `Concept.insight`; judge `insight` weight + `single_shot_plausible` penalty; prompts v2. Item 2 (keyframe prompt length) deferred to M11, to be judged on real Kling output.
+
+### M5 (scene execution)
+- Pulled forward so the pipeline runs end to end: the QA *loop* with a deterministic `MockCritic` (the LLM vision critic is still M6) and a basic `assemble` (trim + normalise + concat; end card, music and crossfades still M8).
+- One shared LLM rewrite step (`prompt_rewrite`) serves both the policy-rewrite and QA-regeneration strategies.
+- Mock media priced at the fal rates and using fal duration rules; deterministic fail plan (`ADSMITH_MOCK_FAIL_PLAN`); chaos decisions are a pure function of (seed, scene, version, phase, attempt); demo seed 66.
+- CLI: `run --chaos`, `approve`, `history`, `resume --from-version` (fork).
+- ffmpeg here has no `drawtext`: all on-frame text is rendered with Pillow and composited.

@@ -45,6 +45,15 @@ def _print_state(state: RunState) -> None:
         console.print(table)
         if state.concepts.selection_rationale:
             console.print(f"[dim]Selection: {state.concepts.selection_rationale}[/]")
+    if state.storyboard:
+        table = Table("Scene", "Status", "Attempts", "Note")
+        for sc in state.storyboard.scenes:
+            note = sc.failure.reason_user if sc.failure else ""
+            table.add_row(str(sc.order), sc.status.value, str(len(sc.attempts)), note)
+        console.print(table)
+    if state.final:
+        path = Settings().data_dir / "runs" / state.id / "final.mp4"
+        console.print(f"[bold green]Final ad:[/] {path} ({state.final.duration_s:g}s)")
     if state.error:
         console.print(f"[red]Error:[/] {state.error.reason_user}")
     ledger = state.budget
@@ -66,18 +75,48 @@ def run(
     until: Annotated[
         Stage | None, typer.Option(help="Stop before this stage (e.g. keyframe for planning only).")
     ] = None,
+    chaos: Annotated[
+        bool | None, typer.Option("--chaos/--no-chaos", help="Inject faults to demo recovery.")
+    ] = None,
 ) -> None:
     """Start a new run."""
     orch = _orchestrator()
-    state = orch.create_run(request, interactive=not auto)
+    state = orch.create_run(request, interactive=not auto, chaos=chaos)
     console.print(f"Run [bold]{state.id}[/] created.")
     _print_state(asyncio.run(orch.run_until_blocked(state.id, stop_before=until)))
 
 
 @app.command()
-def resume(run_id: str, until: Annotated[Stage | None, typer.Option()] = None) -> None:
-    """Resume a run after a failure, a crash, or a gate."""
-    _print_state(asyncio.run(_orchestrator().resume(run_id, stop_before=until)))
+def resume(
+    run_id: str,
+    until: Annotated[Stage | None, typer.Option()] = None,
+    from_version: Annotated[
+        int | None, typer.Option(help="Fork a new run from this past snapshot version.")
+    ] = None,
+) -> None:
+    """Resume a run after a failure, a crash, or a gate (or fork it from a past version)."""
+    orch = _orchestrator()
+    if from_version is not None:
+        run_id = orch.rt.storage.runs.fork(run_id, from_version).state.id
+        console.print(f"Forked into [bold]{run_id}[/] from version {from_version}.")
+    _print_state(asyncio.run(orch.resume(run_id, stop_before=until)))
+
+
+@app.command()
+def approve(run_id: str) -> None:
+    """Approve the storyboard keyframes and generate the clips."""
+    orch = _orchestrator()
+    commands.approve_storyboard(orch.rt.storage, run_id)
+    _print_state(asyncio.run(orch.run_until_blocked(run_id)))
+
+
+@app.command()
+def history(run_id: str) -> None:
+    """List the run's snapshots (for inspection or --from-version)."""
+    table = Table("version", "stage", "reason", "size")
+    for h in _orchestrator().rt.storage.runs.history(run_id):
+        table.add_row(str(h.state_version), h.stage.value, h.reason, f"{h.size_bytes} B")
+    console.print(table)
 
 
 @app.command()

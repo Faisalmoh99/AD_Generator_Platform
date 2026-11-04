@@ -44,4 +44,4 @@ def _isolated_env(
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(data_dir=tmp_path / "data")
+    return Settings(data_dir=tmp_path / "data", mock_latency_s=0.0, media_long_side=320)

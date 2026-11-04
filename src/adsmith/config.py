@@ -177,6 +177,8 @@ class Settings(BaseSettings):
     scene_concurrency: int = Field(default=3, ge=1, le=16)
     chaos: bool = False
     mock_latency_s: float = Field(default=1.5, ge=0)
+    mock_fail_plan: str | None = None  # e.g. "2:clip:permanent,1:keyframe:transient*3"
+    media_long_side: int = Field(default=960, ge=256, le=4096)
 
     # paths
     data_dir: Path = PROJECT_ROOT / "data"

@@ -7,6 +7,9 @@ step, and the last step repeats once the list is exhausted. A step is one of:
     {"refusal": "cyber"}         stop_reason=refusal with a category
     {"truncated": true}          stop_reason=max_tokens with cut-off JSON
     {"error": "transient" | "rate_limited" | "permanent"}
+    {"transform": "echo_prompt"} return the request's own <current_prompt> JSON, marked revised
+                                 (a deterministic stand-in for the rewrite model; the motion
+                                 prompt changes, the keyframe prompt stays byte-identical)
 
 Packaged fixtures live in ``providers/llm/fixtures/<scenario>/<template>.json`` and are validated
 against the node output schemas by ``tests/unit/test_scripted_fixtures.py``.
@@ -92,7 +95,9 @@ class ScriptedLLMProvider:
         text: str | None
         stop = "end_turn"
         category = None
-        if "output" in step:
+        if step.get("transform") == "echo_prompt":
+            text = _echo_prompt(request)
+        elif "output" in step:
             text = json.dumps(step["output"], ensure_ascii=False)
         elif "raw" in step:
             text = step["raw"]
@@ -118,3 +123,15 @@ class ScriptedLLMProvider:
             native_assistant=None,
             extras={"simulated": True},
         )
+
+
+def _echo_prompt(request: LLMRequest) -> str:
+    last = request.messages[-1]
+    texts = [p.text for p in getattr(last, "parts", ()) if isinstance(p, TextPart)]
+    body = "\n".join(texts)
+    start, end = body.find("<current_prompt>"), body.find("</current_prompt>")
+    if start < 0 or end < 0:
+        raise PermanentProviderError("echo_prompt step needs a <current_prompt> block")
+    current = json.loads(body[start + len("<current_prompt>") : end])
+    current["motion_prompt"] = f"{current['motion_prompt']} (revised: slower, steadier motion)"
+    return json.dumps(current, ensure_ascii=False)

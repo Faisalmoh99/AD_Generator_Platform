@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 class AgentError(Exception):
     kind: ClassVar[FailureKind]
+    injected: bool = False  # set by Chaos Mode so the trace is honest about simulated faults
 
     def __init__(self, message: str, *, llm_calls: list[LLMCallRecord] | None = None) -> None:
         super().__init__(message)
