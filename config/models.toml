@@ -21,6 +21,7 @@ edit_parser    = { model = "claude-haiku-5-5",  effort = "low" }
 conflict_check = { model = "claude-haiku-5-5",  effort = "medium" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "low" }
 qa_critic      = { model = "claude-sonnet-5-5", effort = "low" }
+endcard_copy   = { model = "claude-haiku-5-5",  effort = "low" }
 
 [profiles.balanced]
 # understand: low (3.5 s median vs 5.7 s at medium, same brief quality). ideate: high on purpose,
@@ -35,6 +36,7 @@ edit_parser    = { model = "claude-haiku-5-5",  effort = "medium" }
 conflict_check = { model = "claude-sonnet-5-5", effort = "medium" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }
 qa_critic      = { model = "claude-sonnet-5-5", effort = "medium" }
+endcard_copy   = { model = "claude-haiku-5-5",  effort = "medium" }
 
 [profiles.quality]
 understand     = { model = "claude-sonnet-5-5", effort = "medium" }
@@ -47,6 +49,7 @@ edit_parser    = { model = "claude-sonnet-5-5", effort = "medium" }
 conflict_check = { model = "claude-sonnet-5-5", effort = "high" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }
 qa_critic      = { model = "claude-opus-5-5",   effort = "medium" }
+endcard_copy   = { model = "claude-sonnet-5-5", effort = "medium" }
 
 # ---------------------------------------------------------------- OpenAI
 # Intentionally left empty: set from https://platform.openai.com/docs/models

@@ -82,6 +82,9 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         image_model=settings.fal_image_model or settings.catalog.fal.image.default,
         video_model=settings.fal_video_model or settings.catalog.fal.video.default,
         media_long_side=settings.media_long_side,
+        endcard_s=settings.endcard_s,
+        partial_mode=settings.partial_mode,
+        music_path=str(settings.music_path) if settings.music_path else None,
     )
 
 

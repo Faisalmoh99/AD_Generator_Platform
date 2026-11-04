@@ -68,6 +68,16 @@ def pack_json(state: RunState) -> dict[str, Any]:
         "category_cliches_avoided": list(concepts.category_cliches) if concepts else [],
         "bible": state.bible.model_dump(mode="json") if state.bible else None,
         "total_duration_s": sb.total_duration_s if sb else None,
+        "endcard": (
+            {
+                **state.endcard.model_dump(mode="json"),
+                "note": "PLACEHOLDER copy invented by the agent; replace with the client's brand"
+                if state.endcard.is_placeholder
+                else "from the brief",
+            }
+            if state.endcard
+            else None
+        ),
         "scenes": [
             {
                 "order": s.order,
@@ -117,6 +127,14 @@ def pack_markdown(state: RunState) -> str:
             "",
         ]
     if state.storyboard:
+        if state.endcard:
+            e = state.endcard
+            flag = (
+                " — **PLACEHOLDER** (invented by the agent; replace before publishing)"
+                if e.is_placeholder
+                else ""
+            )
+            out += ["## End card", "", f"**{e.brand_name}**: {e.tagline}{flag}", ""]
         out += [f"## {t['scenes']}", ""]
         for s in state.storyboard.scenes:
             sh = s.shot

@@ -38,6 +38,7 @@ class LLMNode(StrEnum):
     CONFLICT_CHECK = "conflict_check"
     POLICY_REWRITE = "policy_rewrite"
     QA_CRITIC = "qa_critic"
+    ENDCARD_COPY = "endcard_copy"
 
 
 class _Frozen(BaseModel):
@@ -206,6 +207,10 @@ class Settings(BaseSettings):
     mock_latency_s: float = Field(default=1.5, ge=0)
     mock_fail_plan: str | None = None  # e.g. "2:clip:permanent,1:keyframe:transient*3"
     media_long_side: int = Field(default=960, ge=256, le=4096)
+    # assembly (M8)
+    endcard_s: float = Field(default=2.0, ge=0, le=6)
+    partial_mode: Literal["skip", "slate"] = "skip"
+    music_path: Path | None = None  # user-supplied only; nothing is bundled
     # Hard ceiling for ALL real fal spend on this machine (prepaid balance, no auto top-up).
     # Every paid call reserves against it in the account ledger before it is submitted.
     fal_balance_usd: float | None = Field(default=None, ge=0)

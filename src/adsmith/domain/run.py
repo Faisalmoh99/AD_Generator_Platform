@@ -23,6 +23,7 @@ from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.concept import ConceptSet
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.edit import ScenePatch
+from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.enums import FailureKind, Stage
 from adsmith.domain.generation import Artifact
 from adsmith.domain.similarity import detect_language
@@ -46,6 +47,8 @@ class RunConfig(DomainModel):
     target_duration_s: float = Field(default=15.0, gt=0, le=60)
     music_path: str | None = None
     endcard: bool = True
+    endcard_s: float = Field(default=2.0, ge=0, le=6)
+    partial_mode: Literal["skip", "slate"] = "skip"  # failed scenes in done_partial
     scripted_scenario: str | None = None  # which canned fixtures the scripted LLM replays
     # Catalog keys (config/models.toml) of the media models: resume never switches model.
     image_model: str | None = None
@@ -84,6 +87,7 @@ class RunState(DomainModel):
     bible_history: list[ContinuityBible] = Field(default_factory=list)
     patches: list[ScenePatch] = Field(default_factory=list)
     final: Artifact | None = None
+    endcard: EndCardCopy | None = None
     budget: BudgetLedger
     error: RunError | None = None
 

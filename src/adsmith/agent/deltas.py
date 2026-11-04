@@ -15,6 +15,7 @@ from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import ConceptSet
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.generation import Artifact
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import SceneFailure, ScenePrompt
@@ -61,6 +62,11 @@ class SetFinal(DomainModel):
     final: Artifact | None
 
 
+class SetEndCard(DomainModel):
+    kind: Literal["set_endcard"] = "set_endcard"
+    endcard: EndCardCopy
+
+
 class UpgradeSceneFlags(DomainModel):
     """Upgrade-only (ADR-0010): flags can be turned on, never off."""
 
@@ -84,7 +90,8 @@ Delta = Annotated[
     | SetScenePrompts
     | UpgradeSceneFlags
     | FailScenes
-    | SetFinal,
+    | SetFinal
+    | SetEndCard,
     Field(discriminator="kind"),
 ]
 
@@ -156,3 +163,5 @@ def apply_delta(state: RunState, delta: Delta) -> None:
             _fail_scenes(state, delta)
         case SetFinal():
             state.final = delta.final
+        case SetEndCard():
+            state.endcard = delta.endcard

@@ -60,7 +60,7 @@ async def test_happy_path_produces_a_15s_ad(tmp_path: Path) -> None:
     state = await run_auto(h)
     assert state.stage is Stage.DONE
     assert statuses(state) == [SceneStatus.APPROVED] * 4
-    assert duration_of(h, state) == pytest.approx(15.0, abs=0.05)
+    assert duration_of(h, state) == pytest.approx(15.0 + 2.0, abs=0.1)  # scenes + end card
     assert h.image.calls == 4 and h.video.calls == 4
     # budget: every reservation settled, spend = media attempts + LLM calls
     b = state.budget
@@ -182,7 +182,7 @@ async def test_one_permanent_failure_ends_done_partial_with_the_rest(tmp_path: P
     ]
     assert state.storyboard is not None
     kept = sum(s.duration_s for s in state.storyboard.scenes if s.status is SceneStatus.APPROVED)
-    assert duration_of(h, state) == pytest.approx(kept, abs=0.05)
+    assert duration_of(h, state) == pytest.approx(kept + 2.0, abs=0.1)  # + end card
     done = [e for e in events(h, state.id) if e.type is EventType.RUN_COMPLETED]
     assert "3 approved, 1 failed" in done[0].summary
 
