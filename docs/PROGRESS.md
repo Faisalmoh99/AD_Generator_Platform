@@ -33,6 +33,7 @@ what's next. The plan is in [PLAN.md](PLAN.md); decisions are in [adr/](adr/).
 
 **Deviations from plan**
 - `make check` (Makefile) instead of a task runner. Fewer dependencies; same gate.
+- `docs/` and `prompts/` are excluded from ruff, because ruff was reformatting pseudo-code blocks in `PLAN.md`.
 
 **Tests**: `make check` green: ruff clean, mypy --strict clean (22 files), 8/8 tests pass
 (config defaults, profile completeness, per-node env override, quality profile, fail-fast on
