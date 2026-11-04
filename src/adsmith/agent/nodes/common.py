@@ -25,6 +25,7 @@ def brief_block(b: Brief) -> str:
         f"Visual style: {b.visual_style}",
         f"Duration: {b.duration_s:g} seconds",
         f"Aspect ratio: {b.aspect_ratio}",
+        *([f"Requested shots: exactly {b.requested_shots}"] if b.requested_shots else []),
         f"User language: {language_name(b.language)} (dialect: {b.dialect.value})",
     ]
     if b.must_include:

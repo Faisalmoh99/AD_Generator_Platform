@@ -33,6 +33,10 @@ class BriefDraft(DomainModel):
     aspect_ratio: AspectRatio | None = Field(
         default=None, description="Only if the user specified one; otherwise null."
     )
+    requested_shots: int | None = Field(
+        default=None, ge=1, le=6,
+        description="Only if the user explicitly asked for a number of shots/scenes; else null.",
+    )  # fmt: skip
     must_include: list[ShortText] = Field(default_factory=list, max_length=10)
     must_avoid: list[ShortText] = Field(default_factory=list, max_length=10)
     tagline: str | None = Field(default=None, max_length=120)

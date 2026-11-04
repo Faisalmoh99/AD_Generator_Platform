@@ -33,7 +33,14 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     duration = brief.duration_s
     max_scenes = max(2, min(6, int(duration // min_s)))
 
+    requested = state.brief.requested_shots if state.brief else None
+
     def convert(draft: StoryboardDraft) -> Storyboard:
+        if requested is not None and len(draft.scenes) != requested:
+            raise ValueError(
+                f"the client asked for exactly {requested} shot(s); write exactly {requested} "
+                f"scene(s), not {len(draft.scenes)} (keep the concept, split or merge its beats)"
+            )
         single = len(draft.scenes) == 1
         if single and draft.scenes[0].duration_s > single_max:
             raise ValueError(

@@ -68,7 +68,7 @@ async def test_storyboard_rejects_scenes_below_video_model_minimum(settings: Set
     run = orch.create_run(REQUEST, interactive=False)
     state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME
-    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v4") + 1]
+    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v5") + 1]
     assert "video model's 3s minimum" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]
 
 
@@ -105,3 +105,20 @@ async def test_zero_key_arabic_run_uses_arabic_scenario_and_pack(settings: Setti
         orch.rt.storage.artifacts.run_dir(run.id) / "production_pack" / "storyboard.md"
     ).read_text()
     assert "## قائمة اللقطات" in md and "أمر الإطار الرئيسي" in md
+
+
+async def test_storyboard_must_match_the_requested_shot_count(settings: Settings) -> None:
+    understand = copy.deepcopy(steps("understand"))
+    understand[0]["output"]["requested_shots"] = 4  # the fixture storyboard has 4 scenes
+    good = steps("storyboard")
+    three = copy.deepcopy(good)
+    three[0]["output"]["scenes"] = three[0]["output"]["scenes"][:3]
+    orch, provider = make_orch(
+        settings, full_scripts(understand=understand, storyboard=[three[0], good[0]])
+    )
+    run = orch.create_run(REQUEST, interactive=False)
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
+    assert state.stage is Stage.KEYFRAME and state.storyboard is not None
+    assert len(state.storyboard.scenes) == 4
+    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v5") + 1]
+    assert "asked for exactly 4 shot(s)" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]

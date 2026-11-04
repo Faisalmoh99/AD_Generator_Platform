@@ -90,6 +90,24 @@ def wordless_label_problems(product: ProductSpec) -> list[str]:
     ]
 
 
+# Product details must be physical and visible on a still packshot. An effect or action listed as
+# a "detail" ("fine golden mist cloud from the nozzle") fails every packshot identity check.
+_EFFECT = re.compile(
+    r"\b(mist|droplets?|spray cloud|cloud|haze|smoke|steam|sparkles?|vapou?r)\b",
+    re.IGNORECASE,
+)
+
+
+def effect_feature_problems(product: ProductSpec) -> list[str]:
+    return [
+        f"product.distinctive_features[{i}] describes an effect or action ('{m.group(1)}'), not "
+        "a physical detail of the product; keep only what a still packshot shows (shape, cap, "
+        "glass, liquid, finish) and put effects in the scenes instead"
+        for i, f in enumerate(product.distinctive_features)
+        if (m := _EFFECT.search(f))
+    ]
+
+
 class ColorGrade(DomainModel):
     palette: list[HexColor] = Field(min_length=2, max_length=6)
     contrast: Concrete

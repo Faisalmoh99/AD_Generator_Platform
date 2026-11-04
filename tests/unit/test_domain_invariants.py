@@ -291,3 +291,21 @@ def test_wordless_product_may_not_describe_a_label_surface() -> None:
         base | {"branding_text": "OUD", "branding_style": "gold label plate"}
     )
     assert wordless_label_problems(named) == []  # a real brand may have a label
+
+
+def test_product_details_must_be_physical_not_effects() -> None:
+    from adsmith.domain.continuity import effect_feature_problems  # noqa: PLC0415
+
+    base = {
+        "name": "the fragrance", "form": "rectangular bottle", "materials": "glass",
+        "colors": "amber", "branding_text": "", "branding_style": "bare glass",
+        "hero_angle": "straight-on",
+    }  # fmt: skip
+    mist = ProductSpec.model_validate(
+        base | {"distinctive_features": ["Brushed-gold collar", "Fine golden mist from the nozzle"]}
+    )
+    assert len(effect_feature_problems(mist)) == 1
+    lit = ProductSpec.model_validate(
+        base | {"distinctive_features": ["Thick glass base that glows amber when backlit"]}
+    )
+    assert effect_feature_problems(lit) == []

@@ -17,6 +17,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.continuity import (
     ContinuityBible,
     ContinuityBibleDraft,
+    effect_feature_problems,
     wordless_label_problems,
 )
 from adsmith.domain.enums import Stage
@@ -36,7 +37,8 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
     )
 
     def convert(d: ContinuityBibleDraft) -> ContinuityBible:
-        problems = wordless_label_problems(d.product)  # → schema repair with the exact problem
+        # → schema repair with the exact problems
+        problems = wordless_label_problems(d.product) + effect_feature_problems(d.product)
         if problems:
             raise ValueError("; ".join(problems))
         return ContinuityBible(**d.model_dump(), version=version)
