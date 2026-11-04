@@ -16,13 +16,18 @@ import asyncio
 import time
 import traceback
 from collections.abc import Sequence
+from pathlib import Path
 
 from adsmith.agent.context import AgentRuntime
 from adsmith.agent.deltas import apply_delta
+from adsmith.agent.export import write_production_pack
 from adsmith.agent.i18n import failure_message, stage_label
 from adsmith.agent.nodes.base import Node, NodeResult
+from adsmith.agent.nodes.continuity import continuity
 from adsmith.agent.nodes.ideate import ideate
+from adsmith.agent.nodes.prompt import prompt
 from adsmith.agent.nodes.select import select
+from adsmith.agent.nodes.storyboard import storyboard
 from adsmith.agent.nodes.understand import understand
 from adsmith.agent.recovery.errors import AgentError
 from adsmith.agent.transitions import next_stage
@@ -44,7 +49,13 @@ NODES: dict[Stage, Node] = {
     Stage.UNDERSTAND: understand,
     Stage.IDEATE: ideate,
     Stage.SELECT: select,
+    Stage.STORYBOARD: storyboard,
+    Stage.CONTINUITY: continuity,
+    Stage.PROMPT: prompt,
 }
+
+# Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
+EXPORT_AFTER: frozenset[Stage] = frozenset({Stage.PROMPT})
 
 
 def run_config_from_settings(settings: Settings, request: str, *, interactive: bool) -> RunConfig:
@@ -202,7 +213,7 @@ class Orchestrator:
                 started=started,
             )
         try:
-            return self._commit(run_id, stage, result, started)
+            committed = self._commit(run_id, stage, result, started)
         except StaleWriteError as exc:
             # Someone (a user command, another process) moved the run while the node ran. The
             # result is discarded on purpose, not misapplied; the run continues from its new state.
@@ -220,7 +231,7 @@ class Orchestrator:
                 ],
             )
             return self.rt.storage.runs.load(run_id)
-        except ValueError as exc:  # the deltas would produce an invalid state: rejected atomically
+        except ValueError as exc:  # deltas would produce an invalid state: rejected atomically
             log.exception("commit rejected", run_id=run_id, stage=stage.value)
             return self._fail(
                 run_id,
@@ -231,6 +242,34 @@ class Orchestrator:
                 lang=lang,
                 started=started,
             )
+        if stage in EXPORT_AFTER:
+            self.export(committed)
+        return committed
+
+    def export(self, state: RunState, out_dir: Path | None = None) -> Path | None:
+        """Write the Production Pack. Never fails the run: problems become a warn event."""
+        target = out_dir or self.rt.storage.artifacts.run_dir(state.id) / "production_pack"
+        try:
+            path = write_production_pack(state, target)
+        except OSError as exc:
+            self.rt.storage.events.append(
+                state.id,
+                [_event(state.id, state.stage, EventType.EXPORT, f"Production Pack failed: {exc}")],
+            )
+            return None
+        self.rt.storage.events.append(
+            state.id,
+            [
+                _event(
+                    state.id,
+                    state.stage,
+                    EventType.EXPORT,
+                    f"Production Pack written to {path}",
+                    path=str(path),
+                )
+            ],
+        )
+        return path
 
     def _commit(self, run_id: str, stage: Stage, result: NodeResult, started: float) -> RunState:
         duration_ms = int((time.monotonic() - started) * 1000)

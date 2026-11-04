@@ -23,7 +23,9 @@ policy_rewrite = { model = "claude-sonnet-5-5", effort = "low" }
 qa_critic      = { model = "claude-sonnet-5-5", effort = "low" }
 
 [profiles.balanced]
-understand     = { model = "claude-haiku-5-5",  effort = "medium" }
+# understand: low (3.5 s median vs 5.7 s at medium, same brief quality). ideate: high on purpose,
+# because medium/low regressed to category clichés at ~21 s. Measurements in ADR-0007.
+understand     = { model = "claude-haiku-5-5",  effort = "low" }
 ideate         = { model = "claude-sonnet-5-5", effort = "high" }
 select         = { model = "claude-sonnet-5-5", effort = "medium" }
 storyboard     = { model = "claude-sonnet-5-5", effort = "high" }

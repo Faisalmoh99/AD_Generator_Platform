@@ -30,8 +30,10 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         Stage.IDEATE,
         "Concepts: "
         + " | ".join(c.title for c in concepts.concepts)
-        + f" (max pairwise similarity {max(sims.values()):.0%})",
+        + f" (max pairwise similarity {max(sims.values()):.0%}); avoided clichés: "
+        + "; ".join(concepts.category_cliches),
         similarities={f"{i + 1}-{j + 1}": round(s, 3) for (i, j), s in sims.items()},
+        category_cliches=list(concepts.category_cliches),
     )
     return NodeResult(
         deltas=[SetConcepts(concepts=concepts)], events=[event], llm_calls=result.calls

@@ -15,12 +15,11 @@
       },
       "product": {
         "name": "NOIR",
-        "bottle_shape": "faceted rectangular",
-        "bottle_material": "matte black glass",
-        "liquid_color": "deep amber",
-        "cap": "brushed gold cap",
-        "label_text": "NOIR",
-        "label_style": "embossed gold serif lettering",
+        "form": "faceted rectangular bottle",
+        "materials": "matte black glass with a brushed gold cap",
+        "colors": "matte black glass, deep amber liquid, brushed gold",
+        "branding_text": "NOIR",
+        "branding_style": "embossed gold serif lettering",
         "distinctive_features": [
           "gold edge on the base"
         ],

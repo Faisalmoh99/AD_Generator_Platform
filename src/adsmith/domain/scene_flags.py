@@ -24,7 +24,7 @@ from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.scene import Scene
-from adsmith.domain.similarity import normalize_text, raw_tokens
+from adsmith.domain.similarity import normalize_text, raw_tokens, tokens
 
 Flag = Literal["shows_character", "shows_product"]
 
@@ -44,6 +44,17 @@ PRODUCT_TERMS_EN: frozenset[str] = frozenset(
 PRODUCT_TERMS_AR: frozenset[str] = frozenset("""عطر زجاجه قاروره رشه بخاخ منتج غطاء ملصق""".split())
 _AR_CLITICS = ("و", "ب", "ل", "ف", "ك")
 _MIN_BIBLE_TERM_LEN = 4
+# Descriptive words in wardrobe/product phrases that say nothing about *what* is in frame. Without
+# this list, "long dark sleeve with no text" made "dark", "with" and "text" character terms (real
+# run, coffee brief) and every dark or text-free shot became a "character" shot.
+_DESCRIPTORS: frozenset[str] = frozenset(
+    """black white dark light bright deep pale soft brown gold golden silver grey gray blue red
+    green cream charcoal navy beige amber teal ivory olive cotton leather silk wool linen
+    glass metal aluminum ceramic paper canvas matte glossy polished brushed plain simple
+    modern classic slim small large tall short long thin thick round rounded pattern patterned
+    logo logos text printing lettering visible minimal subtle fine crisp clean pressed neat
+    neatly tailored fitted loose style styled color colour colored sleeved""".split()
+)
 
 
 class FlagOverride(DomainModel):
@@ -91,7 +102,11 @@ def _bible_terms(bible: ContinuityBible | None) -> tuple[frozenset[str], frozens
     def content(*texts: str) -> frozenset[str]:
         out: set[str] = set()
         for t in texts:
-            out.update(tok for tok in raw_tokens(t) if len(tok) >= _MIN_BIBLE_TERM_LEN)
+            out.update(
+                tok
+                for tok in tokens(t)  # stop-word filtered
+                if len(tok) >= _MIN_BIBLE_TERM_LEN and tok not in _DESCRIPTORS
+            )
         return frozenset(out)
 
     char: frozenset[str] = frozenset()
@@ -99,7 +114,7 @@ def _bible_terms(bible: ContinuityBible | None) -> tuple[frozenset[str], frozens
         # Wardrobe items are the strongest signal: "his black thobe" ⇒ the character is on screen.
         char = content(*bible.character.wardrobe)
     p = bible.product
-    prod = content(p.name, p.label_text) | {normalize_text(p.name)}
+    prod = content(p.name, p.branding_text) | {normalize_text(p.name)}
     return char, prod
 
 

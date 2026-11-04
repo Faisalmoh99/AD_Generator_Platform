@@ -1,0 +1,36 @@
+[
+  {
+    "output": {
+      "language": "ar",
+      "dialect": "saudi_najdi",
+      "product": "Luxury men's fragrance",
+      "product_category": "Men's perfume",
+      "brand_name": null,
+      "target_audience": "Young men who care about style and luxury grooming",
+      "tone": [
+        "luxurious",
+        "cinematic"
+      ],
+      "visual_style": "Cinematic, high-end commercial look with dramatic lighting and premium textures",
+      "duration_s": 15.0,
+      "aspect_ratio": "9:16",
+      "must_include": [
+        "Luxury men's fragrance bottle as the hero product"
+      ],
+      "must_avoid": [
+        "readable on-screen text inside the generated footage"
+      ],
+      "tagline": null,
+      "tagline_language": null,
+      "cultural_notes": [],
+      "assumptions": [
+        "المنتج عطر رجالي فاخر بدون اسم علامة تجارية محددة",
+        "الجمهور الشباب الذكور المهتمون بالأناقة",
+        "الأسلوب السينمائي يعني إضاءة درامية ولقطات بجودة إعلانية عالية",
+        "المدة 15 ثانية كما طلب العميل",
+        "لم تُحدد نسبة العرض لذا تُركت فارغة"
+      ],
+      "normalized_request_en": "15-second cinematic ad for a luxury men's fragrance targeting young men who value style"
+    }
+  }
+]

@@ -34,7 +34,9 @@ from adsmith.domain.enums import (
 from adsmith.domain.generation import Artifact, GenerationAttempt
 from adsmith.domain.qa import QAVerdict
 
-SpecText = Annotated[str, Field(min_length=1, max_length=300)]
+# 500, not 300: real runs at DP-level detail (Kelvin, direction, practicals) hit 300 and
+# cost a repair each time.
+SpecText = Annotated[str, Field(min_length=1, max_length=500)]
 MIN_SCENE_S = 1.5
 MAX_SCENE_S = 8.0
 
@@ -57,6 +59,18 @@ class ShotSpec(DomainModel):
     setting: SpecText
     color_notes: str | None = Field(default=None, max_length=300)
     speed: Speed = Speed.NORMAL
+
+
+class ScenePromptDraft(DomainModel):
+    """``prompt_writer`` output. English only. Adapters map it onto each video model's payload."""
+
+    keyframe_prompt: Annotated[str, Field(min_length=40, max_length=2500)] = Field(
+        description="One still frame: subject, frozen action, setting, framing, light, grade, mood."
+    )
+    motion_prompt: Annotated[str, Field(min_length=10, max_length=600)] = Field(
+        description="Only what moves: camera move, subject motion, atmosphere; ≤ 50 words."
+    )
+    negative_prompt: str = Field(default="", max_length=800)
 
 
 class ScenePrompt(DomainModel):

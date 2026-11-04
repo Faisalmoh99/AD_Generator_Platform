@@ -10,9 +10,10 @@ from adsmith.domain.concept import ConceptJudgementDraft, ConceptSetDraft
 from adsmith.domain.continuity import ContinuityBibleDraft
 from adsmith.domain.edit import ScenePatchDraft
 from adsmith.domain.qa import QAVerdictDraft
+from adsmith.domain.scene import ScenePromptDraft
 from adsmith.domain.storyboard import StoryboardDraft
 
-# Nodes added in later milestones (prompt_writer, conflict_check, policy_rewrite) register
+# Nodes added in later milestones (conflict_check, policy_rewrite) register
 # their schemas here when they are built.
 OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "understand": BriefDraft,
@@ -20,6 +21,7 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "select": ConceptJudgementDraft,
     "storyboard": StoryboardDraft,
     "continuity": ContinuityBibleDraft,
+    "prompt_writer": ScenePromptDraft,
     "edit_parser": ScenePatchDraft,
     "qa_critic": QAVerdictDraft,
 }

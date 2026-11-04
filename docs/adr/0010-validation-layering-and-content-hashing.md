@@ -74,6 +74,21 @@ Known false positives (accepted): a wardrobe colour word ("black") can match a p
 ("black bottle"), and an Arabic prefix match can catch an unrelated word. Both cost a regeneration,
 never continuity.
 
+**Addendum after real runs (M4b).** The first real runs showed two things the cost table above
+understated:
+1. Bible-term extraction was noisy. Tokenising wardrobe phrases ("long dark sleeve with no text")
+   turned "dark", "with" and "text" into character terms, so dark or text-free product shots were
+   flagged as character shots. Terms are now stop-word filtered and exclude a descriptor list
+   (colours, materials, "plain", "text"…), with a regression test from the real run. Generic terms
+   still produce some false positives (e.g. "statue *faces*", "عطره" = *his scent*).
+2. A false positive has a second cost beyond regeneration: the prompt writer is given the bible
+   sections a scene "uses", so a falsely flagged product close-up receives the character
+   description. In the real run the prompt writer correctly left the man out (and even added
+   "people, man" to the negatives), and the prompt now says to copy a description only for elements
+   the shot actually shows. Still, invalidation and prompt-injection share one signal. The
+   principled fix (future work) is to split *depends-on* (biased true, drives invalidation) from
+   *visible* (accurate, drives prompt content).
+
 **Three layers of change detection, each with one job:**
 1. `content_hash` / `keyframe_spec_hash`: *did the scene's spec change?* (blast radius, staleness)
 2. `ContinuityBible.section_hash(section)`: *which bible sections changed?*

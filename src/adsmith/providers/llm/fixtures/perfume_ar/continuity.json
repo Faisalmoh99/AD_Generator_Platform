@@ -1,0 +1,70 @@
+[
+  {
+    "output": {
+      "character": {
+        "description": "One young Saudi man in a dark tailored jacket, calm confident posture, appears small beside the monument in early scenes and standing behind the bottle on the table in the reveal",
+        "age_range": "22-27",
+        "appearance": "Light olive-brown skin, oval face with defined cheekbones, straight dark eyebrows, dark brown eyes, calm composed expression with a faint confident nod",
+        "hair": "Short black hair in a low fade at the sides, slightly longer textured top swept back",
+        "grooming": "Neatly trimmed black beard with a sharp cheek line and clean neckline, no jewelry except a slim dark watch",
+        "build": "Slim athletic build, about 178 cm, straight shoulders, upright posture",
+        "wardrobe": [
+          "Black tailored single-breasted jacket with a slim fit and matte finish",
+          "Dark charcoal fine-knit crew-neck top underneath",
+          "Black tailored trousers",
+          "Black leather dress shoes with a subtle polish",
+          "Slim dark watch with a black leather strap"
+        ]
+      },
+      "product": {
+        "name": "the fragrance",
+        "form": "Heavy rectangular faceted flacon with thick glass walls, beveled shoulders and a squat, weighty base; a monumental amber glass obelisk at giant scale in scenes 1-2, revealed as the same bottle on a table in scenes 3-4",
+        "materials": "Polished amber glass with crisp cut facets that catch light, thick glass base, solid heavy cap in brushed gold-toned metal with a polished edge",
+        "colors": "Deep amber glass glowing honey-orange from within, brushed gold cap, black marble surroundings",
+        "branding_text": "",
+        "branding_style": "No visible lettering or logos; wordless, with a plain smooth glass face and the label side turned away from camera",
+        "distinctive_features": [
+          "Inner amber glow that makes the glass look lit from within",
+          "Sharp faceted edges that carry a thin golden highlight",
+          "Heavy brushed-gold cap with a crisp polished rim"
+        ],
+        "hero_angle": "Straight-on, slightly low camera angle, bottle centered on polished black marble with a sharp mirror reflection beneath it"
+      },
+      "color_grade": {
+        "palette": [
+          "#E8962E",
+          "#C9A24B",
+          "#0B0F12",
+          "#0F2A2E",
+          "#1E5558",
+          "#F2D9A0"
+        ],
+        "contrast": "High contrast with rich deep blacks, controlled highlights and no clipped whites",
+        "saturation": "Saturated amber and gold against restrained desaturated teal-black shadows",
+        "film_emulation": "Cinematic anamorphic look with soft horizontal flares and fine film grain, similar to a Kodak Vision3 500T print"
+      },
+      "location": {
+        "primary": "A vast, endless black marble hall with towering columns, a mirror-polished floor and no other light sources",
+        "secondary": [
+          "A black marble table in the same dark hall holding the bottle",
+          "A polished black marble surface in a dark void for the final close-up"
+        ],
+        "era": "contemporary"
+      },
+      "mood": "Mysterious, monumental and awe-inspiring, becoming confident, revelatory and premium by the end",
+      "lighting": "Single hard amber key (2700-3000K) from the glowing glass source, with a thin cool teal rim (6000-7000K) and very low teal ambient fill, deep black shadows and long amber reflections on polished marble; scenes only deviate in key direction",
+      "audio_mood": "Deep cinematic sub-bass drone with a slow rising swell, soft airy reverb in the hall, a single resonant chime at the reveal, and a warm low resolving tone on the final shot, no voices",
+      "forbidden": [
+        "No readable text, letters, numbers or logos anywhere in the frame",
+        "No invented brand name or lettering on the bottle or label",
+        "No additional people in frame",
+        "No alcohol, bars or drinks",
+        "No other light sources or colourful neon",
+        "No bright daylight or windows",
+        "No cartoonish or plastic-looking glass",
+        "No cheap gold chains or flashy jewelry",
+        "No revealing or tight clothing on the man"
+      ]
+    }
+  }
+]

@@ -644,3 +644,12 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - In interactive mode `ideate → awaiting_concept_choice` directly (the `select` node runs only in auto mode).
 - `run_until_blocked(stop_before=...)` and CLI `--until <stage>` (planning-only runs stop before `keyframe`).
 - `RunConfig.scripted_scenario` (scripted LLM scenario per run, defaulting to `perfume_<request language>`).
+
+### M4b
+- Nodes `storyboard`, `continuity`, `prompt` + templates. The storyboard enforces the real video model's per-scene minimum (Kling: 3 s) even in mock mode, so plans stay producible. The prompt node writes scene 1 first (cache warm-up), then the rest in parallel, and isolates per-scene failures (`FailScenes` delta).
+- Deltas added: `UpgradeSceneFlags` (upgrade-only), `FailScenes`. `StaleDeltaError` is a `StaleWriteError`.
+- Production Pack (`agent/export.py`): orchestrator post-commit hook after `prompt`, `adsmith export`, bilingual Markdown + JSON, atomic dir swap; `zip_production_pack` for the UI.
+- Creative guardrails (ADR-0014): `category_cliches` first in the ideate schema; judge `originality` (0.25) + `uses_category_cliche` (−1.5 penalty); tie-break brief fit → originality → number.
+- Latency (ADR-0007): balanced `understand` → low (3.5 s); `ideate` stays high (measured quality regression at medium/low).
+- Domain fixes from real runs: category-neutral `ProductSpec` (`form`, `materials`, `colors`, `branding_text`, `branding_style`); relaxed length limits; descriptor-filtered bible terms; bible `prompt_block` as labelled `key: value` lines.
+- Arabic fixtures `perfume_ar` harvested from a real run (`scripts/harvest_fixtures.py`).

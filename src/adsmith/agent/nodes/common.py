@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from adsmith.config import Settings
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept
 from adsmith.domain.enums import Language, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.scene import Scene
+from adsmith.domain.scene_flags import Flag, FlagOverride
+from adsmith.domain.storyboard import Storyboard
 
 
 def language_name(lang: Language) -> str:
@@ -59,3 +63,45 @@ def decision(run_id: str, stage: Stage, summary: str, **payload: object) -> Agen
             "payload": payload,
         }
     )
+
+
+def scene_duration_bounds(settings: Settings) -> tuple[float, float]:
+    """Per-scene duration range the *real* video model can produce, so plans made in mock mode stay
+    producible on fal. Clips are trimmed to the scene duration at assembly."""
+    from adsmith.domain.scene import MAX_SCENE_S, MIN_SCENE_S  # noqa: PLC0415
+
+    video = settings.catalog.fal.video
+    endpoint = video.endpoints[settings.fal_video_model or video.default]
+    model_min = endpoint.min_duration_s or min(endpoint.allowed_durations_s or [MIN_SCENE_S])
+    return max(MIN_SCENE_S, model_min), MAX_SCENE_S
+
+
+def scene_block(scene: Scene) -> str:
+    sh = scene.shot
+    return "\n".join(
+        [
+            f"Scene {scene.order} ({scene.purpose.value}, {scene.duration_s:g}s): "
+            f"{scene.description}",
+            f"  Shot: {sh.shot_type.value}, camera {sh.camera_movement.value}, lens {sh.lens}, "
+            f"speed {sh.speed.value}",
+            f"  Action: {sh.subject_action}",
+            f"  Setting: {sh.setting}; time: {sh.time_of_day.value}",
+            f"  Lighting: {sh.lighting}",
+            f"  Composition: {sh.composition}",
+            f"  Mood: {sh.mood}" + (f"; color: {sh.color_notes}" if sh.color_notes else ""),
+            f"  Shows character: {scene.shows_character}; shows product: {scene.shows_product}",
+        ]
+    )
+
+
+def storyboard_block(sb: Storyboard) -> str:
+    return "\n\n".join(scene_block(s) for s in sb.scenes)
+
+
+def flag_override_events(
+    run_id: str, stage: Stage, overrides: list[FlagOverride]
+) -> tuple[dict[str, list[Flag]], list[AgentEvent]]:
+    flags: dict[str, list[Flag]] = {}
+    for o in overrides:
+        flags.setdefault(o.scene_id, []).append(o.flag)
+    return flags, [o.as_event(run_id, stage) for o in overrides]

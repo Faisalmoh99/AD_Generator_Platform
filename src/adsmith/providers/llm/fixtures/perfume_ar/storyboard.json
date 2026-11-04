@@ -1,0 +1,88 @@
+[
+  {
+    "output": {
+      "scenes": [
+        {
+          "purpose": "hook",
+          "description": "قاعة رخامية سوداء ما لها نهاية، والكاميرا تمشي بهدوء نحو ضوء كهرماني متوهج من بعيد، وانعكاسه ينساب على الأرضية اللامعة.",
+          "duration_s": 4.0,
+          "shot": {
+            "shot_type": "extreme_wide",
+            "camera_movement": "dolly_in",
+            "lens": "24mm anamorphic, f/4, deep focus with subtle horizontal flares",
+            "lighting": "Single hard 2700K amber key from a distant glowing source at frame center, cool 7000K teal ambient fill at very low level, deep black shadows, polished marble floor catching long amber reflections",
+            "time_of_day": "interior",
+            "composition": "Vertical 9:16 frame with a tall, symmetrical vanishing-point composition. The small amber glow sits at the upper-middle third, with towering dark columns on both sides and a long reflective floor leading the eye upward. Generous negative space in the dark foreground.",
+            "mood": "Mysterious, monumental, awe-inspiring",
+            "subject_action": "The camera glides slowly forward down the center of the empty hall toward the glowing amber light as faint dust drifts through the beam.",
+            "setting": "A vast, endless black marble hall with towering columns and a mirror-polished floor, with no other light sources.",
+            "color_notes": "Amber glow against teal-black shadows, rich blacks, no clipped highlights",
+            "speed": "normal"
+          },
+          "shows_character": false,
+          "shows_product": true
+        },
+        {
+          "purpose": "build",
+          "description": "يظهر النصب الشاهق من زجاج كهرماني يتوهج بقوة، وشاب صغير الحجم واقف جنبه يرفع راسه ويطالعه بإعجاب وهيبة.",
+          "duration_s": 4.0,
+          "shot": {
+            "shot_type": "wide",
+            "camera_movement": "tilt",
+            "lens": "28mm anamorphic, f/2.8, deep focus, slight edge stretch",
+            "lighting": "Hard 2800K amber key from the monument's inner glow, camera-right, casting a long sharp shadow of the man across the marble. Cool 6500K teal rim from high behind, deep shadows elsewhere, soft amber reflections in the floor",
+            "time_of_day": "interior",
+            "composition": "Vertical 9:16 frame. The monument fills the right two-thirds and rises beyond the top edge. The young man appears tiny at lower left, seen in profile or three-quarter back view, and his upward eyeline leads the viewer up the monument. The monument has no markings, text or logos.",
+            "mood": "Awe, ambition, reverence",
+            "subject_action": "The camera tilts slowly upward along the amber glass monument as the young man beside it raises his head and looks up at it.",
+            "setting": "The same black marble hall, now with a towering amber glass monument in the center and a stylishly dressed young man in a dark tailored jacket standing beside it.",
+            "color_notes": "Saturated amber glass, teal-black shadows, reflective black marble",
+            "speed": "normal"
+          },
+          "shows_character": true,
+          "shows_product": true
+        },
+        {
+          "purpose": "reveal",
+          "description": "الكاميرا تتراجع بهدوء وتنقلب النسبة قدام عيوننا: النصب هو القارورة نفسها واقفة على طاولة، والشاب واقف قدامها.",
+          "duration_s": 4.0,
+          "shot": {
+            "shot_type": "medium",
+            "camera_movement": "pull_out",
+            "lens": "50mm anamorphic, f/2, moderate depth of field with soft background falloff",
+            "lighting": "Hard 2800K amber key from camera-left that skims the glass and shows its facets. Cool 6000K teal rim light behind the man outlines his shoulders, low fill, deep shadows, amber reflections on the polished tabletop and marble",
+            "time_of_day": "interior",
+            "composition": "Vertical 9:16 frame. The fragrance bottle is centered in the lower-middle on a dark marble table, and the young man stands behind it, slightly off-center, looking at it. The dark hall recedes above him. The label side faces away, with no readable markings.",
+            "mood": "Revelatory, confident, luxurious",
+            "subject_action": "The camera pulls back slowly so the perspective settles and the monument is revealed as a bottle on a table, while the young man stands before it and gives a faint, confident nod.",
+            "setting": "A black marble table in the dark hall, with a luxury amber-glass men's fragrance bottle with a heavy cap, and a young man in a dark tailored jacket standing behind it.",
+            "color_notes": "Amber glass against teal-black shadows, metallic highlights on the cap",
+            "speed": "slow_motion"
+          },
+          "shows_character": true,
+          "shows_product": true
+        },
+        {
+          "purpose": "product",
+          "description": "لقطة نهائية قريبة للقارورة وحدها بضوء ذهبي دافئ، وانعكاسها يلمع على الرخام الأسود.",
+          "duration_s": 3.0,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "push_in",
+            "lens": "100mm macro, f/2.8, shallow depth of field",
+            "lighting": "Single hard 3000K golden key from camera-left with a crisp edge highlight on the glass and cap, a thin cool 6500K teal rim on the right edge, a soft pool of light on the marble, a sharp mirror reflection beneath the bottle, black background",
+            "time_of_day": "interior",
+            "composition": "Vertical 9:16 frame. The bottle is centered in the upper two-thirds, with its reflection in the polished marble below it. The lower fifth of the frame is clear dark marble, left empty for the tagline and end card. No text, logos or markings on the glass.",
+            "mood": "Premium, desirable, timeless",
+            "subject_action": "The camera pushes in very slowly on the lone bottle as a golden highlight glides along its glass edge.",
+            "setting": "A polished black marble surface in a dark void, with only the amber-glass men's fragrance bottle in the frame.",
+            "color_notes": "Warm gold and amber highlights, deep teal-black background, rich blacks",
+            "speed": "slow_motion"
+          },
+          "shows_character": false,
+          "shows_product": true
+        }
+      ]
+    }
+  }
+]

@@ -18,7 +18,7 @@ class ConceptDraft(DomainModel):
 
     title: Annotated[str, Field(min_length=1, max_length=80)]
     logline: UserText
-    narrative_arc: list[Annotated[str, Field(min_length=1, max_length=160)]] = Field(
+    narrative_arc: list[Annotated[str, Field(min_length=1, max_length=240)]] = Field(
         min_length=3, max_length=5
     )
     visual_hook: UserText
@@ -53,9 +53,22 @@ def _check_distinct(concepts: list[ConceptDraft]) -> None:
         )
 
 
-class ConceptSetDraft(DomainModel):
-    """``ideate`` output schema. The distinctness check runs here so failures feed schema repair."""
+Cliche = Annotated[str, Field(min_length=1, max_length=160)]
 
+
+class ConceptSetDraft(DomainModel):
+    """``ideate`` output schema. The distinctness check runs here so failures feed schema repair.
+
+    ``category_cliches`` comes FIRST on purpose: structured output is generated in schema order, so
+    the model names the category's clichés before it writes concepts that must avoid them.
+    """
+
+    category_cliches: list[Cliche] = Field(
+        min_length=3,
+        max_length=5,
+        description="The most overused ideas and visuals in ads for this product category and "
+        "market, written in the user's language. None of the concepts may rely on them.",
+    )
     concepts: list[ConceptDraft] = Field(min_length=CONCEPT_COUNT, max_length=CONCEPT_COUNT)
 
     @model_validator(mode="after")
@@ -70,13 +83,17 @@ class Concept(ConceptDraft):
 
 class ConceptSet(DomainModel):
     concepts: list[Concept] = Field(min_length=CONCEPT_COUNT, max_length=CONCEPT_COUNT)
+    category_cliches: list[Cliche] = Field(default_factory=list, max_length=5)
     selected_id: str | None = None
     selected_by: Literal["user", "agent"] | None = None
     selection_rationale: str | None = Field(default=None, max_length=1000)
 
     @classmethod
     def from_draft(cls, draft: ConceptSetDraft) -> ConceptSet:
-        return cls(concepts=[Concept(**c.model_dump()) for c in draft.concepts])
+        return cls(
+            concepts=[Concept(**c.model_dump()) for c in draft.concepts],
+            category_cliches=list(draft.category_cliches),
+        )
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -102,12 +119,15 @@ class ConceptSet(DomainModel):
 
 # ------------------------------------------------------------------------------ auto-selection
 JUDGE_WEIGHTS: dict[str, float] = {
-    "brief_fit": 0.30,
-    "producibility": 0.25,  # can current video models render it well in ≤15 s?
-    "product_hero": 0.20,
+    "brief_fit": 0.25,
+    "originality": 0.25,  # fresh idea vs. the category clichés listed at ideation
+    "producibility": 0.20,  # can current video models render it well in ≤15 s?
+    "product_hero": 0.15,
     "cultural_fit": 0.15,
-    "distinctiveness": 0.10,
 }
+# Subtracted from the weighted score when the judge itself says the core idea is a cliché, so a
+# concept the judge flags can't win on its other strengths alone.
+CLICHE_PENALTY = 1.5
 Score = Annotated[int, Field(ge=1, le=10)]
 
 
@@ -117,11 +137,17 @@ class ConceptScore(DomainModel):
     producibility: Score
     product_hero: Score
     cultural_fit: Score
-    distinctiveness: Score
+    originality: Score
+    uses_category_cliche: bool = Field(
+        description="True if the concept's core idea or main visual relies on a category cliché "
+        "(listed or otherwise)."
+    )
     rationale: Annotated[str, Field(min_length=1, max_length=400)]
 
     def weighted(self) -> float:
         total: float = sum(float(getattr(self, k)) * w for k, w in JUDGE_WEIGHTS.items())
+        if self.uses_category_cliche:
+            total -= CLICHE_PENALTY
         return round(total, 4)
 
 
@@ -138,5 +164,8 @@ class ConceptJudgementDraft(DomainModel):
         return self
 
     def winner(self) -> ConceptScore:
-        """Highest weighted score; ties broken by brief_fit, then lowest concept number."""
-        return max(self.scores, key=lambda s: (s.weighted(), s.brief_fit, -s.concept_number))
+        """Highest weighted score; ties: brief fit, then originality, then lowest number."""
+        return max(
+            self.scores,
+            key=lambda s: (s.weighted(), s.brief_fit, s.originality, -s.concept_number),
+        )

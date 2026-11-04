@@ -79,7 +79,7 @@ def test_near_duplicate_concepts_rejected_with_actionable_message() -> None:
         "narrative_arc": sentences[4:7],
     }
     with pytest.raises(ValidationError) as exc:
-        ConceptSetDraft.model_validate({"concepts": draft})
+        ConceptSetDraft.model_validate({"category_cliches": ["a", "b", "c"], "concepts": draft})
     msg = str(exc.value)
     assert "concepts 1 and 3" in msg and "not distinct" in msg
 

@@ -244,3 +244,49 @@ result discarded, resume in a fresh process with no re-calls).
 
 **Next**: M4b: storyboard → continuity → prompt, scene-flag wiring, Production Pack, Arabic
 fixtures, then the 3 real runs and critique.
+
+---
+
+## M4b: Storyboard → continuity → prompt, Production Pack, real runs (2026-11-04)
+
+**Built**
+- Nodes + prompts: `storyboard` (DP-level shot specs, video-model duration floor, 9:16 composition
+  with a tagline safe zone), `continuity` (bible + upgrade-only flag check with bible terms),
+  `prompt` (keyframe/motion/negative per scene; cache-warming order; per-scene failure isolation).
+- `agent/export.py`: Production Pack (`storyboard.json` + bilingual `storyboard.md`), post-commit
+  hook after `prompt`, CLI `adsmith export`.
+- Creative guardrails (ADR-0014): cliché list first in the ideate schema; judge originality plus
+  a cliché penalty.
+- Latency tuning (ADR-0007): understand low = 3.5 s median (was 5.7 s at medium). ideate kept at
+  high: 49.6 s vs 21.2 s at medium, but medium/low regressed to category clichés.
+- `scripts/harvest_fixtures.py`; `perfume_ar` fixtures harvested from a real run.
+
+**Real runs** (balanced, `--auto`, stop before keyframe), first pass → after fixes:
+
+| Run | Total time | LLM cost | Repairs | Flag overrides |
+|---|---|---|---|---|
+| AR perfume (15 s) | 106 s → 97 s | $0.176 → $0.181 | 0 → 0 | 2 (FP) → 0 |
+| EN Jeddah coffee (15 s) | 107 s → 98 s | $0.217 → $0.185 | 2 → 0 | 1 (FP) → 0 |
+| AR delivery app (10 s) | 114 s → 103 s | $0.207 → $0.157 | 2 → 0 | 1 (FP) → 0 |
+
+Per stage (typical): understand ~4 s / $0.0005 · ideate ~40 s / $0.05 · select ~6 s / $0.013 ·
+storyboard ~22 s / $0.03 · continuity ~14 s / $0.025 · prompt ~12 s / $0.05 (4 parallel calls).
+
+**Defects found only by reading real outputs (fixed, with regression tests):**
+perfume-shaped `ProductSpec`; "women" in forbidden/negative prompts (cultural over-correction);
+arbitrary length limits causing repairs; noisy bible-term flag detection; ungrammatical bible
+`prompt_block` ("cap cap"); judge rationale language; prompt-example copying (M4a).
+
+**Open quality issues (not fixed, carried forward):** multi-action shots in energetic briefs;
+negative prompts that contradict the positive (e.g. "additional people" alongside a courier);
+keyframe prompts ~230–260 words against a 60–120 target; the scale-trick "reveal" concept is not
+physically achievable as one continuous shot; dialect `other` for a clearly Gulf request at low
+effort; prompt-injection and invalidation share the scene flags (ADR-0010 addendum).
+
+**Tests**: `make check` green, **281 passed, 2 skipped** (live). New: judge (weights, penalty
+flips the winner, tie-breaks), planning (full pipeline + pack, cache-warming order, per-scene
+failure isolation, duration floor repair, continuity flag upgrade via bible terms, zero-key Arabic
+e2e with Arabic pack), descriptor regression, harvested fixtures validated.
+
+**Next**: M5: media providers (mock image/video), prompt adapters, cache, chaos, budget guard,
+recovery strategies, scene scheduler, keyframe + generate nodes.

@@ -1,0 +1,30 @@
+[
+  {
+    "output": {
+      "keyframe_prompt": "Vertical 9:16 wide shot, 35mm anamorphic, deep focus. A black car glides along an empty downtown boulevard at night, the driver a young Saudi man with a short black fade and trimmed beard line, black tailored shirt, visible as a silhouette through the windshield. Wet asphalt mirrors neon practicals; light streaks frame both sides. Low-key light, cool 5600K neon accents against deep shadows. Palette #0B0B0F, #C9A227, #1E90FF; high contrast, low saturation, subtle 35mm grain. Mysterious, anticipatory mood.",
+      "motion_prompt": "Slow lateral truck right keeping pace with the car; neon reflections slide across the windshield; faint mist drifts over the wet road.",
+      "negative_prompt": "text, letters, watermark, logo, extra fingers, deformed hands, distorted face, duplicate bottle, alcohol, competitor brands"
+    }
+  },
+  {
+    "output": {
+      "keyframe_prompt": "Vertical 9:16 close-up, 85mm, f/1.8, shallow depth of field. A young Saudi man, 22-28, light stubble, defined jawline, dark eyes, short black fade, black tailored shirt and silver wristwatch, sits behind the wheel, glancing toward the rear-view mirror. Car interior; city bokeh fills the left of frame. Neon rim light from the side window, cool 5600K, soft warm 3200K dashboard fill. Palette #0B0B0F, #1E90FF accents; high contrast, subtle grain. Confident, focused mood.",
+      "motion_prompt": "Slow push-in toward his face; neon reflections pass over his eyes; he lets a slight half-smile form.",
+      "negative_prompt": "text, letters, watermark, logo, extra fingers, deformed hands, distorted face, duplicate bottle, alcohol, competitor brands"
+    }
+  },
+  {
+    "output": {
+      "keyframe_prompt": "Vertical 9:16 medium close-up, 85mm, f/2, shallow depth of field. In the foreground, a hand with a silver wristwatch holds a faceted rectangular matte black glass bottle with a brushed gold cap and deep amber liquid, wordless embossed gold label, gold edge on the base; the young man's face is soft in the background. Parked car interior. Warm 3200K interior light against cool 5600K neon from outside. Palette #0B0B0F, #C9A227, #1E90FF; high contrast, subtle grain. Deliberate, intimate mood.",
+      "motion_prompt": "Static camera; in slow motion his hand lifts the bottle and releases one fine spray toward his neck; the mist catches the warm light.",
+      "negative_prompt": "text, letters, watermark, logo, extra fingers, deformed hands, distorted face, duplicate bottle, alcohol, competitor brands"
+    }
+  },
+  {
+    "output": {
+      "keyframe_prompt": "Vertical 9:16 insert, 100mm macro, f/2.8. A faceted rectangular matte black glass bottle with a brushed gold cap and deep amber liquid, wordless embossed gold label, gold edge on the base, stands centered on the dark wet roof of a car, label facing camera, three-quarter low angle. Behind it, a rooftop party glows as soft bokeh. Hard top light with gold reflections on the facets. Palette #0B0B0F, #C9A227, #E5E5E5; high contrast. Luxurious, triumphant mood; lower fifth of frame left clear.",
+      "motion_prompt": "Slow orbit of about 30 degrees around the bottle; gold reflections travel across the facets; bokeh lights shimmer softly.",
+      "negative_prompt": "text, letters, watermark, logo, extra fingers, deformed hands, distorted face, duplicate bottle, alcohol, competitor brands"
+    }
+  }
+]

@@ -175,12 +175,11 @@ def make_bible(version: int = 1, **over: Any) -> ContinuityBible:
         ),
         "product": ProductSpec(
             name="NOIR",
-            bottle_shape="faceted rectangular",
-            bottle_material="matte black glass",
-            liquid_color="amber",
-            cap="brushed gold",
-            label_text="NOIR",
-            label_style="embossed gold serif",
+            form="faceted rectangular bottle",
+            materials="matte black glass, brushed gold cap",
+            colors="black glass, deep amber liquid, gold cap",
+            branding_text="NOIR",
+            branding_style="embossed gold serif",
             hero_angle="three-quarter low angle",
         ),
         "color_grade": ColorGrade(

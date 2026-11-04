@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -93,6 +94,16 @@ def choose(
 def show(run_id: str) -> None:
     """Show the current state of a run."""
     _print_state(_orchestrator().rt.storage.runs.load(run_id))
+
+
+@app.command()
+def export(
+    run_id: str, out: Annotated[Path | None, typer.Option(help="Output directory")] = None
+) -> None:
+    """Write the Production Pack (storyboard.md + storyboard.json) for a run."""
+    orch = _orchestrator()
+    path = orch.export(orch.rt.storage.runs.load(run_id), out)
+    console.print(f"Production Pack: [bold]{path}[/]" if path else "[red]Export failed[/]")
 
 
 @app.command()

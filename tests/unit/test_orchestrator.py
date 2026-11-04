@@ -30,7 +30,8 @@ def steps(name: str) -> list[dict[str, Any]]:
 
 
 def full_scripts(**over: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    return {n: steps(n) for n in ("understand", "ideate", "select")} | over
+    names = ("understand", "ideate", "select", "storyboard", "continuity", "prompt_writer")
+    return {n: steps(n) for n in names} | over
 
 
 def make_orch(
@@ -119,7 +120,7 @@ async def test_auto_mode_selects_with_judge(settings: Settings) -> None:
     orch, _ = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=False)
     state = await orch.run_until_blocked(run.id)
-    assert state.stage is Stage.STORYBOARD  # no storyboard node yet (M4b): the loop stops
+    assert state.stage is Stage.KEYFRAME  # planning complete; keyframe node arrives in M5
     assert state.concepts is not None and state.concepts.selected_by == "agent"
     assert state.concepts.selected_id == state.concepts.concepts[0].id  # highest weighted score
     select_event = next(
@@ -231,7 +232,7 @@ async def test_resume_from_checkpoint_in_a_new_process(settings: Settings) -> No
     orch1.rt.storage.db.close()
 
     orch2, p2 = make_orch(settings, full_scripts())  # fresh runtime, same data dir
-    state = await orch2.resume(run.id)
+    state = await orch2.resume(run.id, stop_before=Stage.STORYBOARD)
     assert state.stage is Stage.STORYBOARD
     assert (p2.calls_for("understand"), p2.calls_for("ideate"), p2.calls_for("select")) == (0, 0, 1)
     assert p1.calls_for("select") == 0

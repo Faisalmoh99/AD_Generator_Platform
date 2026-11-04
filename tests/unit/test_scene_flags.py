@@ -89,3 +89,23 @@ def test_hero_shot_is_product_vocabulary_not_a_character() -> None:
     hits = detect_mentions(s)
     assert hits["shows_character"] == []
     assert "bottle" in hits["shows_product"]
+
+
+def test_wardrobe_descriptors_are_not_character_terms() -> None:
+    """Real-run regression (coffee brief): wardrobe 'Long-sleeved dark charcoal-brown cotton shirt
+    with sleeve reaching the wrist' must not turn 'dark'/'with'/'text' into character terms."""
+    bible = make_bible()
+    assert bible.character is not None
+    bible.character.wardrobe = [
+        "Long-sleeved dark charcoal-brown cotton shirt with sleeve reaching the wrist",
+        "Plain dark apron strap, if visible, in deep brown canvas with no text",
+    ]
+    s = make_scene(
+        **_neutral(
+            description="The finished cup rests on dark wood with no text in frame.",
+            shot=make_shot(subject_action="steam fades into the haze", composition="cup centered"),
+        )
+    )
+    assert detect_mentions(s, bible)["shows_character"] == []
+    s2 = make_scene(**_neutral(description="A shirt cuff steadies the saucer."))
+    assert "shirt" in detect_mentions(s2, bible)["shows_character"]
