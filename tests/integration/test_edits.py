@@ -195,3 +195,42 @@ async def test_wardrobe_edit_archives_the_bible_and_keeps_the_product_reference(
     assert pr is not None and pr.valid_for(after)  # the product did not change
     assert pr.tries == before.product_reference.tries  # no new packshot was paid for
     assert h.reference is not None and h.reference.calls >= refs_before
+
+
+async def test_patch_bible_stales_only_scenes_that_use_the_section(tmp_path: Path) -> None:
+    from adsmith.agent import commands  # noqa: PLC0415
+
+    h, before = await finished(tmp_path)
+    assert before.storyboard is not None and before.bible is not None
+    showing = {s.order for s in before.storyboard.scenes if s.shows_character}
+    after = commands.patch_bible(
+        h.rt.storage,
+        before.id,
+        {"character.wardrobe": "Bright white thobe; no headwear, short neat black hair"},
+        reason="no shemagh",
+    )
+    assert after.bible is not None and after.bible.version == before.bible.version + 1
+    assert after.bible_history[-1].version == before.bible.version
+    assert after.storyboard is not None and after.stage is Stage.PROMPT
+    stale = {s.order for s in after.storyboard.scenes if s.status is SceneStatus.STALE}
+    assert stale == showing and 4 not in stale
+
+
+async def test_corrected_false_positive_flag_keeps_a_scene_out_of_the_blast(tmp_path: Path) -> None:
+    from adsmith.agent import commands  # noqa: PLC0415
+
+    h, before = await finished(tmp_path)
+    assert before.storyboard is not None
+    showing = [s.order for s in before.storyboard.scenes if s.shows_character]
+    spared = showing[-1]
+    snap = snapshot(before)
+    state = commands.correct_scene_flags(
+        h.rt.storage, before.id, spared, shows_character=False, reason="no person in this shot"
+    )
+    assert snapshot(state) == snap  # nothing regenerated or bumped
+    after = commands.patch_bible(
+        h.rt.storage, before.id, {"character.wardrobe": "Bright white thobe"}, reason="test"
+    )
+    assert after.storyboard is not None
+    stale = {s.order for s in after.storyboard.scenes if s.status is SceneStatus.STALE}
+    assert stale == set(showing) - {spared}

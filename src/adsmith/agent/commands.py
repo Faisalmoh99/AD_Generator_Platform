@@ -213,6 +213,91 @@ def adopt_product_reference(
     return storage.runs.update(run_id, mutate, reason="product reference adopted").state
 
 
+def patch_bible(storage: Storage, run_id: str, changes: dict[str, str], *, reason: str) -> RunState:
+    """Explicit bible patch (dotted paths, validated like an edit's bible changes) for a run that is
+    already mid-edit. Archives the old bible; scenes that use a changed section go stale at prompt
+    depth (upgrade-only: scenes already stale deeper stay so). The product reference stays valid
+    unless the product section changed."""
+    from adsmith.agent.edit.blast import apply_bible_changes  # noqa: PLC0415
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.bible is None or s.storyboard is None:
+            raise CommandRejectedError("the run has no bible yet")
+        try:
+            new = apply_bible_changes(s.bible, changes)
+        except ValueError as exc:
+            raise CommandRejectedError(str(exc)) from exc
+        sections = {p.partition(".")[0] for p in changes}
+        touched = []
+        for sc in s.storyboard.scenes:
+            uses = {str(x) for x in sc.uses_bible_sections()}
+            if sections & uses and sc.status is not SceneStatus.STALE:
+                sc.bump_version(f"bible: {reason}")
+                sc.mark_stale(StaleFrom.PROMPT)
+                touched.append(sc.order)
+        s.bible_history.append(s.bible)
+        s.bible = new
+        s.stage = Stage.PROMPT
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.PROMPT,
+                type=EventType.DECISION,
+                summary=f"Bible v{new.version} ({reason}): {', '.join(sorted(changes))}; "
+                f"newly stale scenes {touched or 'none (already stale)'}",
+                payload={
+                    "changes": dict[str, JsonValue](changes),
+                    "touched": list[JsonValue](touched),
+                },
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="bible patched").state
+
+
+def correct_scene_flags(
+    storage: Storage,
+    run_id: str,
+    scene_order: int,
+    *,
+    reason: str,
+    shows_character: bool | None = None,
+    shows_product: bool | None = None,
+) -> RunState:
+    """Human correction of a false-positive scene flag (e.g. a mist macro flagged as showing the
+    character) WITHOUT regenerating anything: the flag only decides which future bible changes
+    reach the scene. ADR-0010 keeps inferred flags upgrade-only; a human may downgrade, logged."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.storyboard is None:
+            raise CommandRejectedError("the run has no storyboard")
+        matches = [sc for sc in s.storyboard.scenes if sc.order == scene_order]
+        if not matches:
+            raise CommandRejectedError(f"no scene {scene_order}")
+        sc = matches[0]
+        changed: list[str] = []
+        if shows_character is not None and sc.shows_character != shows_character:
+            sc.shows_character = shows_character
+            changed.append(f"shows_character={shows_character}")
+        if shows_product is not None and sc.shows_product != shows_product:
+            sc.shows_product = shows_product
+            changed.append(f"shows_product={shows_product}")
+        sc.check_invariants()
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                scene_id=sc.id,
+                type=EventType.DECISION,
+                summary=f"HUMAN: scene {scene_order} flags corrected "
+                f"({', '.join(changed) or 'no change'}): {reason}. Nothing regenerated.",
+                payload={"changed": list[JsonValue](changed), "human": True},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason=f"scene {scene_order} flags corrected").state
+
+
 def accept_scene(
     storage: Storage,
     run_id: str,
