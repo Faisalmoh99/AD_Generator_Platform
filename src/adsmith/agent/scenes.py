@@ -32,12 +32,13 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal, Protocol
 
-from adsmith.agent.context import NodeContext, render_window
+from adsmith.agent.context import NodeContext, reference_enabled, render_window
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.media import GatewayResult, MediaGateway, PreparedJob
 from adsmith.agent.nodes.rewrite import ReasonKind, rewrite_prompt
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AccountLockedError, AgentError, ContentPolicyError
+from adsmith.config import Settings
 from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError, CostCategory
 from adsmith.domain.enums import FailureKind, RecoveryAction, ScenePhase, SceneStatus, Stage
@@ -47,6 +48,7 @@ from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import ProductReference, RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt
+from adsmith.domain.vocabulary import IdentityMode
 from adsmith.logging import get_logger
 from adsmith.providers.media.base import RemoteControl, VideoJob
 from adsmith.storage import StaleWriteError, Storage
@@ -184,7 +186,8 @@ class SceneStageRunner:
         product (reference model), so the product is identical everywhere. If no still passes in
         ``keyframe_max_tries``, product keyframes fall back to plain text-to-image (logged)."""
         state = self.storage.runs.load(run_id)
-        if not state.config.product_reference or state.bible is None or state.brief is None:
+        settings = self.node_ctx.settings
+        if not reference_enabled(settings, state) or state.bible is None or state.brief is None:
             return
         assert state.storyboard is not None
         if not any(sc.shows_product for sc in state.storyboard.scenes):
@@ -760,6 +763,9 @@ class SceneStageRunner:
         prepared: PreparedJob,
     ) -> bool:
         category: CostCategory = "image" if attempt.phase is ScenePhase.KEYFRAME else "video"
+        how = ""
+        if attempt.phase is ScenePhase.KEYFRAME:
+            how = f", identity {prepared.identity}" + (f" ({scene.vocab})" if scene.vocab else "")
 
         def mutate(s: RunState) -> list[AgentEvent]:
             sc = self._same_version(s, scene)
@@ -772,10 +778,12 @@ class SceneStageRunner:
                     stage,
                     sc,
                     EventType.ATTEMPT_STARTED,
-                    f"Scene {sc.order} {attempt.phase} attempt {prepared.job.label.attempt_no} "
-                    f"(reserved ${prepared.est_usd:.3f})",
+                    f"Scene {sc.order} {attempt.phase} attempt {prepared.job.label.attempt_no}"
+                    f"{how} (reserved ${prepared.est_usd:.3f})",
                     attempt_id=attempt.id,
                     est_usd=prepared.est_usd,
+                    identity=prepared.identity,
+                    vocab=sc.vocab,
                 )
             ]
 
@@ -1206,6 +1214,7 @@ class SceneStageRunner:
         )
         ref = state.product_reference
         locked = ref.artifact if ref is not None and ref.approved and ref.valid_for(state) else None
+        mode, framing = identity_for(self.node_ctx.settings, scene)
         return self.gateway.prepare(
             scene,
             phase,
@@ -1214,6 +1223,8 @@ class SceneStageRunner:
             attempt_no=phase_attempts + 1,
             product_reference=locked,
             product_name=state.bible.product.name,
+            identity_mode=mode,
+            framing=framing,
         )
 
     def _update(self, run_id: str, mutate: Mutation, reason: str) -> bool:
@@ -1260,3 +1271,17 @@ class SceneStageRunner:
 
     def _scratch(self, run_id: str) -> Path:
         return self.storage.artifacts.scratch_dir(run_id)
+
+
+def identity_for(settings: Settings, scene: Scene) -> tuple[IdentityMode, str]:
+    """(identity mode, framing) for a scene's keyframe, by code (PLAN_V2 item 3): from the shot
+    vocabulary entry when the scene has one; otherwise the legacy global setting for product
+    scenes (``ADSMITH_PRODUCT_REFERENCE_MODE``, narrative runs only)."""
+    entry = settings.vocabulary.get(scene.vocab)
+    if entry is not None:
+        return entry.identity_mode, entry.framing
+    if not scene.shows_product:
+        return "none", "product"
+    return settings.product_reference_mode, "detail" if (
+        settings.product_reference_mode == "composite"
+    ) else "product"

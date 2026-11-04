@@ -149,4 +149,4 @@ async def test_composite_mode_makes_the_scene_first_then_swaps_the_product(tmp_p
     for sc in product_scenes:
         kf = next(a for a in sc.attempts if a.phase is ScenePhase.KEYFRAME)
         assert kf.model == "mock-keyframe+mock-composite"
-        assert "replace the small" in kf.prompt_used and kf.cost_usd > 0.04  # plain + swap
+        assert "small in the hand" in kf.prompt_used and kf.cost_usd > 0.04  # plain + swap

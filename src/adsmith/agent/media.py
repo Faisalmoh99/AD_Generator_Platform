@@ -19,6 +19,7 @@ from adsmith.agent.recovery.errors import ContentPolicyError, TransientProviderE
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.generation import Artifact, GenerationRequest
 from adsmith.domain.scene import Scene, ScenePrompt
+from adsmith.domain.vocabulary import IdentityMode
 from adsmith.providers.adapters.base import PromptAdapter
 from adsmith.providers.media.base import (
     ImageJob,
@@ -40,6 +41,8 @@ class PreparedJob:
     est_usd: float
     # Composite mode: after the plain keyframe (job.prompt), swap the reference in with this prompt.
     composite_prompt: str | None = None
+    # How the product identity was made for this keyframe (item 3): for the trace and the report.
+    identity: IdentityMode = "none"
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,9 +64,9 @@ class MediaGateway:
         chaos: ChaosPolicy,
         long_side: int,
         reference: ImageProvider | None = None,
-        reference_prompt: Callable[[str, str], str] | None = None,
+        reference_prompt: Callable[[str, str, str], str] | None = None,
         composite: ImageProvider | None = None,
-        composite_prompt: Callable[[str], str] | None = None,
+        composite_prompt: Callable[[str, str], str] | None = None,
     ) -> None:
         self.image, self.video, self.adapter = image, video, adapter
         self.storage, self.chaos, self.long_side = storage, chaos, long_side
@@ -85,7 +88,14 @@ class MediaGateway:
         attempt_no: int,
         product_reference: Artifact | None = None,
         product_name: str = "product",
+        identity_mode: IdentityMode = "direct",
+        framing: str = "product",
     ) -> PreparedJob:
+        """``identity_mode`` (PLAN_V2 item 3) is decided per shot by the caller from the shot
+        vocabulary: none → plain text-to-image; direct → Kontext from the locked packshot (the
+        packshot's scale: product, macro and hero shots); composite → a plain keyframe at the
+        scene's scale, then Kontext multi swaps the packshot product in (hands, small in scene).
+        Without an approved reference, or for a shot without the product, the keyframe is plain."""
         assert scene.prompt is not None
         label = MediaLabel(
             scene_order=scene.order,
@@ -98,9 +108,11 @@ class MediaGateway:
         )
         if phase is ScenePhase.KEYFRAME:
             plain = self._prepare_image(scene.prompt, aspect_ratio, label)
-            if product_reference is not None and scene.shows_product:
-                return self._condition_on(plain, product_reference, product_name)
-            return plain
+            if product_reference is None or not scene.shows_product or identity_mode == "none":
+                return plain
+            if identity_mode == "composite" and self.composite and self.composite_prompt:
+                return self._composite(plain, product_reference, product_name, framing)
+            return self._direct(plain, product_reference, product_name, framing)
         assert scene.keyframe is not None
         return self._prepare_video(scene, scene.prompt, aspect_ratio, label)
 
@@ -134,17 +146,15 @@ class MediaGateway:
         )  # fmt: skip
         return self._prepare_image(still, aspect, label)
 
-    def _condition_on(
-        self, plain: PreparedJob, reference: Artifact, product_name: str
+    def _direct(
+        self, plain: PreparedJob, reference: Artifact, product_name: str, framing: str
     ) -> PreparedJob:
         """Same keyframe, generated from the locked product still by the reference model. The
         reference's sha256 is part of the request, so a new reference is a new cache key."""
-        if self.composite is not None and self.composite_prompt is not None:
-            return self._composite(plain, reference, product_name)
         if self.reference is None or self.reference_prompt is None:
             return plain
         assert isinstance(plain.job, ImageJob)
-        prompt = self.reference_prompt(plain.job.prompt, product_name)
+        prompt = self.reference_prompt(plain.job.prompt, product_name, framing)
         request = plain.request.model_copy(
             update={
                 "provider": self.reference.name,
@@ -156,11 +166,14 @@ class MediaGateway:
         job = replace(
             plain.job, prompt=prompt, reference_path=self.storage.artifacts.resolve(reference)
         )
-        return PreparedJob(request, job, self.reference.estimate_usd(job.width, job.height))
+        est = self.reference.estimate_usd(job.width, job.height)
+        return PreparedJob(request, job, est, identity="direct")
 
-    def _composite(self, plain: PreparedJob, reference: Artifact, name: str) -> PreparedJob:
+    def _composite(
+        self, plain: PreparedJob, reference: Artifact, name: str, framing: str
+    ) -> PreparedJob:
         assert isinstance(plain.job, ImageJob) and self.composite and self.composite_prompt
-        swap = self.composite_prompt(name)
+        swap = self.composite_prompt(name, framing)
         request = plain.request.model_copy(
             update={
                 "provider": self.composite.name,
@@ -171,7 +184,7 @@ class MediaGateway:
         )
         job = replace(plain.job, reference_path=self.storage.artifacts.resolve(reference))
         est = plain.est_usd + self.composite.estimate_usd(job.width, job.height)
-        return PreparedJob(request, job, round(est, 6), composite_prompt=swap)
+        return PreparedJob(request, job, round(est, 6), composite_prompt=swap, identity="composite")
 
     async def _run_composite(self, prepared: PreparedJob, scratch: Path) -> MediaOutput:
         """Plain keyframe (archived in the CAS for the record), then the multi-image swap."""

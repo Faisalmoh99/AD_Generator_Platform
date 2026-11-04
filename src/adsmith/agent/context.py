@@ -96,14 +96,13 @@ class AgentRuntime:
         chaos = ChaosPolicy(s.chaos_config, enabled=run.config.chaos)
         ref_ep = (
             fal.image.endpoints[fal.image.reference]
-            if run.config.product_reference and fal.image.reference
+            if reference_enabled(s, run) and fal.image.reference
             else None
         )
+        # Both identity modes are always available; each shot picks one (PLAN_V2 item 3).
         comp_ep = (
             fal.image.endpoints[fal.image.composite]
-            if ref_ep is not None
-            and s.product_reference_mode == "composite"
-            and fal.image.composite
+            if ref_ep is not None and fal.image.composite
             else None
         )
         if run.config.media_provider == "fal":
@@ -150,13 +149,15 @@ class AgentRuntime:
             composite_prompt=self._composite_prompt,
         )
 
-    def _composite_prompt(self, product_name: str) -> str:
-        return self.prompts.get("keyframe_composite").render(name=product_name).user
+    def _composite_prompt(self, product_name: str, framing: str) -> str:
+        return (
+            self.prompts.get("keyframe_composite").render(name=product_name, framing=framing).user
+        )
 
-    def _reference_prompt(self, keyframe_prompt: str, product_name: str) -> str:
+    def _reference_prompt(self, keyframe_prompt: str, product_name: str, framing: str) -> str:
         return (
             self.prompts.get("keyframe_reference")
-            .render(keyframe_prompt=keyframe_prompt, name=product_name)
+            .render(keyframe_prompt=keyframe_prompt, name=product_name, framing=framing)
             .user
         )
 
@@ -271,6 +272,15 @@ class AgentRuntime:
             llm=self._callers[key],
             artifacts=self.storage.artifacts,
         )
+
+
+def reference_enabled(settings: Settings, run: RunState) -> bool:
+    """The locked product reference runs when asked for (``--product-ref``) or when the run's
+    format requires it (montage: identity = "reference" in formats.toml)."""
+    if run.config.product_reference:
+        return True
+    sb = run.storyboard
+    return sb is not None and settings.formats.grammar(sb.format).identity == "reference"
 
 
 def video_capabilities(endpoint: FalVideoEndpoint) -> VideoCapabilities:

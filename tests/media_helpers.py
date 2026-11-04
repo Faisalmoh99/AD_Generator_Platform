@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from adsmith.agent.context import AgentRuntime, video_capabilities
+from adsmith.agent.context import AgentRuntime, reference_enabled, video_capabilities
 from adsmith.agent.media import MediaGateway
 from adsmith.agent.orchestrator import Orchestrator
 from adsmith.config import ChaosConfig, Settings
@@ -89,9 +89,9 @@ def make_harness(
     reference.model = "mock-reference"
     composite = MockImageProvider(usd_per_image=0.04, latency_s=0, sleep=no_wait, fail_plan=plan)
     composite.model = "mock-composite"
-    composite_on = settings.product_reference_mode == "composite"
 
     def factory(run: RunState) -> MediaGateway:
+        ref_on = reference_enabled(settings, run)
         return MediaGateway(
             image=image,
             video=video,
@@ -99,9 +99,9 @@ def make_harness(
             storage=rt.storage,
             chaos=policy,
             long_side=settings.media_long_side,
-            reference=reference if run.config.product_reference else None,
+            reference=reference if ref_on else None,
             reference_prompt=rt._reference_prompt,
-            composite=composite if run.config.product_reference and composite_on else None,
+            composite=composite if ref_on else None,
             composite_prompt=rt._composite_prompt,
         )
 

@@ -34,7 +34,12 @@ async def test_editing_one_montage_shot_regenerates_only_that_shot(tmp_path: Pat
     h = make_harness(fast_settings(tmp_path), scenario="montage_en")
     run = h.orch.create_run(REQUEST, interactive=False)
     done = await h.orch.run_until_blocked(run.id)
-    calls_before = h.provider_calls
+
+    def all_calls() -> int:
+        extra = sum(p.calls for p in (h.reference, h.composite) if p is not None)
+        return h.provider_calls + extra
+
+    calls_before = all_calls()
     commands.edit_scene_spec(
         h.rt.storage, done.id, 3, reason="tighter", shot={"lens": "100mm macro f/5.6"}
     )
@@ -43,4 +48,29 @@ async def test_editing_one_montage_shot_regenerates_only_that_shot(tmp_path: Pat
     assert after.storyboard is not None
     versions = [s.version for s in after.storyboard.scenes]
     assert versions == [1, 1, 2, 1, 1, 1, 1, 1, 1]
-    assert h.provider_calls - calls_before == 2  # one keyframe + one clip
+    assert all_calls() - calls_before == 2  # one keyframe + one clip
+
+
+async def test_identity_mode_is_routed_per_shot_from_the_vocabulary(tmp_path: Path) -> None:
+    """PLAN_V2 item 3: montage turns the locked reference on by itself; each keyframe uses the
+    mode its vocabulary entry declares (6 direct, 1 composite, 2 plain in the fixture)."""
+    h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    run = h.orch.create_run(REQUEST, interactive=False)
+    assert run.config.product_reference is False  # not asked for: the format implies it
+    state = await h.orch.run_until_blocked(run.id)
+    assert state.product_reference is not None and state.product_reference.approved
+    assert h.reference is not None and h.composite is not None
+    assert (h.reference.calls, h.composite.calls) == (6, 1)
+    assert h.image.calls == 1 + 2 + 1  # packshot + 2 product-free shots + the composite base
+    events = [
+        e
+        for e in h.rt.storage.events.tail(run.id, limit=10_000)
+        if e.type.value == "attempt_started" and "keyframe" in e.summary
+    ]
+    modes = {str(e.payload["vocab"]): e.payload["identity"] for e in events}
+    assert modes["cap_macro"] == "direct" and modes["hand_cuff"] == "composite"
+    assert modes["spray_burst"] == "none" and modes["water_drop_leaf"] == "none"
+    assert state.storyboard is not None
+    cap = state.storyboard.scenes[0]
+    kf = next(a for a in cap.attempts if a.phase.value == "keyframe")
+    assert "Re-frame it as an extreme close-up" in kf.prompt_used
