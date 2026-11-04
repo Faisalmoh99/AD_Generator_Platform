@@ -15,6 +15,8 @@ IssueCategory = Literal[
 KEYFRAME_ISSUE_CATEGORIES: frozenset[str] = frozenset({"product", "character", "composition"})
 # The critic sees the keyframe as image 0 and the clip frames as images 1..n.
 KEYFRAME_IMAGE_INDEX = 0
+# Two or more major issues fail a clip even when the score clears the threshold.
+MAX_MAJOR_ISSUES = 2
 
 
 class QAChecks(DomainModel):
@@ -54,10 +56,27 @@ class QAVerdict(QAVerdictDraft):
         return cls(**draft.model_dump(), threshold=threshold)
 
     @property
+    def fail_reasons(self) -> list[str]:
+        """Why this verdict fails, decided by code (ADR-0016). Empty ⇒ passed."""
+        reasons: list[str] = []
+        if self.score < self.threshold:
+            reasons.append(f"score {self.score:.2f} < threshold {self.threshold:.2f}")
+        if not self.checks.product_visible:
+            reasons.append("product not clearly readable in the frames the viewer sees")
+        if not self.checks.continuity_ok:
+            reasons.append("continuity broken (character or product differs from the bible)")
+        if not self.checks.brand_safe:
+            reasons.append("not brand-safe")
+        majors = sum(1 for i in self.issues if i.severity == "major")
+        if majors >= MAX_MAJOR_ISSUES:
+            reasons.append(f"{majors} major issues (limit {MAX_MAJOR_ISSUES - 1})")
+        if any(i.severity == "blocker" for i in self.issues):
+            reasons.append("blocker issue")
+        return reasons
+
+    @property
     def passed(self) -> bool:
-        """Deterministic: score at or above threshold, no blocker, and safety must hold."""
-        no_blocker = all(i.severity != "blocker" for i in self.issues)
-        return self.score >= self.threshold and no_blocker and self.checks.brand_safe
+        return not self.fail_reasons
 
     @property
     def needs_new_keyframe(self) -> bool:

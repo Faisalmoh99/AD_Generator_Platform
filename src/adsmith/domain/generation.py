@@ -70,6 +70,7 @@ class GenerationAttempt(DomainModel):
     cost_usd: float = Field(default=0.0, ge=0)
     artifact: Artifact | None = None
     qa_score: float | None = Field(default=None, ge=0, le=1)
+    qa_passed: bool | None = None  # the code-decided verdict (a high score can still fail)
     chaos_injected: bool = False
     injected_fault: FailureKind | None = Field(
         default=None, description="Chaos Mode fault injected into this attempt, if any."

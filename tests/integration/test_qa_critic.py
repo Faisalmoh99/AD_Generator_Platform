@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import shutil
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -297,3 +298,69 @@ async def test_regenerated_keyframe_is_announced_to_the_rewrite(tmp_path: Path) 
     h = harness(tmp_path, [REJECT_PRODUCT, PASS])
     await run_auto(h)
     assert "WILL BE REGENERATED" in _requests(h, "prompt_rewrite")[0]
+
+
+# ----------------------------------------------------------------------------- stricter pass rule
+
+
+def _verdict(
+    score: float, *, issues: Sequence[dict[str, Any]] = (), failed: tuple[str, ...] = ()
+) -> QAVerdict:
+    draft = verdict(score, issues=list(issues), failed=failed)["output"]
+    return QAVerdict.from_draft(QAVerdictDraft.model_validate(draft), threshold=0.7)
+
+
+@pytest.mark.parametrize(
+    ("v", "passed", "reason"),
+    [
+        (_verdict(0.9), True, None),
+        (_verdict(0.9, issues=[issue("motion")]), True, None),  # one major is tolerated
+        (_verdict(0.6), False, "score"),
+        (
+            _verdict(0.9, issues=[issue("product", "minor")], failed=("product_visible",)),
+            False,
+            "product",
+        ),
+        (
+            _verdict(0.9, issues=[issue("continuity", "minor")], failed=("continuity_ok",)),
+            False,
+            "continuity",
+        ),
+        (_verdict(0.9, issues=[issue("motion"), issue("lighting")]), False, "2 major"),
+        (_verdict(0.9, issues=[issue("artifact", "blocker")]), False, "blocker"),
+        (
+            _verdict(0.9, issues=[issue("safety", "minor")], failed=("brand_safe",)),
+            False,
+            "brand-safe",
+        ),
+    ],
+)
+def test_pass_rule_is_decided_by_code(v: QAVerdict, passed: bool, reason: str | None) -> None:
+    assert v.passed is passed
+    if reason:
+        assert any(reason in r for r in v.fail_reasons)
+
+
+def test_real_m11_verdict_two_now_fails() -> None:
+    # Verbatim shape of the real LTX S4 verdict that passed under the old rule (score 0.72).
+    v = _verdict(
+        0.72,
+        issues=[
+            issue("motion", "major", 2),
+            issue("lighting", "major", 3),
+            issue("motion", "minor", 3),
+        ],
+        failed=("matches_shot_spec", "lighting_matches"),
+    )
+    assert not v.passed and v.fail_reasons == ["2 major issues (limit 1)"]
+
+
+async def test_high_score_rejections_still_count_toward_the_limit(tmp_path: Path) -> None:
+    two_majors = verdict(0.95, issues=[issue("motion"), issue("motion", frame=2)])
+    h = harness(tmp_path, [two_majors, PASS, PASS, PASS, two_majors, two_majors])
+    state = await run_auto(h)
+    s1 = scenes(state)[0]
+    assert s1.status is SceneStatus.FAILED  # 3 reviews, then given up: no endless loop
+    clips = [a for a in s1.attempts if a.phase is ScenePhase.CLIP]
+    assert [a.qa_passed for a in clips] == [False, False, False]
+    assert all(a.qa_score == 0.95 for a in clips)

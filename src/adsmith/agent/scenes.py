@@ -508,14 +508,21 @@ class SceneStageRunner:
             for a in scene.attempts
             if a.scene_version == scene.version
             and a.phase is ScenePhase.CLIP
-            and a.qa_score is not None
-            and a.qa_score < verdict.threshold
+            and (
+                a.qa_passed is False
+                or (
+                    a.qa_passed is None
+                    and a.qa_score is not None
+                    and a.qa_score < verdict.threshold
+                )
+            )
         )
 
         def record(s: RunState) -> Scene:
             sc = self._same_version(s, scene)
             if clip is not None:
-                self._attempt(sc, clip.id).qa_score = verdict.score
+                att = self._attempt(sc, clip.id)
+                att.qa_score, att.qa_passed = verdict.score, verdict.passed
             return sc
 
         if verdict.passed:
@@ -580,17 +587,20 @@ class SceneStageRunner:
                     EventType.RECOVERY,
                     level="warn",
                     summary=f"Scene {sc.order} rejected by QA "
-                    f"(score {verdict.score:.2f}): {issues}",
+                    f"({'; '.join(verdict.fail_reasons)}): {issues}",
                     strategy="qa_regenerate",
                     score=verdict.score,
+                    fail_reasons=verdict.fail_reasons,
                 ),
             ]
 
         if not self._update(run_id, note, "qa rejected"):
             return
         self._evict_rejected(scene, verdict)
-        detail = "\n".join(
-            f"- [{i.severity}] {i.category}: {i.observation} → fix: {i.fix}" for i in verdict.issues
+        detail = "Rejected because: " + "; ".join(verdict.fail_reasons) + "\n"
+        detail += "\n".join(
+            f"- [{i.severity}] {i.category} (image {i.frame_index}): {i.observation} → fix: {i.fix}"
+            for i in verdict.issues
         ) + (f"\nHint: {verdict.revised_prompt_hint}" if verdict.revised_prompt_hint else "")
         await self._revise(run_id, Stage.QA, scene_id, "qa_feedback", detail, verdict=verdict)
 

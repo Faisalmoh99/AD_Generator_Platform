@@ -105,6 +105,7 @@ def check_verdict(draft: QAVerdictDraft, *, n_images: int) -> list[str]:
 @dataclass(frozen=True, slots=True)
 class LLMCritic:
     ctx: NodeContext
+    template_version: int | None = None  # None = latest (calibration compares versions)
     fractions: tuple[float, ...] = DEFAULT_FRACTIONS
     long_side: int = DEFAULT_LONG_SIDE
 
@@ -131,7 +132,7 @@ class LLMCritic:
             labels.append(label)
         n_images = len(frames) + 1
 
-        rendered = self.ctx.prompts.get("qa_critic").render(
+        rendered = self.ctx.prompts.get("qa_critic", self.template_version).render(
             scene=scene_block(scene),
             scene_bible=state.bible.prompt_block(scene.uses_bible_sections()),
             keyframe_prompt=scene.prompt.keyframe_prompt,
