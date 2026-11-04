@@ -8,8 +8,8 @@ import anthropic
 import openai
 
 from adsmith.agent.recovery.errors import (
+    AccountLockedError,
     AgentError,
-    BudgetExceededError,
     ContentPolicyError,
     PermanentProviderError,
     RateLimitedError,
@@ -86,7 +86,7 @@ def classify_fal_http(
     if status >= _SERVER_ERROR or status in {_REQUEST_TIMEOUT, _CONFLICT}:
         return TransientProviderError(msg)
     if any(m in lowered for m in _FAL_BALANCE_MARKERS):
-        return BudgetExceededError(f"{msg} (the fal account has no usable balance)")
+        return AccountLockedError(f"{msg} (the fal account has no usable balance)")
     if any(m in lowered for m in _FAL_POLICY_MARKERS):
         return ContentPolicyError(msg, category="fal_safety")
     if status in {401, 403}:

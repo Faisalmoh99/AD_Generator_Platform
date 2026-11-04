@@ -41,6 +41,7 @@ import httpx
 
 from adsmith.agent.recovery.classifier import classify_fal_http
 from adsmith.agent.recovery.errors import (
+    AccountLockedError,
     AgentError,
     BudgetExceededError,
     ContentPolicyError,
@@ -96,6 +97,8 @@ class FalQueue:
         self._clock = clock or (lambda: asyncio.get_running_loop().time())
         self._base = base_url.rstrip("/")
         self._inflight: dict[str, FalHandle] = {}
+        # Circuit breaker: after an account-level refusal no further paid call is attempted.
+        self.paused: AccountLockedError | None = None
         self.submits = 0  # paid submissions made (tests assert no double submit)
 
     # ------------------------------------------------------------------------ one generation
@@ -147,6 +150,10 @@ class FalQueue:
     async def _submit(
         self, endpoint: str, payload: dict[str, Any], *, est_usd: float, ref: str, key: str
     ) -> FalHandle:
+        if self.paused is not None:
+            raise AccountLockedError(
+                f"paid work paused after an account-level refusal: {self.paused}"
+            )
         spend_id = None
         if self.account is not None:
             try:
@@ -167,7 +174,10 @@ class FalQueue:
             raise TransientProviderError(f"fal submit {endpoint}: {exc}") from exc
         if resp.status_code >= 400:
             self._release_id(spend_id)
-            raise classify_fal_http(resp.status_code, resp.text, resp.headers, endpoint=endpoint)
+            err = classify_fal_http(resp.status_code, resp.text, resp.headers, endpoint=endpoint)
+            if isinstance(err, AccountLockedError):
+                self.paused = err  # circuit breaker: no further paid submits this process
+            raise err
         self.submits += 1
         body = resp.json()
         try:

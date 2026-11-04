@@ -78,6 +78,12 @@ class BudgetExceededError(AgentError):
     kind = FailureKind.BUDGET_EXCEEDED
 
 
+class AccountLockedError(BudgetExceededError):
+    """The provider account itself refuses work (e.g. fal "User is locked: exhausted balance").
+    Account-level: every further paid call would fail too, so the provider pauses ALL paid work
+    for the rest of the process instead of letting each scene hit the same wall."""
+
+
 class PermanentProviderError(AgentError):
     """Bad request, auth, not found: retrying cannot help."""
 

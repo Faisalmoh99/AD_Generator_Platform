@@ -306,11 +306,11 @@ class Orchestrator:
         try:
             await self.rt.scene_runner(state).run(run_id, stage)
         except Exception as exc:
-            log.exception("scene stage crashed", run_id=run_id, stage=stage.value)
+            log.exception("scene stage stopped", run_id=run_id, stage=stage.value)
             return self._fail(
                 run_id,
                 stage=stage,
-                kind=FailureKind.PERMANENT,
+                kind=exc.kind if isinstance(exc, AgentError) else FailureKind.PERMANENT,
                 debug=f"{type(exc).__name__}: {exc}",
                 calls=[],
                 lang=state.language,

@@ -26,6 +26,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 from adsmith.agent.recovery.errors import (
+    AccountLockedError,
     AgentError,
     ContentPolicyError,
     PermanentProviderError,
@@ -59,7 +60,7 @@ def parse_fail_plan(spec: str | None) -> list[FailRule]:
     for item in filter(None, (s.strip() for s in (spec or "").split(","))):
         head, _, count = item.partition("*")
         order, phase, kind = head.split(":")
-        if kind not in {"transient", "rate_limited", "policy", "permanent"}:
+        if kind not in {"transient", "rate_limited", "policy", "permanent", "locked"}:
             raise ValueError(f"unknown fail kind {kind!r} in {item!r}")
         rules.append(FailRule(int(order), ScenePhase(phase), kind, int(count) if count else None))
     return rules
@@ -88,6 +89,8 @@ def _error(kind: str, msg: str) -> AgentError:
         return RateLimitedError(msg, retry_after_s=0.0)
     if kind == "policy":
         return ContentPolicyError(msg, category="mock")
+    if kind == "locked":
+        return AccountLockedError(msg)
     return PermanentProviderError(msg)
 
 

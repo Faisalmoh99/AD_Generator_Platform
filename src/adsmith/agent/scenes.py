@@ -36,7 +36,7 @@ from adsmith.agent.i18n import failure_message
 from adsmith.agent.media import GatewayResult, MediaGateway, PreparedJob
 from adsmith.agent.nodes.rewrite import ReasonKind, rewrite_prompt
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
-from adsmith.agent.recovery.errors import AgentError, ContentPolicyError
+from adsmith.agent.recovery.errors import AccountLockedError, AgentError, ContentPolicyError
 from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError, CostCategory
 from adsmith.domain.enums import FailureKind, RecoveryAction, ScenePhase, SceneStatus, Stage
@@ -110,7 +110,10 @@ class SceneStageRunner:
                 await self._scene(run_id, scene_id, stage)
 
         results = await asyncio.gather(*(guarded(sid) for sid in targets), return_exceptions=True)
+        locked = next((r for r in results if isinstance(r, AccountLockedError)), None)
         for scene_id, outcome in zip(targets, results, strict=True):
+            if isinstance(outcome, AccountLockedError):
+                continue  # the scene was put back to pending; the run pauses below
             if isinstance(outcome, BaseException) and not isinstance(
                 outcome, asyncio.CancelledError
             ):
@@ -124,6 +127,9 @@ class SceneStageRunner:
                     FailureKind.PERMANENT,
                     f"{type(outcome).__name__}: {outcome}",
                 )
+        if locked is not None:
+            # Account-level refusal: pause the whole run (orchestrator → errored, resumable).
+            raise locked
 
     @staticmethod
     def _wants(scene: Scene, stage: Stage) -> bool:
@@ -368,6 +374,9 @@ class SceneStageRunner:
                 result = await retry_transient(
                     call, sleep=self.sleep, rng=self.rng, on_retry=on_retry
                 )
+            except AccountLockedError as exc:
+                self._attempt_paused(run_id, stage, scene, attempt, exc)
+                raise
             except ContentPolicyError as exc:
                 give_up = rewrites >= MAX_POLICY_REWRITES
                 if not self._attempt_failed(run_id, stage, scene, attempt, exc, give_up=give_up):
@@ -537,6 +546,40 @@ class SceneStageRunner:
         except StaleWriteError:
             return False
         return True
+
+    def _attempt_paused(
+        self,
+        run_id: str,
+        stage: Stage,
+        scene: Scene,
+        attempt: GenerationAttempt,
+        exc: AccountLockedError,
+    ) -> None:
+        """Account-level refusal: close the attempt, release its money, and put the scene back
+        to pending (not failed), so resuming the run after a top-up continues it."""
+
+        def mutate(s: RunState) -> list[AgentEvent]:
+            sc = self._same_version(s, scene)
+            att = self._attempt(sc, attempt.id)
+            att.outcome, att.finished_at = "failed", utcnow()
+            att.failure_kind, att.error_message = exc.kind, exc.message[:2000]
+            s.budget.release(attempt.id)
+            sc.release_lease()
+            return [
+                _ev(
+                    run_id,
+                    stage,
+                    sc,
+                    EventType.RECOVERY,
+                    level="error",
+                    summary=f"Scene {sc.order}: the provider account refused work "
+                    f"({exc.message[:200]}); pausing the run (resumable after a top-up)",
+                    strategy="pause_run",
+                )
+            ]
+
+        with contextlib.suppress(StaleWriteError):
+            self.storage.runs.update(run_id, mutate, reason=f"scene {scene.order} paused")
 
     async def _revise(
         self,

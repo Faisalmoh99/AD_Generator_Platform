@@ -274,3 +274,37 @@ async def test_scene_spec_edit_regenerates_only_that_scene(tmp_path: Path) -> No
     assert h.provider_calls - calls <= 2  # one keyframe + one clip at most (cache may hit)
     with pytest.raises(commands.CommandRejectedError, match="unknown shot fields"):
         commands.edit_scene_spec(h.rt.storage, done.id, 1, reason="x", shot={"bogus": 1})
+
+
+async def test_account_level_refusal_pauses_the_whole_run_and_resumes(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path), fail_plan="2:keyframe:locked*1")
+    paused = await run_auto(h)
+    assert paused.stage is Stage.ERRORED and paused.error is not None
+    assert paused.error.kind is FailureKind.BUDGET_EXCEEDED
+    assert paused.storyboard is not None
+    s2 = paused.storyboard.scenes[1]
+    assert s2.status is SceneStatus.PENDING and s2.failure is None  # paused, not failed
+    assert paused.budget.reserved_usd == pytest.approx(0.0)
+    done = await h.orch.resume(paused.id)  # e.g. after a top-up
+    assert done.stage is Stage.DONE
+    assert statuses(done) == [SceneStatus.APPROVED] * 4
+
+
+async def test_fal_queue_breaker_refuses_paid_calls_after_a_lock(tmp_path: Path) -> None:
+    import httpx  # noqa: PLC0415
+
+    from adsmith.agent.recovery.errors import AccountLockedError  # noqa: PLC0415
+    from adsmith.providers.media.fal import FalQueue  # noqa: PLC0415
+
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(403, json={"detail": "User is locked. Reason: Exhausted balance."})
+
+    queue = FalQueue("k", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    for _ in range(3):
+        with pytest.raises(AccountLockedError):
+            await queue.run("fal-ai/flux/dev", {"prompt": "x"}, est_usd=0.0, ref="t")
+    assert calls == 1  # the breaker stopped the 2nd and 3rd paid submits
