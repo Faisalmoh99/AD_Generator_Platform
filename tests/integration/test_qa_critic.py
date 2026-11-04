@@ -8,6 +8,7 @@ repeated rejection fails only that scene, and a critic failure is isolated.
 from __future__ import annotations
 
 import io
+import itertools
 import shutil
 from collections.abc import Sequence
 from pathlib import Path
@@ -501,3 +502,39 @@ async def test_final_rejection_keeps_the_critic_reasons(tmp_path: Path) -> None:
     assert events and all(e.payload.get("issues") and e.payload.get("fail_reasons") for e in events)
     failed = scenes(state)[0]
     assert failed.failure is not None and "score 0.50" in failed.failure.reason_debug
+
+
+def test_dense_fractions_leave_no_gap_a_brief_event_can_hide_in() -> None:
+    from adsmith.media.frames import DENSE_FRACTIONS  # noqa: PLC0415
+
+    assert len(DENSE_FRACTIONS) == 8 and DENSE_FRACTIONS[0] < 0.1 and DENSE_FRACTIONS[-1] > 0.9
+    gaps = [b - a for a, b in itertools.pairwise(DENSE_FRACTIONS)]
+    assert max(gaps) <= 0.125  # a 3 s clip is sampled at least every ~0.4 s
+
+
+async def test_critic_sends_eight_frames_for_a_spray_shot(tmp_path: Path) -> None:
+    from adsmith.agent.qa import needs_dense_sampling  # noqa: PLC0415
+
+    h = harness(tmp_path, [PASS] * 4)
+    run = h.orch.create_run(REQUEST, interactive=False)
+    await h.orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
+
+    def patch(s: RunState) -> list[Any]:
+        assert s.storyboard is not None
+        sc = s.storyboard.scenes[0]
+        sc.shot = sc.shot.model_copy(update={"subject_action": "He sprays the perfume once"})
+        return []
+
+    h.rt.storage.runs.update(run.id, patch, reason="test: make scene 1 a brief event")
+    state = await h.orch.run_until_blocked(run.id)
+    assert state.storyboard is not None
+    flags = [needs_dense_sampling(state, sc) for sc in state.storyboard.scenes]
+    assert flags[0] and not all(flags)  # the spray shot is dense; ordinary shots are not
+    assert h.llm is not None
+    reqs = [r for r in h.llm.requests if r.template.startswith("qa_critic@")]
+    counts = sorted(
+        len([p for p in r.messages[0].parts if isinstance(p, ImagePart)])  # type: ignore[union-attr]
+        for r in reqs
+    )
+    expected = sorted(9 if f else 4 for f in flags)  # keyframe + 8 dense or 3 frames
+    assert counts == expected

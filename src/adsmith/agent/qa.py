@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import re
 from dataclasses import dataclass
 
 from adsmith.agent.context import NodeContext
@@ -31,6 +32,7 @@ from adsmith.domain.scene import Scene
 from adsmith.media.frames import (
     DEFAULT_FRACTIONS,
     DEFAULT_LONG_SIDE,
+    DENSE_FRACTIONS,
     image_to_jpeg,
     played_duration,
     sample_frames,
@@ -109,6 +111,21 @@ class MockCritic:
         return verdict, []
 
 
+# Actions that last a fraction of a second: three sampled frames can miss them entirely.
+_BRIEF_EVENT = re.compile(
+    r"\b(spray\w*|spritz\w*|splash\w*|burst\w*|flash\w*|snap\w*|pour\w*|drops?|"
+    r"pops?|popping|flick\w*|toss\w*|blink\w*|press(es|ed)?|squeez\w*|sparks?)\b",
+    re.IGNORECASE,
+)
+
+
+def needs_dense_sampling(state: RunState, scene: Scene) -> bool:
+    """A key-action check applies: a single-take ad (the action is the whole ad) or a shot whose
+    subject_action is a brief event."""
+    single_take = state.storyboard is not None and len(state.storyboard.scenes) == 1
+    return single_take or bool(_BRIEF_EVENT.search(scene.shot.subject_action))
+
+
 def check_verdict(draft: QAVerdictDraft, *, n_images: int) -> list[str]:
     """Deterministic consistency rules for a critic verdict. Returns the problems found."""
     problems: list[str] = []
@@ -146,8 +163,11 @@ class LLMCritic:
         keyframe_jpeg = await asyncio.to_thread(
             image_to_jpeg, arts.resolve(scene.keyframe), long_side=self.long_side
         )
+        fractions = self.fractions
+        if fractions == DEFAULT_FRACTIONS and needs_dense_sampling(state, scene):
+            fractions = DENSE_FRACTIONS  # explicit calibration fractions are left alone
         frames = await sample_frames(
-            arts.resolve(scene.clip), played, fractions=self.fractions, long_side=self.long_side
+            arts.resolve(scene.clip), played, fractions=fractions, long_side=self.long_side
         )
         parts: list[ImagePart | TextPart] = [
             TextPart("Image 0: keyframe (the still the clip was animated from)"),

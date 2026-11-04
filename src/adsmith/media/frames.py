@@ -24,6 +24,10 @@ from PIL import Image
 from adsmith.agent.recovery.errors import PermanentProviderError
 
 DEFAULT_FRACTIONS: tuple[float, ...] = (0.15, 0.5, 0.85)
+# Key-action checks (single takes, brief events such as a spray): 8 frames evenly across the
+# played window, so a ~0.5 s event cannot fall between samples (hero v2: a spritz at ~2 s of a 3 s
+# clip was missed by the 3-frame sampling).
+DENSE_FRACTIONS: tuple[float, ...] = tuple((i + 0.5) / 8 for i in range(8))
 DEFAULT_LONG_SIDE = 768
 JPEG_QUALITY = 85
 
