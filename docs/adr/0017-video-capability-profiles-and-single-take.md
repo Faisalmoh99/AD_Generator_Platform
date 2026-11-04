@@ -33,3 +33,20 @@ motion, slow motion, one take with no cross-scene consistency risk.
 generation. − Profiles need upkeep per model, and *[expected]* items are unverified until tested.
 − Under the hard/soft QA calibration, a single take whose key motion beat is weak still passes
 (motion is not a hard check). See the M11 single-take result in PROGRESS.md.
+
+## Findings from the first real single take (M11, run_01M6JH38ZT2WRDPSQ2GM833F7T)
+- **Cheaper and fully consistent.** One keyframe and one 10 s clip: $1.425 on fal, about 11 min, no
+  recoveries. The product looked identical for the whole take. The 4-scene majlis ad cost $2.925,
+  delivered 3 of 4 scenes, and its bottle drifted between scenes.
+- **The judge played it safe.** It chose the calmest, most producible concept (silk corridor:
+  producibility 8, insight 5) over the one with a real human truth ("the friend who always borrows
+  your perfume": insight 9, producibility 4 because of face and hands). Producibility currently
+  outweighs insight whenever a concept touches a known model weakness.
+- **A missing key action passed as "soft".** The promised beat (the bottle flying toward the camera
+  and filling the frame) did not happen. QA passed the clip at 0.72 because under the hard/soft
+  calibration (ADR-0016 addendum 3) a missing motion beat is not a hard failure. For a single take,
+  where one action is the whole ad, "key action delivered" is a candidate hard check.
+- The *[expected]* strength "objects flying toward or past the lens" stays unverified.
+
+Open follow-ups (not built): a hard "key action delivered" check for single takes; rebalancing
+the judge so a high-insight concept is not discarded for a moderate producibility risk.

@@ -530,3 +530,8 @@ the promised beat did not happen. The bottle never flies or fills the frame; it 
 grows modestly as the camera moves through the curtains, and the amber backlight fades by the end.
 QA passed it because missing motion is soft under the current calibration. The cap renders as a
 matte black cylinder vs the bible's cuboid gunmetal cap (the known cap-shape blind spot).
+**Conclusions (logged in ADR-0017 findings):** the single take is cheaper ($1.425 vs $2.925) and
+fully consistent (identical product for the whole take vs bottle drift across scenes), but the
+judge played it safe (chose producibility 8 / insight 5 over insight 9 / producibility 4), and a
+missing key action passed QA as "soft". Follow-ups noted, not built. **Next: resume the plan at M7
+(edits).**
