@@ -458,3 +458,16 @@ def test_new_hard_checks_need_a_matching_issue() -> None:
     raw = verdict(0.9, failed=("alcohol_free",))
     problems = check_verdict(QAVerdictDraft.model_validate(raw["output"]), n_images=4)
     assert any("alcohol_free" in p for p in problems)
+
+
+def test_gate_turns_any_product_mismatch_into_a_hard_failure() -> None:
+    from adsmith.agent.qa import gate_draft  # noqa: PLC0415
+
+    # The real hero-round verdict: passed at 0.78 with the cap mismatch logged as "minor".
+    cap = issue("product", "minor", 0)
+    raw = verdict(0.78, issues=[cap, issue("composition", "minor", 0)], frames=1)["output"]
+    before = QAVerdict.from_draft(QAVerdictDraft.model_validate(raw), threshold=0.7)
+    assert before.passed  # the miss that cost $2.24
+    after = QAVerdict.from_draft(gate_draft(QAVerdictDraft.model_validate(raw)), threshold=0.7)
+    assert not after.passed and not after.checks.continuity_ok
+    assert [i.severity for i in after.issues] == ["major", "minor"]  # composition stays soft

@@ -173,7 +173,12 @@ I spent about $7 of real fal credit; these lessons changed the design.
    promised beat (the bottle flying at the lens) never happened. It passed QA as a "soft" issue.
 6. **What the critic missed (I caught these by eye):** a doorway appearing mid-clip, bottle shapes
    differing between scenes ([majlis ad](docs/media/majlis_ad_final.mp4)), and a bottle that reads
-   like whisky. That last one is a brand-safety failure for a Saudi audience and should be a hard check.
+   like whisky. That last one is now a hard check (`alcohol_free`).
+7. **The hero attempt: a gate miss that cost $2.24.** The keyframe gate passed a black cap as a
+   "minor" issue (the description said brushed gold), so best-of-2 Kling animated the wrong bottle,
+   and the "blank label plate" became invented lettering in the close-up. Both takes were rejected.
+   Now any product mismatch at the gate is hard by code, and product descriptions have no label
+   surfaces; re-judged, that keyframe fails (0.78 → 0.45). Closed.
 
 ## Design decisions
 

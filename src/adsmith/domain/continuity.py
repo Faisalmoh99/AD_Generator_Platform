@@ -63,6 +63,33 @@ class ProductSpec(DomainModel):
         return items
 
 
+# A blank label, plate or plaque on a wordless product is a surface the video model fills with
+# invented lettering (hero round: "blank label plate" → "RLYCHADA" in the close-up).
+_LABEL_SURFACE = re.compile(r"\b(label|plate|plaque|placard|tag|sticker)s?\b", re.IGNORECASE)
+# "no label, logo or printed text" is the wordless rule itself, not a surface: drop negated clauses.
+_NEGATED_CLAUSE = re.compile(r"\b(no|not|never|without|free of)\b[^.;:]*", re.IGNORECASE)
+
+
+def wordless_label_problems(product: ProductSpec) -> list[str]:
+    """Wordless products must not describe any label surface (checked by the continuity node,
+    not the model, so bibles stored before this rule still load)."""
+    if product.branding_text:
+        return []
+    fields = {
+        "form": product.form,
+        "materials": product.materials,
+        "branding_style": product.branding_style,
+        **{f"distinctive_features[{i}]": f for i, f in enumerate(product.distinctive_features)},
+        "hero_angle": product.hero_angle,
+    }
+    return [
+        f"product.{name} mentions a {m.group(1).lower()} on a wordless product; describe bare, "
+        "unlabelled material instead (no label, plate, plaque or tag of any kind)"
+        for name, text in fields.items()
+        if (m := _LABEL_SURFACE.search(_NEGATED_CLAUSE.sub(" ", text)))
+    ]
+
+
 class ColorGrade(DomainModel):
     palette: list[HexColor] = Field(min_length=2, max_length=6)
     contrast: Concrete

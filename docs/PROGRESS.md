@@ -662,3 +662,11 @@ miss. Energy: a calm walk, not the slow-motion spray moment the request asked fo
 **Next (not built):** product checklist mismatch at the gate → hard (no "minor product" issues); no
 label plates in product bibles (wordless glass, nothing to fill with text); a slow-motion wording
 lever for Kling; store full candidate verdicts in the event (only reasons are stored today).
+
+### Hero-round fix: product mismatch is hard at the gate (2026-11-05, Anthropic only)
+`gate_draft()`: any "product" issue at the keyframe gate is major and fails `continuity_ok` (code,
+not prompt); `qa_keyframe` v4 keeps size/placement under "composition". `continuity` v2 + node check
+`wordless_label_problems()`: a wordless product may not describe a label, plate, plaque or tag
+(→ schema repair; negated mentions such as "no label" are fine; stored bibles still load). Re-judged
+the stored hero keyframes (`scripts/gate_recalibrate.py`, $0.05): a3 **PASS 0.78 → FAIL 0.45** for
+the black cap; a1/a2 still fail. Real-media work frozen for good.

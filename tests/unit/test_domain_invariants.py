@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from adsmith.domain.brief import Brief, BriefDraft
 from adsmith.domain.concept import ConceptSet, ConceptSetDraft
+from adsmith.domain.continuity import ProductSpec, wordless_label_problems
 from adsmith.domain.edit import ScenePatchDraft, SceneRef, ShotSpecPatch
 from adsmith.domain.enums import BibleSection, Dialect, FailureKind, Language, Stage, TimeOfDay
 from adsmith.domain.generation import GenerationAttempt
@@ -273,3 +274,20 @@ def test_full_run_json_round_trip_is_lossless() -> None:
     assert [s.content_hash() for s in again.storyboard.scenes] == [
         s.content_hash() for s in run.storyboard.scenes
     ]
+
+
+def test_wordless_product_may_not_describe_a_label_surface() -> None:
+    base = {
+        "name": "the fragrance", "form": "rectangular faceted bottle", "materials": "thick glass",
+        "colors": "amber-black liquid", "branding_text": "", "hero_angle": "straight-on",
+    }  # fmt: skip
+    plate = ProductSpec.model_validate(base | {"branding_style": "a blank minimalist label plate"})
+    assert wordless_label_problems(plate) and "label" in wordless_label_problems(plate)[0]
+    rule = ProductSpec.model_validate(
+        base | {"branding_style": "no label, logo or text; bare glass"}
+    )
+    assert wordless_label_problems(rule) == []
+    named = ProductSpec.model_validate(
+        base | {"branding_text": "OUD", "branding_style": "gold label plate"}
+    )
+    assert wordless_label_problems(named) == []  # a real brand may have a label

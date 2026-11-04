@@ -14,7 +14,11 @@ from adsmith.agent.nodes.common import (
     storyboard_block,
 )
 from adsmith.config import LLMNode
-from adsmith.domain.continuity import ContinuityBible, ContinuityBibleDraft
+from adsmith.domain.continuity import (
+    ContinuityBible,
+    ContinuityBibleDraft,
+    wordless_label_problems,
+)
 from adsmith.domain.enums import Stage
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags
@@ -30,11 +34,15 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
         concept=concept_block(concept),
         storyboard=storyboard_block(state.storyboard),
     )
+
+    def convert(d: ContinuityBibleDraft) -> ContinuityBible:
+        problems = wordless_label_problems(d.product)  # → schema repair with the exact problem
+        if problems:
+            raise ValueError("; ".join(problems))
+        return ContinuityBible(**d.model_dump(), version=version)
+
     result = await ctx.llm.call_and_convert(
-        LLMNode.CONTINUITY,
-        prompt,
-        ContinuityBibleDraft,
-        lambda d: ContinuityBible(**d.model_dump(), version=version),
+        LLMNode.CONTINUITY, prompt, ContinuityBibleDraft, convert
     )
     bible = result.value
     # Check on a copy: the node must not mutate the snapshot it was given.

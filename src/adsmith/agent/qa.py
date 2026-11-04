@@ -206,18 +206,34 @@ class LLMCritic:
                 problems.append("a still has no motion: use another category")
             if problems:
                 raise ValueError("; ".join(problems))
-            fixed = d.model_copy(
-                update={
-                    "frames_inspected": 1,
-                    "issues": [i.model_copy(update={"frame_index": 0}) for i in d.issues],
-                }
-            )
-            return QAVerdict.from_draft(fixed, threshold=threshold)
+            return QAVerdict.from_draft(gate_draft(d), threshold=threshold)
 
         res = await self.ctx.llm.call_and_convert(
             LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
         )
         return res.value, res.calls
+
+
+def gate_draft(d: QAVerdictDraft) -> QAVerdictDraft:
+    """Keyframe gate rule (hero round): ANY mismatch against the product description is HARD.
+    A "product" issue is never minor at the gate, and it fails continuity_ok, whatever the LLM
+    said. (The hero keyframe passed at 0.78 with "cap is a black block, not brushed gold" logged
+    as a minor product issue; $2.24 of clips then animated the wrong bottle.)"""
+    issues = [
+        i.model_copy(
+            update={
+                "frame_index": 0,
+                "severity": "major"
+                if i.category == "product" and i.severity == "minor"
+                else i.severity,
+            }
+        )
+        for i in d.issues
+    ]
+    checks = d.checks
+    if any(i.category == "product" for i in issues):
+        checks = checks.model_copy(update={"continuity_ok": False})
+    return d.model_copy(update={"frames_inspected": 1, "issues": issues, "checks": checks})
 
 
 def _product_checklist(state: RunState, scene: Scene) -> str:
