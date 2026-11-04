@@ -82,3 +82,10 @@ def test_override_becomes_decision_event() -> None:
     assert event.type is EventType.DECISION and event.scene_id == s.id
     assert "shows_character=true" in event.summary and "man" in event.summary
     assert event.payload["override"] is True
+
+
+def test_hero_shot_is_product_vocabulary_not_a_character() -> None:
+    s = make_scene(**_neutral(description="Hero shot: the bottle on a dark surface."))
+    hits = detect_mentions(s)
+    assert hits["shows_character"] == []
+    assert "bottle" in hits["shows_product"]

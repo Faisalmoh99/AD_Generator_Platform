@@ -1,0 +1,71 @@
+[
+  {
+    "output": {
+      "concepts": [
+        {
+          "title": "The Night Drive",
+          "logline": "A young man drives alone through the empty city at night, neon reflections sliding over his face, until he stops, sprays the perfume and steps into the party.",
+          "narrative_arc": [
+            "He drives through the city at night",
+            "Reflections slide across the glass",
+            "He sprays the perfume",
+            "He enters the party"
+          ],
+          "visual_hook": "Neon reflections gliding over a black car window",
+          "emotional_driver": "Confidence and freedom",
+          "differentiator": "A grounded, narrative concept built on one character's journey.",
+          "style_references": [
+            "anamorphic night photography",
+            "neon practicals",
+            "slow push-ins"
+          ],
+          "risk_notes": [
+            "Driving shots must stay stable to avoid generation artifacts."
+          ],
+          "estimated_scene_count": 4
+        },
+        {
+          "title": "Elemental",
+          "logline": "An abstract sensory journey: black smoke, liquid gold and cracked desert stone swirl and form the bottle, translating the scent notes into texture.",
+          "narrative_arc": [
+            "Smoke rises in darkness",
+            "Gold liquid pours and swirls",
+            "Desert stone cracks",
+            "The bottle forms from the elements"
+          ],
+          "visual_hook": "Liquid gold pouring in extreme slow motion",
+          "emotional_driver": "Sensory luxury",
+          "differentiator": "No people at all: the scent itself is the protagonist.",
+          "style_references": [
+            "macro photography",
+            "high-speed liquid simulation look",
+            "chiaroscuro"
+          ],
+          "risk_notes": [],
+          "estimated_scene_count": 4
+        },
+        {
+          "title": "The Tailor",
+          "logline": "In a heritage tailoring atelier, an older master fits a young man for his first bespoke suit; the final touch is the perfume, passed on like a legacy.",
+          "narrative_arc": [
+            "Measuring tape and fabric",
+            "The master adjusts the jacket",
+            "He hands him the bottle",
+            "The young man walks out transformed"
+          ],
+          "visual_hook": "Hands adjusting a collar in warm window light",
+          "emotional_driver": "Belonging and legacy",
+          "differentiator": "An intergenerational, warm daytime story instead of a nocturnal one.",
+          "style_references": [
+            "warm window light",
+            "period craftsmanship details"
+          ],
+          "risk_notes": [
+            "Two characters increase continuity risk across scenes."
+          ],
+          "estimated_scene_count": 4
+        }
+      ]
+    }
+  }
+]

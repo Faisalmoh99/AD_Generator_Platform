@@ -625,3 +625,12 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - Added `storage/cache.py` (`CacheStore`) and a `Storage` facade (`Storage.open(data_dir)`).
 - Scene results must carry the scene version they were produced for; their mutation raises `StaleWriteError` if the scene changed (wired in M5).
 - `RunRepository.fork(run_id, from_version)` backs `resume --from-version`.
+
+### M3 (LLM layer)
+- `LLMProvider.complete(LLMRequest) -> LLMResponse` (raw text + usage), **not** `structured()`: validation and repair live in `agent/structured.py` (`StructuredCaller`), because SDK `parse()` discards raw text and usage on validation failure (ADR-0012).
+- `config/models.toml`: `[llm_prices]` → `[llm_models]` with `cache_write`, `cache_read`, `server_fallback`.
+- Server-side refusal fallback (`fallbacks: "default"`) on Sonnet/Opus nodes; the served model is recorded and priced.
+- Recovery primitives pulled forward from M5 because LLM calls need them now: `recovery/errors.py`, `backoff.py`, `classifier.py`.
+- New: `agent/prompts.py` (template loader, static-SYSTEM rule), `agent/schemas.py` (template → output schema registry), `agent/pricing.py`, `domain/llm.py` (`LLMCallRecord`, `TokenUsage`), `BudgetLedger.record_actual`.
+- Template sections: `=== SYSTEM ===` (static, cached), optional `=== CONTEXT ===` (cached per run), `=== USER ===`.
+- Arabic scripted fixtures (`perfume_ar`) and the remaining node schemas/fixtures land in M4 with their nodes.

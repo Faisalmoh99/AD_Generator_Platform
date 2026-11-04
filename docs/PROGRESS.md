@@ -130,3 +130,60 @@ round-trip, fork, compressed snapshot < 8 KB, CAS idempotency/move/path escape, 
 
 **Next**: M3: LLM layer (`LLMProvider`, Anthropic + Scripted + OpenAI skeleton, `structured_call`
 with the schema-repair loop, prompt-template loader).
+
+---
+
+## Pre-M3 check: write lock (2026-11-04)
+Confirmed `Database.write()` uses `BEGIN IMMEDIATE`, and `busy_timeout=5000` is set both as a pragma
+and as the connect timeout. Added `test_storage_locking.py`: two connections, where the second writer must
+block until the first commits. A **control test** with a deferred-`BEGIN` subclass shows the detector
+does catch the race, so the test is sensitive and not vacuous. Pragmas are asserted (busy_timeout,
+WAL, FKs).
+
+---
+
+## M3: LLM layer (2026-11-04)
+
+**Built**
+- `providers/llm/`: `base.py` (`LLMProvider.complete`, messages with cache flags and native-block
+  replay), `anthropic.py` (beta `messages.create`, `output_config` effort+format, cache breakpoints,
+  server-side fallback, refusal/usage mapping), `openai.py` (Responses API, strict json_schema;
+  unit-tested mapping, not run live), `scripted.py` (steps: output/raw/refusal/truncated/error) +
+  packaged `fixtures/perfume_en/` (understand, ideate, storyboard, continuity).
+- `agent/structured.py`: `StructuredCaller` (validate + convert, same-conversation repair ×2,
+  truncation retry ×1, refusal → `ContentPolicyError`, transient backoff, per-attempt
+  `LLMCallRecord`).
+- `agent/recovery/`: error taxonomy, full-jitter backoff with separate transient/429 budgets,
+  SDK exception classifier (Anthropic + OpenAI).
+- `agent/prompts.py` (versioned templates, static SYSTEM enforced), `prompts/schema_repair/v1.md`,
+  `agent/schemas.py` registry, `agent/pricing.py`, `domain/llm.py`, `BudgetLedger.record_actual`.
+
+**Key decisions** (ADR-0012)
+1. Verified on the installed SDK: anthropic **2.4.0** (on `httpx2` 2.16.0). `messages.parse` and
+   `output_config` exist, but `parse()` validates eagerly and loses raw text and usage on failure, so we
+   use `create` + our own validation. `transform_schema` is public and moves unenforced constraints
+   into descriptions.
+2. Repair is appended to the same conversation (native blocks replayed unchanged).
+3. Prompt caching on the static SYSTEM block and a per-run CONTEXT block (~70% off repeated
+   prefixes; cents per run, mainly a latency win).
+4. Scripted fixtures are validated against the registry schemas and through the real domain
+   conversions, with an Arabic logical-order check (no presentation forms, no bidi controls).
+5. Cost per call from token buckets → `LLMCallRecord` → `BudgetLedger` + trace event. Failed
+   calls are booked too.
+
+**Bugs caught by the new tests**
+- Scene-flag checker treated "hero" as a character, but in ad language a *hero shot* is the product
+  shot. Term removed, regression test added.
+- Ruff's PLE2502 caught literal bidi control characters in a test regex; rewritten as ASCII
+  escapes.
+- mypy caught that anthropic 2.x uses `httpx2`; tests now build `httpx2` objects.
+
+**Deviations from plan**: see PLAN.md §14 "M3". Recovery primitives were pulled forward from M5.
+
+**Tests**: `make check` green, **219 passed, 2 skipped**. The 2 skipped are the live tests
+(`--live`): **not run**, because there is no `ANTHROPIC_API_KEY` on this machine. They check that
+configured model IDs exist via the Models API, and that a structured call is priced and its
+repeated prefix is read from cache.
+
+**Next**: M4: orchestrator + planning nodes (understand → ideate → select → storyboard →
+continuity → prompt), human gates, resume, scene-flag wiring, Production Pack, Arabic fixtures.

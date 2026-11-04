@@ -29,8 +29,9 @@ from adsmith.domain.similarity import normalize_text, raw_tokens
 Flag = Literal["shows_character", "shows_product"]
 
 # Normalised spellings (ة→ه, أ→ا, article stripped) so they match normalised tokens.
+# Not "hero": in ad language a "hero shot" is the product shot (caught by the fixture test).
 CHARACTER_TERMS_EN: frozenset[str] = frozenset(
-    """man men guy he his him himself boy gentleman person model protagonist hero character face
+    """man men guy he his him himself boy gentleman person model protagonist character face
     hand hands eyes wrist neck jaw silhouette figure""".split()
 )
 CHARACTER_TERMS_AR: frozenset[str] = frozenset(

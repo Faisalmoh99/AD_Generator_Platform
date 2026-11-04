@@ -34,3 +34,26 @@ class BudgetLedger(DomainModel):
     @property
     def remaining_usd(self) -> float:
         return max(0.0, self.limit_usd - self.spent_usd - self.reserved_usd)
+
+    def record_actual(
+        self,
+        category: CostCategory,
+        usd: float,
+        ref: str,
+        scene_id: str | None = None,
+        est_usd: float | None = None,
+    ) -> None:
+        """Book an already-incurred cost (e.g. a finished LLM call). Idempotent per ``ref``."""
+        if any(e.ref == ref for e in self.entries):
+            return
+        self.entries.append(
+            BudgetEntry(
+                category=category,
+                scene_id=scene_id,
+                est_usd=usd if est_usd is None else est_usd,
+                actual_usd=usd,
+                ref=ref,
+            )
+        )
+        self.spent_usd = round(self.spent_usd + usd, 6)
+        self.by_category[category] = round(self.by_category.get(category, 0.0) + usd, 6)

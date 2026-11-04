@@ -1,0 +1,37 @@
+[
+  {
+    "output": {
+      "language": "en",
+      "dialect": "none",
+      "product": "luxury men's eau de parfum",
+      "product_category": "fragrance",
+      "brand_name": null,
+      "target_audience": "young men aged 18-30, style-conscious, urban",
+      "tone": [
+        "cinematic",
+        "confident",
+        "aspirational"
+      ],
+      "visual_style": "cinematic, high-contrast, shallow depth of field, moody night palette",
+      "duration_s": 15.0,
+      "aspect_ratio": null,
+      "must_include": [
+        "clear product hero shot"
+      ],
+      "must_avoid": [
+        "competitor brands",
+        "on-screen text inside generated footage"
+      ],
+      "tagline": null,
+      "tagline_language": null,
+      "cultural_notes": [
+        "Keep wardrobe and interactions appropriate for Gulf audiences."
+      ],
+      "assumptions": [
+        "No brand name was given, so the product is shown with a neutral label.",
+        "Aspect ratio not specified; using the configured default."
+      ],
+      "normalized_request_en": "A 15-second cinematic ad for a luxury men's perfume aimed at young men."
+    }
+  }
+]

@@ -48,9 +48,14 @@ class NodeModel(_Frozen):
     effort: Effort
 
 
-class TokenPrice(_Frozen):
+class LLMModelSpec(_Frozen):
+    """Per-model pricing (USD per 1M tokens) and capabilities."""
+
     input: float = Field(ge=0)
     output: float = Field(ge=0)
+    cache_write: float = Field(ge=0)
+    cache_read: float = Field(ge=0)
+    server_fallback: bool = False
 
 
 class OpenAIModels(_Frozen):
@@ -98,7 +103,7 @@ class ModelCatalog(_Frozen):
     default_profile: ProfileName
     profiles: dict[ProfileName, dict[LLMNode, NodeModel]]
     openai: OpenAIModels
-    llm_prices: dict[str, TokenPrice]
+    llm_models: dict[str, LLMModelSpec]
     fal: FalCatalog
 
     @model_validator(mode="after")
@@ -108,7 +113,7 @@ class ModelCatalog(_Frozen):
             if missing:
                 raise ValueError(f"profile {name!r} missing nodes: {sorted(missing)}")
             for node, nm in nodes.items():
-                if nm.model not in self.llm_prices:
+                if nm.model not in self.llm_models:
                     raise ValueError(f"{name}.{node}: no price for model {nm.model!r}")
         if self.fal.image.default not in self.fal.image.endpoints:
             raise ValueError("fal.image.default not in endpoints")
@@ -176,6 +181,13 @@ class Settings(BaseSettings):
     data_dir: Path = PROJECT_ROOT / "data"
     config_dir: Path = PROJECT_ROOT / "config"
     prompts_dir: Path = PROJECT_ROOT / "prompts"
+
+    # LLM call behaviour
+    llm_timeout_s: float = Field(default=300.0, gt=0)
+    llm_max_tokens: int = Field(default=16000, ge=1024)
+    llm_max_repairs: int = Field(default=2, ge=0, le=5)
+    llm_prompt_cache: bool = True
+    anthropic_server_fallback: bool = True  # only applied to models with server_fallback=true
 
     # logging
     log_format: Literal["console", "json"] = "console"

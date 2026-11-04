@@ -27,8 +27,14 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 
 
 @pytest.fixture(autouse=True)
-def _isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
-    """Strip real keys and ADSMITH_* vars so tests are hermetic regardless of the dev's shell."""
+def _isolated_env(
+    request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[None]:
+    """Strip real keys and ADSMITH_* vars so tests are hermetic regardless of the dev's shell.
+    Live tests (opt-in with --live) keep the real keys."""
+    if request.node.get_closest_marker("live") is not None:
+        yield
+        return
     for var in list(os.environ):
         if var.startswith("ADSMITH_") or var in _KEY_VARS:
             monkeypatch.delenv(var, raising=False)

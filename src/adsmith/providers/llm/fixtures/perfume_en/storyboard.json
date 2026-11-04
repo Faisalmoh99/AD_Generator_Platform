@@ -1,0 +1,88 @@
+[
+  {
+    "output": {
+      "scenes": [
+        {
+          "purpose": "hook",
+          "description": "Neon city lights slide across the windshield as a car glides through an empty boulevard at night.",
+          "duration_s": 3.5,
+          "shows_character": true,
+          "shows_product": false,
+          "shot": {
+            "lens": "35mm anamorphic",
+            "color_notes": null,
+            "speed": "normal",
+            "shot_type": "wide",
+            "camera_movement": "truck",
+            "lighting": "neon practicals, deep shadows",
+            "time_of_day": "night",
+            "composition": "car centered on the lower third, light streaks on both sides",
+            "mood": "mysterious, anticipatory",
+            "subject_action": "the car glides forward, the driver's silhouette visible through the glass",
+            "setting": "empty downtown boulevard, wet asphalt"
+          }
+        },
+        {
+          "purpose": "build",
+          "description": "Close on the young man's face behind the wheel; reflections of neon pass over his eyes.",
+          "duration_s": 4.0,
+          "shows_character": true,
+          "shows_product": false,
+          "shot": {
+            "lens": "85mm, f/1.8, shallow depth of field",
+            "color_notes": null,
+            "speed": "normal",
+            "shot_type": "close_up",
+            "camera_movement": "push_in",
+            "lighting": "neon rim light from the side window",
+            "time_of_day": "night",
+            "composition": "face on the right third, bokeh city lights left",
+            "mood": "confident, focused",
+            "subject_action": "he glances at the rear-view mirror and half-smiles",
+            "setting": "car interior"
+          }
+        },
+        {
+          "purpose": "reveal",
+          "description": "He parks, takes the bottle from the console and sprays it once at his neck.",
+          "duration_s": 3.5,
+          "shows_character": true,
+          "shows_product": true,
+          "shot": {
+            "lens": "85mm, f/1.8, shallow depth of field",
+            "color_notes": null,
+            "speed": "slow_motion",
+            "shot_type": "medium_close_up",
+            "camera_movement": "static",
+            "lighting": "warm interior light against cool neon",
+            "time_of_day": "night",
+            "composition": "hands and bottle in the foreground, face soft in the background",
+            "mood": "deliberate, intimate",
+            "subject_action": "his hand lifts the bottle and sprays once",
+            "setting": "car interior, parked"
+          }
+        },
+        {
+          "purpose": "product",
+          "description": "Hero shot: the bottle stands on the dark car roof, a party glowing behind it.",
+          "duration_s": 4.0,
+          "shows_character": false,
+          "shows_product": true,
+          "shot": {
+            "lens": "100mm macro",
+            "color_notes": null,
+            "speed": "normal",
+            "shot_type": "insert",
+            "camera_movement": "orbit",
+            "lighting": "hard top light, gold reflections",
+            "time_of_day": "night",
+            "composition": "bottle centered, label facing camera, party lights bokeh behind",
+            "mood": "luxurious, triumphant",
+            "subject_action": "the camera orbits slowly around the bottle",
+            "setting": "car roof outside a rooftop party"
+          }
+        }
+      ]
+    }
+  }
+]

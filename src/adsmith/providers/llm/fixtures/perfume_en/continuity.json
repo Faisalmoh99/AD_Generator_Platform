@@ -1,0 +1,58 @@
+[
+  {
+    "output": {
+      "character": {
+        "description": "young Saudi man with a calm, confident presence",
+        "age_range": "22-28",
+        "appearance": "light stubble, defined jawline, dark eyes",
+        "hair": "short black fade",
+        "grooming": "neatly groomed beard line",
+        "build": "athletic, slim",
+        "wardrobe": [
+          "black tailored shirt",
+          "silver wristwatch"
+        ]
+      },
+      "product": {
+        "name": "NOIR",
+        "bottle_shape": "faceted rectangular",
+        "bottle_material": "matte black glass",
+        "liquid_color": "deep amber",
+        "cap": "brushed gold cap",
+        "label_text": "NOIR",
+        "label_style": "embossed gold serif lettering",
+        "distinctive_features": [
+          "gold edge on the base"
+        ],
+        "hero_angle": "three-quarter low angle"
+      },
+      "color_grade": {
+        "palette": [
+          "#0B0B0F",
+          "#C9A227",
+          "#1E90FF",
+          "#E5E5E5"
+        ],
+        "contrast": "high",
+        "saturation": "low, except neon accents",
+        "film_emulation": "subtle 35mm grain"
+      },
+      "location": {
+        "primary": "a modern Gulf city at night, empty boulevards and towers",
+        "secondary": [
+          "car interior",
+          "rooftop party"
+        ],
+        "era": "contemporary"
+      },
+      "mood": "confident, nocturnal, luxurious",
+      "lighting": "low-key with neon practicals and warm accents on the product",
+      "audio_mood": "deep bass pulse building to a confident hit",
+      "forbidden": [
+        "competitor brands",
+        "alcohol",
+        "readable on-screen text other than the label"
+      ]
+    }
+  }
+]
