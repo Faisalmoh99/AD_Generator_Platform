@@ -113,11 +113,12 @@ def _palette(label: MediaLabel, seed: str) -> list[tuple[int, int, int]]:
     return [(digest[i], digest[i + 1], digest[i + 2]) for i in range(0, 9, 3)]
 
 
-def render_card(job: ImageJob, path: Path) -> None:  # noqa: PLR0915 - one linear drawing
+def render_card(job: ImageJob, path: Path) -> None:
     """A cinematic *abstract* frame instead of a text dump: the bible palette as a graded
     background, a soft key light, a subject silhouette sized by shot type, vignette and grain.
-    No prompt text is drawn (Arabic would need shaping), but every visual parameter is derived
-    from the prompt's hash, so an edited prompt visibly yields a different keyframe."""
+    No text is drawn (the UI labels scenes; Arabic would need shaping), but every visual
+    parameter is derived from the prompt's hash, so an edited prompt visibly yields a different
+    keyframe."""
     w, h = job.width, job.height
     colors = _palette(job.label, job.prompt)
     digest = hashlib.sha256(job.prompt.encode()).digest()
@@ -184,17 +185,6 @@ def render_card(job: ImageJob, path: Path) -> None:  # noqa: PLR0915 - one linea
     img = Image.composite(img, Image.new("RGB", (w, h), (0, 0, 0)), vig)
     noise = Image.effect_noise((w, h), 18).convert("RGB")
     img = Image.blend(img, noise, 0.05)
-    draw = ImageDraw.Draw(img)
-    caption = f"{shot.replace('_', ' ')} · {job.label.camera.replace('_', ' ')}"
-    draw.text(
-        (int(w * 0.06), int(h * 0.94)),
-        caption.upper(),
-        font=_font(max(10, h // 48)),
-        fill=(230, 222, 210),
-    )
-    draw.text(
-        (int(w * 0.06), int(h * 0.04)), "MOCK", font=_font(max(9, h // 60)), fill=(200, 190, 175)
-    )
     img.save(path)
 
 

@@ -603,3 +603,29 @@ show, trace, export, list, history, resume. `serve` arrives in M10.
 **Known limit (fixed right after, see ADR-0015 addendum)**: with real fal, a job in flight when the process dies is still billed and resume
 resubmits it (the in-flight handle lives in memory). Fix: persist the fal request id in the account
 ledger at submit time and resume polling it (MORE_TIME #12).
+
+## Post-M9: crash-safe fal jobs (2026-11-05)
+The fal request id is persisted on the attempt right after submit (before polling); resume polls
+that request and settles the dead process's wallet reservation; it resubmits only if fal reports it
+gone or failed. Interrupted attempts no longer shift the keyframe seed. Tests: provider level and end
+to end (pipeline cancelled after a clip submit, resumed in a fresh runtime: 0 duplicate submits).
+ADR-0015 addendum; MORE_TIME #12 done.
+
+## M10: Web UI (2026-11-05)
+**Built**: `api/app.py` (FastAPI: REST actions, SSE trace tailed from the event store, Production
+Pack zip, media served from `cas/` and `runs/` only), `api/view.py` (one view model per run),
+`api/gallery.py` + `config/real_runs.toml` (majlis ad, single take, curtain before → after), static
+single page (`api/static/`: dark cinematic design, serif display + sans body, bundled Noto Naskh for
+all Arabic via `unicode-range`, `dir=auto` on user content). Flow: request → live pipeline →
+3 concept cards (insight, judge score bar, producibility/originality/cliché flags, judge's pick) →
+storyboard with status chips, per-scene recovery chips and hover-to-play clips → edit box with the
+blast radius drawn on the cards (depth tag + glow, untouched = $0) → final player + end card +
+Production Pack. Side panel: budget meter, live trace with filters (recoveries/QA/cost/edits).
+**Changed while reviewing the screenshots**: the judge now scores concepts in interactive mode too
+(recommends; the human picks), mock keyframes became text-free abstract cinematic frames (the old
+text cards showed Arabic as boxes), blast tags got solid backgrounds, "Apply edit" no longer wraps.
+**Security bug found by a test**: `/files/` served anything in the data dir, including the SQLite
+DB; now media folders and media types only.
+**Screenshots**: `docs/screenshots/{1_concepts,2_storyboard_midrun,3_final_player,
+4_edit_blast_radius,4b_edit_done,5_real_runs_gallery}.png` (Playwright + installed Chrome,
+`scripts/ui_screenshots.py`). 455 tests.
