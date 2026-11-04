@@ -53,6 +53,7 @@ CHECK_CATEGORIES: dict[str, frozenset[str]] = {
     "continuity_ok": frozenset({"continuity", "character", "product"}),
     "artifacts_free": frozenset({"artifact", "motion", "character", "product"}),
     "brand_safe": frozenset({"safety"}),
+    "text_free": frozenset({"artifact", "product", "safety"}),
 }
 
 

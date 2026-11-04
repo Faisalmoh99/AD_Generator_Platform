@@ -15,8 +15,11 @@ IssueCategory = Literal[
 KEYFRAME_ISSUE_CATEGORIES: frozenset[str] = frozenset({"product", "character", "composition"})
 # The critic sees the keyframe as image 0 and the clip frames as images 1..n.
 KEYFRAME_IMAGE_INDEX = 0
-# Two or more major issues fail a clip even when the score clears the threshold.
-MAX_MAJOR_ISSUES = 2
+# Severity calibration (ADR-0016 addendum 3). HARD checks can fail a shot on their own; SOFT
+# issue categories (light side, background objects, placement, exact composition, negative-space
+# precision) only lower the score: code caps their severity at "minor", whatever the LLM said.
+HARD_CHECKS: tuple[str, ...] = ("product_visible", "continuity_ok", "text_free", "brand_safe")
+SOFT_CATEGORIES: frozenset[str] = frozenset({"lighting", "composition"})
 
 
 class QAChecks(DomainModel):
@@ -26,6 +29,9 @@ class QAChecks(DomainModel):
     continuity_ok: bool
     artifacts_free: bool
     brand_safe: bool
+    # No letters, words, logos or garbled text anywhere in frame (beyond the bible's branding
+    # text). Defaults to True so verdicts stored before this check existed still load.
+    text_free: bool = True
 
 
 class QAIssue(DomainModel):
@@ -58,24 +64,28 @@ class QAVerdict(QAVerdictDraft):
     def from_draft(
         cls, draft: QAVerdictDraft, *, threshold: float, keyframe_approved: bool = False
     ) -> QAVerdict:
-        return cls(**draft.model_dump(), threshold=threshold, keyframe_approved=keyframe_approved)
+        """Applies the severity calibration: soft-category issues are capped at minor."""
+        data = draft.model_dump()
+        for issue in data["issues"]:
+            if issue["category"] in SOFT_CATEGORIES and issue["severity"] != "minor":
+                issue["severity"] = "minor"
+        return cls(**data, threshold=threshold, keyframe_approved=keyframe_approved)
 
     @property
     def fail_reasons(self) -> list[str]:
-        """Why this verdict fails, decided by code (ADR-0016). Empty ⇒ passed."""
+        """Why this verdict fails, decided by code (ADR-0016 addendum 3): any HARD check false, any
+        blocker (soft categories are capped at minor, so never blockers), or score < threshold."""
         reasons: list[str] = []
         if self.score < self.threshold:
             reasons.append(f"score {self.score:.2f} < threshold {self.threshold:.2f}")
-        if not self.checks.product_visible:
-            reasons.append("product not clearly readable in the frames the viewer sees")
-        if not self.checks.continuity_ok:
-            reasons.append("continuity broken (character or product differs from the bible)")
-        if not self.checks.brand_safe:
-            reasons.append("not brand-safe")
-        majors = sum(1 for i in self.issues if i.severity == "major")
-        if majors >= MAX_MAJOR_ISSUES:
-            reasons.append(f"{majors} major issues (limit {MAX_MAJOR_ISSUES - 1})")
-        if any(i.severity == "blocker" for i in self.issues):
+        hard = {
+            "product_visible": "product not clearly readable",
+            "continuity_ok": "product or character identity differs from the bible",
+            "text_free": "text, logo or garbled letters in frame",
+            "brand_safe": "not brand-safe",
+        }
+        reasons += [msg for check, msg in hard.items() if not getattr(self.checks, check)]
+        if any(i.severity == "blocker" for i in self.issues):  # soft issues are never blockers
             reasons.append("blocker issue")
         return reasons
 

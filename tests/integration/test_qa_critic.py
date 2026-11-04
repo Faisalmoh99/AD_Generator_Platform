@@ -248,8 +248,10 @@ def test_major_issue_located_in_the_keyframe_needs_a_new_keyframe() -> None:
             QAVerdictDraft.model_validate(draft), threshold=0.7
         ).needs_new_keyframe
 
-    assert v("lighting", "major", 0)  # wrong key-light side lives in the still
-    assert not v("lighting", "major", 2)  # a lighting flicker in the clip does not
+    # lighting/composition are SOFT (capped at minor), so they never force a new keyframe alone
+    assert not v("lighting", "major", 0)
+    assert v("character", "major", 0)  # a non-soft issue located in the still does
+    assert not v("lighting", "major", 2)
     assert not v("lighting", "minor", 0)
     assert not v("motion", "major", 0)
     assert v("product", "major", 2)  # look categories regenerate wherever they are seen
@@ -331,9 +333,15 @@ def _verdict(
         (
             _verdict(0.9, issues=[issue("continuity", "minor")], failed=("continuity_ok",)),
             False,
-            "continuity",
+            "identity",
         ),
-        (_verdict(0.9, issues=[issue("motion"), issue("lighting")]), False, "2 major"),
+        (
+            _verdict(0.9, issues=[issue("motion"), issue("artifact")]),
+            True,
+            None,
+        ),  # majors alone don't fail
+        (_verdict(0.9, issues=[issue("artifact", "minor")], failed=("text_free",)), False, "text"),
+        (_verdict(0.9, issues=[issue("lighting", "blocker")]), True, None),  # soft: capped,
         (_verdict(0.9, issues=[issue("artifact", "blocker")]), False, "blocker"),
         (
             _verdict(0.9, issues=[issue("safety", "minor")], failed=("brand_safe",)),
@@ -348,8 +356,9 @@ def test_pass_rule_is_decided_by_code(v: QAVerdict, passed: bool, reason: str | 
         assert any(reason in r for r in v.fail_reasons)
 
 
-def test_real_m11_verdict_two_now_fails() -> None:
-    # Verbatim shape of the real LTX S4 verdict that passed under the old rule (score 0.72).
+def test_real_m11_verdict_two_under_the_hard_soft_rule() -> None:
+    # Verbatim shape of the real LTX S4 verdict (score 0.72): failed under the "2+ majors" rule,
+    # passes under the hard/soft rule (missing motion beat + light dip are not hard failures).
     v = _verdict(
         0.72,
         issues=[
@@ -359,11 +368,12 @@ def test_real_m11_verdict_two_now_fails() -> None:
         ],
         failed=("matches_shot_spec", "lighting_matches"),
     )
-    assert not v.passed and v.fail_reasons == ["2 major issues (limit 1)"]
+    assert v.passed and v.fail_reasons == []
+    assert [i.severity for i in v.issues] == ["major", "minor", "minor"]  # lighting capped
 
 
 async def test_high_score_rejections_still_count_toward_the_limit(tmp_path: Path) -> None:
-    two_majors = verdict(0.95, issues=[issue("motion"), issue("motion", frame=2)])
+    two_majors = verdict(0.95, issues=[issue("product", frame=2)], failed=("product_visible",))
     h = harness(tmp_path, [two_majors, PASS, PASS, PASS, two_majors, two_majors])
     state = await run_auto(h)
     s1 = scenes(state)[0]
@@ -378,7 +388,7 @@ async def test_scene_approved_under_an_older_rule_still_loads(tmp_path: Path) ->
     unloadable, because the load-time invariant re-judged the old verdict with the new rule."""
     h = make_harness(fast_settings(tmp_path))
     state = await run_auto(h)
-    old_style = verdict(0.72, issues=[issue("motion"), issue("lighting")])["output"]  # 2 majors
+    old_style = verdict(0.72, issues=[issue("product")], failed=("product_visible",))["output"]
     old = QAVerdict.from_draft(QAVerdictDraft.model_validate(old_style), threshold=0.7)
     assert not old.passed  # fails today's rule
 
