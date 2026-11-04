@@ -49,7 +49,9 @@ _ALL_OK = QAChecks(
 # A failed check must be explained by at least one issue in one of these categories.
 CHECK_CATEGORIES: dict[str, frozenset[str]] = {
     "product_visible": frozenset({"product", "composition", "continuity"}),
-    "matches_shot_spec": frozenset({"composition", "motion", "character", "product"}),
+    "matches_shot_spec": frozenset(
+        {"composition", "motion", "character", "product", "product_detail"}
+    ),
     "lighting_matches": frozenset({"lighting"}),
     "continuity_ok": frozenset({"continuity", "character", "product"}),
     "artifacts_free": frozenset({"artifact", "motion", "character", "product"}),

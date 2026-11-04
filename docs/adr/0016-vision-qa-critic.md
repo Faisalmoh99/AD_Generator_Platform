@@ -119,3 +119,25 @@ single scene (code sets `QAVerdict.single_take`; the one action *is* the ad). Ne
 `anatomy` (hands, face, wardrobe such as a ghutra drape): the critic reports them as major; they are
 not soft, so code never caps them. `qa_keyframe` v3, `qa_critic` v6. Both new checks default to
 true, so stored verdicts still load.
+
+## Addendum 5 (hero v2): salient vs fine, the third calibration swing
+
+**Context.** The critic has now swung three times: (1) too lenient (2 major issues passed at
+0.72), (2) too strict (10/10 keyframes rejected for staging), fixed by hard/soft; (3) after the
+$2.24 hero miss we made *any* product mismatch hard at the gate, and it swung strict again. Six
+packshots in a row failed, including a clean, wordless, gold-capped bottle, for "corners not
+chamfered", "brushed vs polished" and "no visible nozzle" on a bottle whose cap covers the nozzle
+(our packshot prompt even asked for that contradiction).
+
+**Decision: salient vs fine.** Product identity HARD = only what a viewer notices: overall form
+(rectangular/faceted vs round/flask), cap colour and shape, liquid colour, no text or logos on a
+wordless product, not alcohol-looking. FINE details (chamfers, bevels, facet sharpness, exact
+proportions, brushed vs polished, collar details, nozzle visibility on a capped bottle) go to a new
+`product_detail` category, which is in `SOFT_CATEGORIES`: code caps it at minor, so it lowers the
+score but never fails a shot. `gate_draft` still turns any `product` issue into a hard failure.
+Applied to all three judges: `qa_product_ref` v3, `qa_keyframe` v5, `qa_critic` v7.
+`product_reference` v3 asks for a closed bottle with its cap on.
+
+**Lesson.** Each swing came from tightening one rule after one costly miss. The stable rule is a
+*viewer's* rule: fail what an audience would notice (wrong cap colour, a whisky look, letters), and
+score down what only a checklist would notice.

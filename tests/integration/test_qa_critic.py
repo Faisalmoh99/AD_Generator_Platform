@@ -479,3 +479,14 @@ async def test_zero_regenerations_means_one_take_per_shot(tmp_path: Path) -> Non
     sc = scenes(state)
     assert all(s.status is SceneStatus.FAILED for s in sc)
     assert h.video.calls == len(sc)  # exactly one clip per scene, never a second take
+
+
+def test_fine_product_details_are_soft_salient_identity_is_hard() -> None:
+    from adsmith.agent.qa import gate_draft  # noqa: PLC0415
+
+    fine = verdict(0.8, issues=[issue("product_detail", "major", 0)], frames=1)["output"]
+    v = QAVerdict.from_draft(gate_draft(QAVerdictDraft.model_validate(fine)), threshold=0.7)
+    assert v.passed and v.issues[0].severity == "minor"  # capped by code, gate passes
+    salient = verdict(0.8, issues=[issue("product", "minor", 0)], frames=1)["output"]
+    v = QAVerdict.from_draft(gate_draft(QAVerdictDraft.model_validate(salient)), threshold=0.7)
+    assert not v.passed  # cap colour/shape, form, liquid, text: still hard

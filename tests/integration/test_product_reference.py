@@ -112,3 +112,28 @@ async def test_off_by_default(tmp_path: Path) -> None:
     state = await run(h, ref=False)
     assert state.product_reference is None
     assert h.reference is None or h.reference.calls == 0
+
+
+async def test_a_regated_stored_packshot_can_be_adopted(tmp_path: Path) -> None:
+    from adsmith.agent import commands  # noqa: PLC0415
+    from adsmith.agent.commands import CommandRejectedError  # noqa: PLC0415
+
+    h = make_harness(fast_settings(tmp_path))
+    use_critic(h, RejectFirstPackshots(99))
+    state = await run(h)
+    pr = state.product_reference
+    assert pr is not None and not pr.approved and pr.rejected
+    passing = QAVerdict(score=0.85, checks=OK, frames_inspected=1, threshold=0.7)
+    failing = QAVerdict(score=0.4, checks=OK, frames_inspected=1, threshold=0.7)
+    with pytest.raises(CommandRejectedError):
+        commands.adopt_product_reference(
+            h.rt.storage, state.id, pr.rejected[1], failing, reason="test"
+        )
+    foreign = pr.rejected[1].model_copy(update={"sha256": "0" * 64})
+    with pytest.raises(CommandRejectedError):
+        commands.adopt_product_reference(h.rt.storage, state.id, foreign, passing, reason="test")
+    state = commands.adopt_product_reference(
+        h.rt.storage, state.id, pr.rejected[1], passing, reason="re-gated"
+    )
+    assert state.product_reference is not None and state.product_reference.approved
+    assert state.product_reference.artifact == pr.rejected[1]

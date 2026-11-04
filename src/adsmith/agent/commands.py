@@ -11,6 +11,8 @@ from pydantic import JsonValue
 from adsmith.agent.transitions import GATE_EXITS
 from adsmith.domain.enums import SceneStatus, Stage, StaleFrom
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.generation import Artifact
+from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import ShotSpec
 from adsmith.domain.scene_flags import enforce_scene_flags
@@ -123,6 +125,7 @@ def edit_scene_spec(
     reason: str,
     description: str | None = None,
     shot: dict[str, object] | None = None,
+    shows_product: bool | None = None,
     expected_version: int | None = None,
 ) -> RunState:
     """Minimal scene edit (first real use: M11 S4 simplification; the full natural-language edit
@@ -148,10 +151,19 @@ def edit_scene_spec(
         scene.shot = new_shot
         if description is not None:
             scene.description = description
+        if shows_product is not None:
+            # An explicit user decision (e.g. "no bottle in the macro shot"). ADR-0010's
+            # upgrade-only rule governs inferred flags; a user override is logged, and code may
+            # still upgrade it back if the new text clearly shows the product.
+            scene.shows_product = shows_product
         scene.mark_stale(StaleFrom.PROMPT)
         overrides = enforce_scene_flags([scene], s.bible)  # upgrade-only (ADR-0010)
         s.stage = Stage.PROMPT
-        changed = sorted((shot or {}).keys()) + (["description"] if description else [])
+        changed = (
+            sorted((shot or {}).keys())
+            + (["description"] if description else [])
+            + ([f"shows_product={shows_product}"] if shows_product is not None else [])
+        )
         return [
             AgentEvent(
                 run_id=s.id,
@@ -172,6 +184,33 @@ def edit_scene_spec(
     return storage.runs.update(
         run_id, mutate, reason=f"scene {scene_order} edited", expected_version=expected_version
     ).state
+
+
+def adopt_product_reference(
+    storage: Storage, run_id: str, artifact: Artifact, verdict: QAVerdict, *, reason: str
+) -> RunState:
+    """Make a stored packshot the run's locked product reference after it passed the CURRENT
+    gate (e.g. re-judged after a gate recalibration, so no new image is paid for). Only a
+    packshot this run generated and recorded may be adopted, and only with a passing verdict."""
+    if not verdict.passed:
+        raise CommandRejectedError("only a packshot that passes the gate can be adopted")
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        pr = s.product_reference
+        if pr is None or all(a.sha256 != artifact.sha256 for a in pr.rejected):
+            raise CommandRejectedError("not a packshot recorded by this run")
+        s.product_reference = pr.model_copy(update={"artifact": artifact, "verdict": verdict})
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"Product reference adopted ({reason}): gate score {verdict.score:.2f}",
+                payload={"sha256": artifact.sha256, "score": verdict.score},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="product reference adopted").state
 
 
 def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None) -> RunState:

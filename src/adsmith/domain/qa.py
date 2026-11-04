@@ -19,6 +19,10 @@ IssueCategory = Literal[
     "safety",
     "geometry",  # objects/architecture appearing or disappearing between keyframe and clip
     "anatomy",  # implausible hands, faces, bodies or wardrobe (e.g. a ghutra drape)
+    # Fine product details a viewer does not notice (chamfers, bevels, brushed vs polished, a
+    # nozzle hidden under a cap). SOFT: the salient identity (form, cap colour/shape, liquid
+    # colour, no text, not alcohol-looking) stays "product" and HARD (ADR-0016 addendum 5).
+    "product_detail",
 ]
 # Issues in these categories mean the *look* is wrong, so the keyframe must be regenerated too.
 KEYFRAME_ISSUE_CATEGORIES: frozenset[str] = frozenset({"product", "character", "composition"})
@@ -34,7 +38,7 @@ HARD_CHECKS: tuple[str, ...] = (
     "brand_safe",
     "alcohol_free",
 )
-SOFT_CATEGORIES: frozenset[str] = frozenset({"lighting", "composition"})
+SOFT_CATEGORIES: frozenset[str] = frozenset({"lighting", "composition", "product_detail"})
 
 
 class QAChecks(DomainModel):
