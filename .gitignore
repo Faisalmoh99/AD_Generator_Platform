@@ -1,0 +1,17 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+dist/
+data/
+runs/
+cas/
+*.db
+*.db-wal
+*.db-shm
+evals/report.md
+.DS_Store

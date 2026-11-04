@@ -1,0 +1,95 @@
+# Model catalog: the ONLY place model IDs, endpoints and prices live.
+# Sources (checked 2026-11-04):
+#   Anthropic model IDs and prices: Claude API docs (models overview / pricing).
+#   fal.ai endpoints and prices: fal.ai model pages + "best image-to-video APIs 2026".
+# Re-verify before relying on prices for anything beyond the run budget guard.
+# Rationale per node: docs/adr/0007-model-selection-per-node.md
+
+default_profile = "balanced"
+
+# ---------------------------------------------------------------- profiles
+# Each node -> { model, effort }. effort: low | medium | high | xhigh | max
+
+[profiles.fast]
+understand     = { model = "claude-haiku-5-5",  effort = "low" }
+ideate         = { model = "claude-sonnet-5-5", effort = "low" }
+select         = { model = "claude-haiku-5-5",  effort = "low" }
+storyboard     = { model = "claude-sonnet-5-5", effort = "low" }
+continuity     = { model = "claude-haiku-5-5",  effort = "medium" }
+prompt_writer  = { model = "claude-sonnet-5-5", effort = "low" }
+edit_parser    = { model = "claude-haiku-5-5",  effort = "low" }
+conflict_check = { model = "claude-haiku-5-5",  effort = "medium" }
+policy_rewrite = { model = "claude-sonnet-5-5", effort = "low" }
+qa_critic      = { model = "claude-sonnet-5-5", effort = "low" }
+
+[profiles.balanced]
+understand     = { model = "claude-haiku-5-5",  effort = "medium" }
+ideate         = { model = "claude-sonnet-5-5", effort = "high" }
+select         = { model = "claude-sonnet-5-5", effort = "medium" }
+storyboard     = { model = "claude-sonnet-5-5", effort = "high" }
+continuity     = { model = "claude-sonnet-5-5", effort = "medium" }
+prompt_writer  = { model = "claude-sonnet-5-5", effort = "medium" }
+edit_parser    = { model = "claude-haiku-5-5",  effort = "medium" }
+conflict_check = { model = "claude-sonnet-5-5", effort = "medium" }
+policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }
+qa_critic      = { model = "claude-sonnet-5-5", effort = "medium" }
+
+[profiles.quality]
+understand     = { model = "claude-sonnet-5-5", effort = "medium" }
+ideate         = { model = "claude-opus-5-5",   effort = "high" }
+select         = { model = "claude-sonnet-5-5", effort = "high" }
+storyboard     = { model = "claude-opus-5-5",   effort = "high" }
+continuity     = { model = "claude-sonnet-5-5", effort = "high" }
+prompt_writer  = { model = "claude-sonnet-5-5", effort = "high" }
+edit_parser    = { model = "claude-sonnet-5-5", effort = "medium" }
+conflict_check = { model = "claude-sonnet-5-5", effort = "high" }
+policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }
+qa_critic      = { model = "claude-opus-5-5",   effort = "medium" }
+
+# ---------------------------------------------------------------- OpenAI
+# Intentionally left empty: set from https://platform.openai.com/docs/models
+# before using ADSMITH_LLM_PROVIDER=openai. We do not hardcode IDs from memory.
+[openai]
+default_model = ""
+vision_model = ""
+
+# ---------------------------------------------------------------- LLM prices (USD per 1M tokens)
+[llm_prices]
+"claude-opus-5-5"   = { input = 4.00, output = 20.00 }
+"claude-sonnet-5-5" = { input = 2.00, output = 10.00 }
+"claude-haiku-5-5"  = { input = 0.10, output = 0.50 }
+
+# ---------------------------------------------------------------- fal.ai
+[fal.image]
+default = "flux_dev"
+
+[fal.image.endpoints.flux_dev]
+endpoint = "fal-ai/flux/dev"
+usd_per_image = 0.025          # estimate; verify on the model page (M11)
+
+[fal.image.endpoints.flux_2_flex]
+endpoint = "fal-ai/flux-2-flex"
+usd_per_image = 0.05           # estimate; verify on the model page (M11)
+
+[fal.video]
+default = "kling_v3_pro"
+
+[fal.video.endpoints.kling_v3_pro]
+endpoint = "fal-ai/kling-video/v3/pro/image-to-video"
+adapter = "kling"
+usd_per_second = 0.112         # audio off
+min_duration_s = 3
+max_duration_s = 15
+
+[fal.video.endpoints.seedance_2]
+endpoint = "bytedance/seedance-2.0/image-to-video"
+adapter = "seedance"
+usd_per_second = 0.3034        # 720p
+min_duration_s = 4
+max_duration_s = 15
+
+[fal.video.endpoints.veo31_fast]
+endpoint = "fal-ai/veo3.1/fast/image-to-video"
+adapter = "veo"
+usd_per_second = 0.10          # audio off
+allowed_durations_s = [4, 6, 8]

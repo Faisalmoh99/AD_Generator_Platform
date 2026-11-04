@@ -1,0 +1,9 @@
+# Chaos Mode: injected faults in scene generation, to demo recovery live.
+# Every injected fault is labelled `chaos_injected=true` in the event trace.
+seed = 7
+first_attempt_only = true   # only the first try of each scene phase can be faulted, so the demo always recovers
+
+[probabilities]
+transient = 0.25
+policy = 0.15
+quality = 0.15
