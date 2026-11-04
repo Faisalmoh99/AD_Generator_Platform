@@ -55,7 +55,6 @@ from adsmith.storage.repo import Mutation
 log = get_logger(__name__)
 
 MAX_POLICY_REWRITES = 2
-MAX_QA_REGENERATIONS = 2
 
 
 class Critic(Protocol):
@@ -1111,7 +1110,7 @@ class SceneStageRunner:
             self._update(run_id, approve, "qa approved")
             return
 
-        if rejections >= MAX_QA_REGENERATIONS:
+        if rejections >= self.node_ctx.settings.qa_max_regenerations:
 
             def reject_final(s: RunState) -> list[AgentEvent]:
                 sc = record(s)

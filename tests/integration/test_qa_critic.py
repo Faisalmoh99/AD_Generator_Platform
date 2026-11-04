@@ -471,3 +471,11 @@ def test_gate_turns_any_product_mismatch_into_a_hard_failure() -> None:
     after = QAVerdict.from_draft(gate_draft(QAVerdictDraft.model_validate(raw)), threshold=0.7)
     assert not after.passed and not after.checks.continuity_ok
     assert [i.severity for i in after.issues] == ["major", "minor"]  # composition stays soft
+
+
+async def test_zero_regenerations_means_one_take_per_shot(tmp_path: Path) -> None:
+    h = harness(tmp_path, [REJECT_MOTION] * 8, qa_max_regenerations=0)
+    state = await run_auto(h)
+    sc = scenes(state)
+    assert all(s.status is SceneStatus.FAILED for s in sc)
+    assert h.video.calls == len(sc)  # exactly one clip per scene, never a second take

@@ -213,6 +213,8 @@ class Settings(BaseSettings):
     max_attempts_per_scene: int = Field(default=8, ge=1)  # 3 keyframe tries + clips
     keyframe_max_tries: int = Field(default=3, ge=1, le=6)  # keyframe gate (ADR-0003)
     clip_candidates: int = Field(default=1, ge=1, le=4)  # best-of-N clips (2 with --hero)
+    # QA-rejected clips regenerated per scene before it fails (0 = strictly one take per shot).
+    qa_max_regenerations: int = Field(default=2, ge=0, le=5)
     # Locked product reference + reference-conditioned keyframes (ADR-0003 addendum 3).
     product_reference: bool = False
     max_total_attempts: int = Field(default=40, ge=1)
