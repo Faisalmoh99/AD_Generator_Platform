@@ -538,3 +538,31 @@ async def test_critic_sends_eight_frames_for_a_spray_shot(tmp_path: Path) -> Non
     )
     expected = sorted(9 if f else 4 for f in flags)  # keyframe + 8 dense or 3 frames
     assert counts == expected
+
+
+async def test_human_override_accepts_a_rejected_clip_and_reassembles(tmp_path: Path) -> None:
+    from adsmith.agent import commands  # noqa: PLC0415
+    from adsmith.agent.commands import CommandRejectedError  # noqa: PLC0415
+
+    h = harness(tmp_path, [REJECT_MOTION, PASS, PASS, PASS], qa_max_regenerations=0)
+    state = await run_auto(h)
+    assert state.stage is Stage.DONE_PARTIAL
+    failed = next(s for s in scenes(state) if s.status is SceneStatus.FAILED)
+    assert failed.qa is not None and not failed.qa.passed  # the failing verdict is kept
+    approved = next(s for s in scenes(state) if s.status is SceneStatus.APPROVED)
+    with pytest.raises(CommandRejectedError):
+        commands.accept_scene(h.rt.storage, state.id, approved.order, reason="not failed")
+    calls_before = h.video.calls
+    commands.accept_scene(
+        h.rt.storage, state.id, failed.order, reason="the spray is visible at 2 s"
+    )
+    commands.reassemble(h.rt.storage, state.id)
+    state = await h.orch.run_until_blocked(state.id)
+    assert state.stage is Stage.DONE and h.video.calls == calls_before  # ffmpeg only, no clips
+    sc = next(s for s in scenes(state) if s.order == failed.order)
+    assert sc.status is SceneStatus.APPROVED and sc.human_override is not None
+    assert sc.human_override.critic_score == 0.5 and sc.qa is not None and not sc.qa.passed
+    events = h.rt.storage.events.tail(state.id, limit=10_000)
+    assert any(
+        e.summary.startswith("HUMAN OVERRIDE") and e.payload["human_override"] for e in events
+    )

@@ -213,6 +213,59 @@ def adopt_product_reference(
     return storage.runs.update(run_id, mutate, reason="product reference adopted").state
 
 
+def accept_scene(
+    storage: Storage,
+    run_id: str,
+    scene_order: int,
+    *,
+    reason: str,
+    verdict: QAVerdict | None = None,
+) -> RunState:
+    """Human override: accept the last clip of a QA-rejected scene. Logged as a HUMAN decision in
+    the trace, with the critic's failing verdict kept as the record. Reassemble afterwards."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.storyboard is None:
+            raise CommandRejectedError("the run has no storyboard")
+        matches = [sc for sc in s.storyboard.scenes if sc.order == scene_order]
+        if not matches:
+            raise CommandRejectedError(f"no scene {scene_order}")
+        sc = matches[0]
+        clip = next(
+            (
+                a.artifact
+                for a in reversed(sc.attempts)
+                if a.scene_version == sc.version and a.phase.value == "clip" and a.artifact
+            ),
+            None,
+        )
+        v = verdict or sc.qa
+        if clip is None or v is None:
+            raise CommandRejectedError(f"scene {scene_order} has no rejected clip with a verdict")
+        try:
+            sc.accept_by_human(clip, v, reason)
+        except ValueError as exc:  # IllegalTransitionError
+            raise CommandRejectedError(str(exc)) from exc
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                scene_id=sc.id,
+                type=EventType.DECISION,
+                summary=f"HUMAN OVERRIDE: scene {scene_order} clip accepted despite QA "
+                f"{v.score:.2f} ({'; '.join(v.fail_reasons) or 'rejected'}). Reason: {reason}",
+                payload={
+                    "human_override": True,
+                    "critic_score": v.score,
+                    "fail_reasons": list[JsonValue](v.fail_reasons),
+                    "reason": reason,
+                },
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason=f"scene {scene_order} accepted").state
+
+
 def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None) -> RunState:
     """Re-run only the assembly of a finished run (new end card / partial mode), no generation:
     ffmpeg plus at most one small LLM call for the end-card copy."""

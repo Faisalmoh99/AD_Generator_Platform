@@ -1115,6 +1115,7 @@ class SceneStageRunner:
             def reject_final(s: RunState) -> list[AgentEvent]:
                 sc = record(s)
                 events = self._book(s, calls, Stage.QA, sc)
+                sc.qa = verdict  # the failing verdict stays on the scene (human override needs it)
                 sc.fail(
                     self._failure(
                         s,

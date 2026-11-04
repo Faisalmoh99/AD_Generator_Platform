@@ -222,6 +222,19 @@ def budget(
 
 
 @app.command()
+def accept(
+    run_id: str,
+    scene: Annotated[int, typer.Argument(help="Scene number")],
+    reason: Annotated[str, typer.Option(help="Why the human accepts the rejected clip.")],
+) -> None:
+    """Human override: accept a QA-rejected clip (logged in the trace), then reassemble."""
+    orch = _orchestrator()
+    commands.accept_scene(orch.rt.storage, run_id, scene, reason=reason)
+    commands.reassemble(orch.rt.storage, run_id)
+    print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
+
+
+@app.command()
 def approve(run_id: str) -> None:
     """Approve the storyboard keyframes and generate the clips."""
     orch = _orchestrator()

@@ -224,6 +224,7 @@ function renderBoard(v) {
       <div class="body">
         <div class="desc" dir="auto">${esc(s.description)}</div>
         <div class="meta" title="${esc(s.camera.replace("_", " "))} · ${s.attempts} attempts"><span>${s.duration_s}s · v${s.version}</span><span>${money(s.spend)}</span></div>
+        ${s.human_override ? `<div class="recov override" title="${esc(s.human_override)}"><span>👤 human override</span></div>` : ""}
         ${s.recoveries.length ? `<div class="recov">${s.recoveries.map((r) => `<span>${r === "retry" ? "↻" : "✎"} ${esc(r)}</span>`).join("")}</div>` : ""}
         ${s.failure ? `<div class="fail" dir="auto">${esc(s.failure)}</div><button class="btn retry" data-retry="${s.order}">Retry scene</button>` : ""}
         ${s.qa != null && s.status === "approved" ? `<div class="meta"><span>QA ${s.qa.toFixed(2)}</span><span>${s.keyframe_approved ? "keyframe gate ✓" : ""}</span></div>` : ""}

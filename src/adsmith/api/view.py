@@ -186,6 +186,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
                     "shows_character": sc.shows_character,
                     "shows_product": sc.shows_product,
                     "recoveries": recoveries.get(sc.id, []),
+                    "human_override": sc.human_override.reason if sc.human_override else None,
                 }
             )
     b = state.budget

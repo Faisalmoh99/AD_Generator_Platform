@@ -13,7 +13,7 @@ check legality against ``SCENE_TRANSITIONS`` and re-validate invariants once at 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -157,9 +157,20 @@ SCENE_TRANSITIONS: dict[SceneStatus, frozenset[SceneStatus]] = {
         {SceneStatus.APPROVED, SceneStatus.PENDING, SceneStatus.FAILED, SceneStatus.STALE}
     ),
     SceneStatus.APPROVED: frozenset({SceneStatus.STALE}),
-    SceneStatus.FAILED: frozenset({SceneStatus.STALE}),
+    # failed → approved only through ``accept_by_human`` (a logged human decision).
+    SceneStatus.FAILED: frozenset({SceneStatus.STALE, SceneStatus.APPROVED}),
     SceneStatus.STALE: frozenset({SceneStatus.PENDING, SceneStatus.STALE}),
 }
+
+
+class HumanOverride(DomainModel):
+    """A human accepted a clip the critic rejected. Logged in the trace; the critic's failing
+    verdict stays on the scene (``qa``) as the honest record."""
+
+    decision: Literal["accept_clip"] = "accept_clip"
+    reason: Annotated[str, Field(min_length=3, max_length=500)]
+    critic_score: float = Field(ge=0, le=1)
+    at: datetime = Field(default_factory=utcnow)
 
 
 class Scene(SceneDraft):
@@ -180,6 +191,7 @@ class Scene(SceneDraft):
     history: list[SceneVersion] = Field(default_factory=list)
     attempts: list[GenerationAttempt] = Field(default_factory=list)
     failure: SceneFailure | None = None
+    human_override: HumanOverride | None = None
 
     # ----------------------------------------------------------------------- invariants
     @model_validator(mode="after")
@@ -300,6 +312,17 @@ class Scene(SceneDraft):
     def release_lease(self) -> None:
         """generating → pending, used on resume after a crash (the cache prevents re-spend)."""
         self._move(SceneStatus.PENDING)
+        self.check_invariants()
+
+    def accept_by_human(self, clip: Artifact, verdict: QAVerdict, reason: str) -> None:
+        """Human override: accept a QA-rejected clip. Only from failed(quality_rejected)."""
+        if self.status is not SceneStatus.FAILED or self.failure is None:
+            raise IllegalTransitionError("only a failed scene can be accepted by a human")
+        if self.failure.kind is not FailureKind.QUALITY_REJECTED or clip.kind != "video":
+            raise IllegalTransitionError("only a QA-rejected clip can be accepted by a human")
+        self._move(SceneStatus.APPROVED)
+        self.clip, self.qa, self.failure = clip, verdict, None
+        self.human_override = HumanOverride(reason=reason, critic_score=verdict.score)
         self.check_invariants()
 
     def fail(self, failure: SceneFailure) -> None:
