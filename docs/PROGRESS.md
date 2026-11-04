@@ -516,3 +516,17 @@ Fix: product reference image (MORE_TIME.md #3, #7).
 
 **Next**: resume the plan at M7 (edits), M8 (assembly + Arabic end card), M9, M10, M12, M13, with
 mock media for the demo flow plus the real clips above.
+
+### M11 addendum: capability profiles + single-take hero format (2026-11-04)
+Built per ADR-0017 (`ideate` v4, `select` v4, `storyboard` v4, 1-scene validators). 419 tests.
+**Real test** (`run_01M6JH38ZT2WRDPSQ2GM833F7T`, request "إعلان 10 ثواني … لقطة وحدة متواصلة …
+والمنتج يطير نحو الكاميرا", Kling v3 Pro, gate on): three single-take concepts (silk-curtain
+corridor 7.45; "the friend who borrows your perfume" toss 6.65, producibility 4 for face and hands;
+domino glass slabs 6.90). Winner: silk corridor. Keyframe gate PASS 0.78 (1st try), clip QA PASS 0.72
+(1st try), no recoveries. **fal $1.425** (cap $2.50), Anthropic $0.22, ~11 min.
+Final: `data/runs/run_01M6JH38ZT2WRDPSQ2GM833F7T/final.mp4` (10.0 s).
+Honest read: perfect product identity within the take (no drift, no text, no smoke), elegant, but
+the promised beat did not happen. The bottle never flies or fills the frame; it stands on the floor and
+grows modestly as the camera moves through the curtains, and the amber backlight fades by the end.
+QA passed it because missing motion is soft under the current calibration. The cap renders as a
+matte black cylinder vs the bible's cuboid gunmetal cap (the known cap-shape blind spot).
