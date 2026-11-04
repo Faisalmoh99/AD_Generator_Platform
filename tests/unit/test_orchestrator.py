@@ -248,3 +248,19 @@ async def test_scripted_scenario_follows_request_language(
 ) -> None:
     orch = Orchestrator(AgentRuntime.from_settings(settings))
     assert orch.create_run(REQUEST).config.scripted_scenario == "perfume_en"
+
+
+def test_set_budget_is_clamped_to_the_wallet_headroom(tmp_path: Path) -> None:
+    from adsmith.agent.commands import CommandRejectedError  # noqa: PLC0415
+    from adsmith.storage import Storage  # noqa: PLC0415
+
+    storage = Storage.open(tmp_path / "data")
+    run = Orchestrator(AgentRuntime.from_settings(Settings(data_dir=tmp_path / "data"))).create_run(
+        "a perfume ad", interactive=True
+    )
+    state = commands.set_budget(storage, run.id, 5.0, wallet_remaining_usd=1.5)
+    assert state.budget.limit_usd == 1.5  # nothing committed yet: the wallet decides
+    state = commands.set_budget(storage, run.id, 1.0)
+    assert state.budget.limit_usd == 1.0
+    with pytest.raises(CommandRejectedError):
+        commands.set_budget(storage, run.id, 0)

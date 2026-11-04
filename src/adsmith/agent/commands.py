@@ -80,6 +80,41 @@ def approve_storyboard(
     ).state
 
 
+def set_budget(
+    storage: Storage, run_id: str, limit_usd: float, *, wallet_remaining_usd: float | None = None
+) -> RunState:
+    """Set a run's spend cap (e.g. raise it after planning ran with a near-zero wallet). For fal
+    runs the caller passes the wallet's remaining headroom: the cap never exceeds what the run has
+    already spent or reserved plus that headroom: a run never out-spends the prepaid balance."""
+    if limit_usd <= 0:
+        raise CommandRejectedError("the budget must be positive")
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        committed = s.budget.spent_usd + s.budget.reserved_usd
+        new = limit_usd
+        if wallet_remaining_usd is not None:  # future fal spend can never exceed the wallet
+            new = min(new, committed + wallet_remaining_usd)
+        if new < committed:
+            raise CommandRejectedError(f"run already committed ${committed:.3f}")
+        old = s.budget.limit_usd
+        s.budget.limit_usd = round(new, 6)
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"Budget set by the user: ${old:.2f} → ${new:.2f}"
+                + (
+                    f" (wallet headroom ${wallet_remaining_usd:.2f})"
+                    if wallet_remaining_usd
+                    else ""
+                ),
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="budget set").state
+
+
 def edit_scene_spec(
     storage: Storage,
     run_id: str,
