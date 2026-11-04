@@ -602,3 +602,15 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 4. Kill the process mid-generate, run `adsmith resume <run>` → completes with no duplicate spend.
 5. `uv run adsmith serve` → open the page, run the same flow from the UI with the chaos toggle, watch the SSE updates, edit a scene, play the final video.
 6. With keys: `uv run pytest --live -m live` for the Anthropic + fal smoke test.
+
+## 14. Amendments during the build
+
+### M1 (domain)
+- **Draft/domain split:** every LLM output schema is a `*Draft` without system fields; domain models extend it and are built via `from_draft()` (ADR-0010).
+- `Scene` gains `shows_character` / `shows_product` (which bible sections a scene depends on, for bible-edit blast radius and the product-coverage eval). `ScenePrompt` is `{keyframe_prompt, motion_prompt, negative_prompt, template_version, bible_version}`; the separate `positive` field was dropped as redundant.
+- `ContinuityBible.lighting_baseline` → `lighting`, so bible section names equal field names (`section_hash`). `CharacterSpec.ethnicity_appearance` → `appearance`. `character` is nullable for product-only ads.
+- `Conflict.with_` → `against` (no alias config).
+- `QAVerdict.passed` is a computed property (score ≥ threshold, no blocker, brand-safe) and is never an LLM field; `needs_new_keyframe` follows from issue categories.
+- `RunState.pending_patches` → `patches` (full edit history).
+- Storyboard owns `target_duration_s`; the cross-check against the brief lives on `RunState` (ADR-0010).
+- Concept distinctness: trigram Jaccard, threshold 0.35, calibrated (ADR-0009).

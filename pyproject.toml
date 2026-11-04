@@ -56,6 +56,8 @@ ignore = [
     "TRY003",   # long messages in exception constructors are fine for typed errors
     "PLR0913",  # explicit keyword-heavy signatures are deliberate in providers
     "PLR2004",  # magic values are acceptable in tests and validators
+    "RUF001", "RUF002", "RUF003",  # Arabic is a first-class language here, not a confusable
+    "SIM905",   # word lists read better as a split string
 ]
 
 [tool.ruff.lint.per-file-ignores]
