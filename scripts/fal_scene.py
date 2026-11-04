@@ -17,10 +17,14 @@ import time
 from pathlib import Path
 
 from adsmith.agent.context import AgentRuntime
+from adsmith.agent.scenes import Critic
 from adsmith.domain.base import new_id
 from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.enums import SceneStatus, Stage
+from adsmith.domain.llm import LLMCallRecord
+from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import RunState
+from adsmith.domain.scene import Scene
 from adsmith.storage import Storage
 
 
@@ -55,7 +59,56 @@ def copy_run(
     return rt.storage.runs.create(state, events=[]).state
 
 
-async def main() -> None:
+class RecordingCritic:
+    """Prints every verdict in full (the scene keeps only the latest one)."""
+
+    def __init__(self, inner: Critic, rt: AgentRuntime) -> None:
+        self.inner, self.rt = inner, rt
+
+    async def review(self, state: RunState, scene: Scene) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        t = time.monotonic()
+        verdict, calls = await self.inner.review(state, scene)
+        cost = sum(c.cost_usd for c in calls)
+        clip = scene.clip
+        print(f"\n=== critic verdict ({time.monotonic() - t:.1f}s, ${cost:.4f} Anthropic) on")
+        print(f"    clip     {self.rt.storage.artifacts.resolve(clip) if clip else None}")
+        kf = scene.keyframe
+        print(f"    keyframe {self.rt.storage.artifacts.resolve(kf) if kf else None}")
+        print(
+            f"    passed={verdict.passed} score={verdict.score} threshold={verdict.threshold} "
+            f"needs_new_keyframe={verdict.needs_new_keyframe}"
+        )
+        print(f"    checks: {verdict.checks.model_dump()}")
+        for i in verdict.issues:
+            print(f"    [{i.severity}] {i.category} (image {i.frame_index}): {i.observation}")
+            print(f"        fix: {i.fix}")
+        print(f"    hint: {verdict.revised_prompt_hint or '-'}")
+        return verdict, calls
+
+
+def show_prompt(title: str, scene: Scene) -> None:
+    assert scene.prompt is not None
+    print(f"\n--- {title} ({scene.prompt.template_version})")
+    print(f"KEYFRAME: {scene.prompt.keyframe_prompt}")
+    print(f"MOTION:   {scene.prompt.motion_prompt}")
+    print(f"NEGATIVE: {scene.prompt.negative_prompt}")
+
+
+def show_wallet(rt: AgentRuntime, since: int) -> int:
+    """Print every account-ledger row added since ``since`` with the running remaining."""
+    rows = rt.fal_account().entries()
+    s = rt.fal_account().summary()
+    for r in rows[since:]:
+        print(
+            f"    $ fal {r['state']}: {r['endpoint']} [{r['ref']}] "
+            f"${float(str(r['actual_usd'] or r['est_usd'])):.3f}"
+        )
+    if len(rows) > since:
+        print(f"    $ wallet remaining (ledger estimate): ${s.remaining_usd:.3f}")
+    return len(rows)
+
+
+async def main() -> None:  # noqa: PLR0915 - linear driver script
     ap = argparse.ArgumentParser()
     ap.add_argument("--source-data", type=Path)
     ap.add_argument("--run", required=True)
@@ -63,13 +116,13 @@ async def main() -> None:
     ap.add_argument("--video", default="ltx_23_fast")
     ap.add_argument("--image", default="flux_dev")
     ap.add_argument("--long-side", type=int, default=1280)
-    ap.add_argument("--qa", action="store_true", help="also run the vision critic")
+    ap.add_argument("--loop", action="store_true", help="generate/QA until approved or failed")
+    ap.add_argument("--max-steps", type=int, default=8)
     args = ap.parse_args()
 
     from adsmith.config import Settings  # noqa: PLC0415
 
-    settings = Settings()
-    rt = AgentRuntime.from_settings(settings)
+    rt = AgentRuntime.from_settings(Settings())
     if args.source_data:
         source = Storage.open(args.source_data).runs.load(args.run)
         state = copy_run(rt, source, video=args.video, image=args.image, long_side=args.long_side)
@@ -77,51 +130,56 @@ async def main() -> None:
     else:
         state = rt.storage.runs.load(args.run)
     assert state.storyboard is not None
-    scene = next(s for s in state.storyboard.scenes if s.order == args.scene)
-    before = rt.fal_account().summary()
+    scene_id = next(s for s in state.storyboard.scenes if s.order == args.scene).id
     runner = rt.scene_runner(state)
-    t0 = time.monotonic()
-    await runner._scene(state.id, scene.id, Stage.GENERATE)
-    t_gen = time.monotonic() - t0
-    state = rt.storage.runs.load(state.id)
-    assert state.storyboard is not None
-    scene = state.storyboard.by_id(scene.id)
-    if args.qa and scene.status is SceneStatus.QA_REVIEW:
-        t1 = time.monotonic()
-        await runner._scene(state.id, scene.id, Stage.QA)
-        print(f"QA took {time.monotonic() - t1:.1f}s")
-        state = rt.storage.runs.load(state.id)
-        assert state.storyboard is not None
-        scene = state.storyboard.by_id(scene.id)
+    runner.critic = RecordingCritic(runner.critic, rt)
+    mark = len(rt.fal_account().entries())
+    print(f"wallet before: ${rt.fal_account().summary().remaining_usd:.3f} remaining")
 
-    after = rt.fal_account().summary()
-    print(f"\nrun {state.id}  scene {scene.order}  status {scene.status}  ({t_gen:.1f}s generate)")
+    def load() -> Scene:
+        st = rt.storage.runs.load(state.id)
+        assert st.storyboard is not None
+        return st.storyboard.by_id(scene_id)
+
+    for step in range(args.max_steps):
+        scene = load()
+        if scene.status is SceneStatus.QA_REVIEW:
+            prompt_before = scene.prompt
+            await runner._scene(state.id, scene_id, Stage.QA)
+            after = load()
+            if after.prompt != prompt_before:
+                show_prompt("revised prompt after QA rejection", after)
+                kept = after.keyframe is not None
+                print(f"    keyframe {'KEPT' if kept else 'DISCARDED (will be regenerated)'}")
+        elif scene.status is SceneStatus.PENDING:
+            t = time.monotonic()
+            await runner._scene(state.id, scene_id, Stage.GENERATE)
+            print(f"\n>>> generate step {step} took {time.monotonic() - t:.1f}s")
+        else:
+            break
+        mark = show_wallet(rt, mark)
+        if not args.loop:
+            break
+
+    scene = load()
+    final = rt.storage.runs.load(state.id)
+    print(f"\nrun {state.id}  scene {scene.order}  status {scene.status}")
     for a in scene.attempts:
         path = rt.storage.artifacts.resolve(a.artifact) if a.artifact else None
-        took = (a.finished_at - a.started_at).total_seconds() if a.finished_at else None
+        took = (a.finished_at - a.started_at).total_seconds() if a.finished_at else 0.0
         print(
-            f"  {a.phase:<8} attempt {a.attempt_no}: {a.outcome} ${a.cost_usd:.3f} "
-            f"{f'{took:.1f}s' if took else ''} {a.model}\n      {path}"
+            f"  {a.phase:<8} attempt {a.attempt_no}: {a.outcome} ${a.cost_usd:.3f} {took:.1f}s "
+            f"{a.model} qa={a.qa_score}\n      {path}"
             + (f"\n      error: {a.error_message}" if a.error_message else "")
-            + (f"\n      qa_score: {a.qa_score}" if a.qa_score is not None else "")
         )
-    if scene.qa is not None:
-        print(f"  verdict: passed={scene.qa.passed} score={scene.qa.score}")
-        for i in scene.qa.issues:
-            print(f"    [{i.severity}] {i.category} (img {i.frame_index}): {i.observation}")
-            print(f"        fix: {i.fix}")
     if scene.failure is not None:
         print(f"  failure: {scene.failure.kind}: {scene.failure.reason_debug}")
-    media = sum(a.cost_usd for a in scene.attempts)
-    llm = sum(e.actual_usd or 0 for e in state.budget.entries if e.category == "llm")
+    llm = sum(e.actual_usd or 0 for e in final.budget.entries if e.category == "llm")
+    s = rt.fal_account().summary()
+    print(f"\nLLM (Anthropic, not fal) booked in this run: ${llm:.4f}")
     print(
-        f"\nfal spend this run: ${after.settled_usd - before.settled_usd:.3f} "
-        f"(scene media ${media:.3f}); LLM (Anthropic, not fal) booked in this run ${llm:.4f}"
-    )
-    print(
-        f"fal wallet (ledger estimate): balance ${after.balance_usd:.2f}, "
-        f"spent ${after.settled_usd:.3f}, reserved ${after.reserved_usd:.3f}, "
-        f"remaining ${after.remaining_usd:.3f}"
+        f"fal wallet (ledger estimate): balance ${s.balance_usd:.2f}, spent ${s.settled_usd:.3f}, "
+        f"reserved ${s.reserved_usd:.3f}, remaining ${s.remaining_usd:.3f}"
     )
 
 
