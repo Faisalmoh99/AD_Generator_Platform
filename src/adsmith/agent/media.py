@@ -24,6 +24,7 @@ from adsmith.providers.media.base import (
     ImageJob,
     ImageProvider,
     MediaLabel,
+    MediaOutput,
     VideoJob,
     VideoProvider,
     frame_size,
@@ -37,6 +38,8 @@ class PreparedJob:
     request: GenerationRequest  # its cache_key() is the idempotency key
     job: ImageJob | VideoJob
     est_usd: float
+    # Composite mode: after the plain keyframe (job.prompt), swap the reference in with this prompt.
+    composite_prompt: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,12 +62,17 @@ class MediaGateway:
         long_side: int,
         reference: ImageProvider | None = None,
         reference_prompt: Callable[[str, str], str] | None = None,
+        composite: ImageProvider | None = None,
+        composite_prompt: Callable[[str], str] | None = None,
     ) -> None:
         self.image, self.video, self.adapter = image, video, adapter
         self.storage, self.chaos, self.long_side = storage, chaos, long_side
         # Image + prompt → image provider for keyframes that show the product, and the wrapper
         # that tells it to keep the reference product unchanged (ADR-0003 addendum 3).
         self.reference, self.reference_prompt = reference, reference_prompt
+        # Composite mode (ADR-0003 addendum 4): plain keyframe first, then a multi-image model
+        # swaps the reference product in at the scene's own scale.
+        self.composite, self.composite_prompt = composite, composite_prompt
 
     # ------------------------------------------------------------------------ preparation
     def prepare(
@@ -131,6 +139,8 @@ class MediaGateway:
     ) -> PreparedJob:
         """Same keyframe, generated from the locked product still by the reference model. The
         reference's sha256 is part of the request, so a new reference is a new cache key."""
+        if self.composite is not None and self.composite_prompt is not None:
+            return self._composite(plain, reference, product_name)
         if self.reference is None or self.reference_prompt is None:
             return plain
         assert isinstance(plain.job, ImageJob)
@@ -147,6 +157,39 @@ class MediaGateway:
             plain.job, prompt=prompt, reference_path=self.storage.artifacts.resolve(reference)
         )
         return PreparedJob(request, job, self.reference.estimate_usd(job.width, job.height))
+
+    def _composite(self, plain: PreparedJob, reference: Artifact, name: str) -> PreparedJob:
+        assert isinstance(plain.job, ImageJob) and self.composite and self.composite_prompt
+        swap = self.composite_prompt(name)
+        request = plain.request.model_copy(
+            update={
+                "provider": self.composite.name,
+                "model": f"{self.image.model}+{self.composite.model}",
+                "prompt": f"{plain.request.prompt}\n---\n{swap}",
+                "input_image_sha256": reference.sha256,
+            }
+        )
+        job = replace(plain.job, reference_path=self.storage.artifacts.resolve(reference))
+        est = plain.est_usd + self.composite.estimate_usd(job.width, job.height)
+        return PreparedJob(request, job, round(est, 6), composite_prompt=swap)
+
+    async def _run_composite(self, prepared: PreparedJob, scratch: Path) -> MediaOutput:
+        """Plain keyframe (archived in the CAS for the record), then the multi-image swap."""
+        assert isinstance(prepared.job, ImageJob) and self.composite is not None
+        assert prepared.composite_prompt is not None
+        plain_job = replace(prepared.job, reference_path=None)
+        plain = await self.image.generate_image(plain_job, scratch)
+        base = self.storage.artifacts.ingest(
+            plain.path, kind="image", provider=self.image.name, width=plain.width,
+            height=plain.height, remote_url=plain.remote_url, move=True,
+        )  # fmt: skip
+        comp_job = replace(
+            prepared.job,
+            prompt=prepared.composite_prompt,
+            base_path=self.storage.artifacts.resolve(base),
+        )
+        out = await self.composite.generate_image(comp_job, scratch)
+        return replace(out, cost_usd=round(out.cost_usd + plain.cost_usd, 6))
 
     def _prepare_video(
         self, scene: Scene, prompt: ScenePrompt, aspect: str, label: MediaLabel
@@ -203,7 +246,10 @@ class MediaGateway:
             raise err
 
         job = prepared.job
-        if isinstance(job, ImageJob) and job.reference_path is not None:
+        if prepared.composite_prompt is not None:
+            out = await self._run_composite(prepared, scratch)
+            provider = self.composite.name if self.composite else self.image.name
+        elif isinstance(job, ImageJob) and job.reference_path is not None:
             assert self.reference is not None
             out = await self.reference.generate_image(job, scratch)
             provider = self.reference.name

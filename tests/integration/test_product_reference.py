@@ -137,3 +137,16 @@ async def test_a_regated_stored_packshot_can_be_adopted(tmp_path: Path) -> None:
     )
     assert state.product_reference is not None and state.product_reference.approved
     assert state.product_reference.artifact == pr.rejected[1]
+
+
+async def test_composite_mode_makes_the_scene_first_then_swaps_the_product(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path, product_reference_mode="composite"))
+    state = await run(h)
+    assert state.stage is Stage.DONE and state.storyboard is not None
+    product_scenes = [s for s in state.storyboard.scenes if s.shows_product]
+    assert h.composite is not None and h.composite.calls == len(product_scenes)
+    assert h.reference is not None and h.reference.calls == 0  # direct mode not used
+    for sc in product_scenes:
+        kf = next(a for a in sc.attempts if a.phase is ScenePhase.KEYFRAME)
+        assert kf.model == "mock-keyframe+mock-composite"
+        assert "replace the small" in kf.prompt_used and kf.cost_usd > 0.04  # plain + swap

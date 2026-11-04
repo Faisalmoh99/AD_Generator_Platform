@@ -96,6 +96,7 @@ server_fallback = false
 default = "flux_dev"
 # Image + prompt → image, for keyframes that show the product (locked product reference).
 reference = "kontext_pro"
+composite = "kontext_multi"
 
 [fal.image.endpoints.flux_dev]
 endpoint = "fal-ai/flux/dev"
@@ -125,6 +126,17 @@ params = { num_inference_steps = 28, guidance_scale = 3.5 }
 endpoint = "fal-ai/flux-pro/kontext"
 usd_per_image_flat = 0.04
 image_field = "image_url"
+params = { guidance_scale = 3.5, num_images = 1, safety_tolerance = "2" }
+
+[fal.image.endpoints.kontext_multi]
+# Verified 2026-11-05 (model page + /api schema): FLUX.1 Kontext [pro] multi ("experimental").
+# Input: prompt (required), image_urls list (required; max count and order semantics not stated),
+# seed, guidance_scale (default 3.5), num_images (1), output_format jpeg|png, safety_tolerance
+# "1".."6" (default "2"), enhance_prompt, aspect_ratio enum as Kontext. Output: images[0].url.
+# Price: $0.04 per image (page and pricing API agree). Prompts name images by their content.
+endpoint = "fal-ai/flux-pro/kontext/multi"
+usd_per_image_flat = 0.04
+image_field = "image_urls"
 params = { guidance_scale = 3.5, num_images = 1, safety_tolerance = "2" }
 
 [fal.video]

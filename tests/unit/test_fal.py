@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import replace
 from datetime import timedelta
@@ -542,3 +543,22 @@ async def test_kontext_without_a_reference_is_refused_before_any_spend(tmp_path:
     with pytest.raises(PermanentProviderError):
         await provider.generate_image(image_job(), tmp_path)
     assert fake.submitted == [] and acct.summary().settled_usd == 0
+
+
+async def test_kontext_multi_sends_scene_then_reference(tmp_path: Path) -> None:
+    s, acct = settings(tmp_path), account(tmp_path)
+    base, ref = tmp_path / "scene.png", tmp_path / "ref.png"
+    base.write_bytes(b"\x89PNG scene")
+    ref.write_bytes(b"\x89PNG reference")
+    fake = FakeFal(IMAGE_RESULT)
+    queue, _ = make_queue(fake, acct)
+    provider = FalImageProvider(queue, s.catalog.fal.image.endpoints["kontext_multi"])
+    out = await provider.generate_image(
+        replace(image_job(), reference_path=ref, base_path=base), tmp_path
+    )
+    body = fake.submitted[0]
+    assert fake.paths[0] == "POST https://queue.fal.run/fal-ai/flux-pro/kontext/multi"
+    scene_uri, ref_uri = body["image_urls"]
+    assert base64.b64decode(scene_uri.split(",", 1)[1]) == b"\x89PNG scene"
+    assert base64.b64decode(ref_uri.split(",", 1)[1]) == b"\x89PNG reference"
+    assert body["aspect_ratio"] == "9:16" and out.cost_usd == pytest.approx(0.04)

@@ -273,6 +273,12 @@ class FalQueue:
 KONTEXT_ASPECTS = ("21:9", "16:9", "4:3", "3:2", "1:1", "2:3", "3:4", "9:16", "9:21")
 
 
+def _image_kind(job: ImageJob) -> str:
+    if job.base_path is not None:
+        return "composite"
+    return "ref-keyframe" if job.reference_path is not None else "keyframe"
+
+
 def nearest_aspect(width: int, height: int) -> str:
     def ratio(a: str) -> float:
         w, h = a.split(":")
@@ -308,9 +314,14 @@ class FalImageProvider:
             # output size follows the model, not image_size (schema verified).
             if job.reference_path is None:
                 raise PermanentProviderError(f"fal {self.model}: needs a reference image")
-            payload[self.endpoint.image_field] = await asyncio.to_thread(
-                data_uri, job.reference_path
-            )
+            ref_uri = await asyncio.to_thread(data_uri, job.reference_path)
+            if self.endpoint.image_field == "image_urls":  # multi-image: [scene, reference]
+                if job.base_path is None:
+                    raise PermanentProviderError(f"fal {self.model}: needs the scene image too")
+                base_uri = await asyncio.to_thread(data_uri, job.base_path)
+                payload["image_urls"] = [base_uri, ref_uri]
+            else:
+                payload[self.endpoint.image_field] = ref_uri
             payload["aspect_ratio"] = nearest_aspect(job.width, job.height)
         else:
             payload["image_size"] = {"width": job.width, "height": job.height}
@@ -321,10 +332,7 @@ class FalImageProvider:
             self.model,
             payload,
             est_usd=est,
-            ref=(
-                f"s{lbl.scene_order}v{lbl.scene_version} "
-                f"{'ref-keyframe' if job.reference_path else 'keyframe'} a{lbl.attempt_no}"
-            ),
+            ref=f"s{lbl.scene_order}v{lbl.scene_version} {_image_kind(job)} a{lbl.attempt_no}",
             remote=job.remote,
         )
         nsfw = result.get("has_nsfw_concepts") or []

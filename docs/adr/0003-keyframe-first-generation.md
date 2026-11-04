@@ -105,3 +105,21 @@ keyframe stage, a new `ImageProvider` (the fal adapter sends `image_url` when th
 **Consequences.** +1 packshot (+ gate call) per run and $0.04 instead of ~$0.025 per product
 keyframe; the product can no longer drift between shots at the keyframe level. Off by default so
 normal runs and tests are unchanged.
+
+## Addendum 4 (hero v2, Step A): composite mode, the product at the scene's scale
+
+**Context.** Direct mode (Kontext + the packshot + the scene prompt) keeps the product identical,
+but it also keeps the packshot's *scale*: in the Step A S1 keyframe the "palm-sized" bottle came out
+larger than the man's hand. The packshot dominates the composition.
+
+**Decision.** `product_reference_mode = "composite"`: for a product scene, first a plain
+text-to-image keyframe in which the product has its natural in-scene size and grip, then the
+multi-image Kontext endpoint (`fal-ai/flux-pro/kontext/multi`, $0.04/image, verified 2026-11-05)
+gets `[scene keyframe, reference]` and swaps the reference product into the scene at that size
+(`prompts/keyframe_composite`, which names images by content because the docs give no index
+syntax). The plain keyframe is archived in the CAS. One attempt costs plain + swap
+($0.025 + $0.04); the gate judges only the final image. The request hash covers both models,
+both prompts and the reference sha256. Direct mode stays the default.
+
+**Consequences.** Composition is driven by the scene (scale, grip, hands), identity by the
+reference. Cost is +$0.025 per product keyframe versus direct mode. It is experimental on fal's side.

@@ -42,6 +42,7 @@ class Harness:
     sleeps: list[float] = field(default_factory=list)
     llm: ScriptedLLMProvider | None = None
     reference: MockImageProvider | None = None
+    composite: MockImageProvider | None = None
 
     @property
     def provider_calls(self) -> int:
@@ -86,6 +87,9 @@ def make_harness(
 
     reference = MockImageProvider(usd_per_image=0.04, latency_s=0, sleep=no_wait, fail_plan=plan)
     reference.model = "mock-reference"
+    composite = MockImageProvider(usd_per_image=0.04, latency_s=0, sleep=no_wait, fail_plan=plan)
+    composite.model = "mock-composite"
+    composite_on = settings.product_reference_mode == "composite"
 
     def factory(run: RunState) -> MediaGateway:
         return MediaGateway(
@@ -97,7 +101,9 @@ def make_harness(
             long_side=settings.media_long_side,
             reference=reference if run.config.product_reference else None,
             reference_prompt=rt._reference_prompt,
+            composite=composite if run.config.product_reference and composite_on else None,
+            composite_prompt=rt._composite_prompt,
         )
 
     rt.media_factory = factory
-    return Harness(Orchestrator(rt), rt, image, video, sleeps, llm, reference)
+    return Harness(Orchestrator(rt), rt, image, video, sleeps, llm, reference, composite)

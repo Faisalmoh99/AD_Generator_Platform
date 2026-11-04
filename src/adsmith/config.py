@@ -120,6 +120,9 @@ class FalImageCatalog(_Frozen):
     default: str
     # Image + prompt → image endpoint for keyframes that show the product (locked reference).
     reference: str | None = None
+    # Multi-image endpoint for "composite" mode: [scene keyframe, reference] → the scene with the
+    # reference product swapped in at the scene's own scale.
+    composite: str | None = None
     endpoints: dict[str, FalImageEndpoint]
 
 
@@ -217,6 +220,10 @@ class Settings(BaseSettings):
     qa_max_regenerations: int = Field(default=2, ge=0, le=5)
     # Locked product reference + reference-conditioned keyframes (ADR-0003 addendum 3).
     product_reference: bool = False
+    # direct: Kontext(reference + scene prompt), the product keeps the packshot's scale;
+    # composite: plain keyframe first (product at its in-scene size), then Kontext multi swaps in
+    # the reference product at that size (ADR-0003 addendum 4).
+    product_reference_mode: Literal["direct", "composite"] = "direct"
     max_total_attempts: int = Field(default=40, ge=1)
     qa_threshold: float = Field(default=0.7, ge=0, le=1)
     scene_concurrency: int = Field(default=3, ge=1, le=16)
