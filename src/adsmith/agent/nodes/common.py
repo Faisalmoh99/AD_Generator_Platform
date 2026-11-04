@@ -125,6 +125,7 @@ def scene_block(scene: Scene) -> str:
             f"  Composition: {sh.composition}",
             f"  Mood: {sh.mood}" + (f"; color: {sh.color_notes}" if sh.color_notes else ""),
             f"  Shows character: {scene.shows_character}; shows product: {scene.shows_product}",
+            *([f"  Vocab: {scene.vocab}"] if scene.vocab else []),
         ]
     )
 

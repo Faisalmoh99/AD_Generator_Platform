@@ -19,6 +19,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.scene import Scene, ScenePrompt, ScenePromptDraft
 from adsmith.domain.shot_lint import negative_contradictions
+from adsmith.domain.vocabulary import entry_block
 
 ReasonKind = Literal["content_policy", "qa_feedback", "keyframe_feedback", "spec_edit"]
 
@@ -71,6 +72,7 @@ async def rewrite_prompt(
         render_s=f"{render_s:g}",
         visible_s=f"{scene.duration_s:g}",
         keyframe_decision=decision,
+        shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
     )
     original_keyframe = scene.prompt.keyframe_prompt
 

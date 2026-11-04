@@ -1,0 +1,264 @@
+# Shot vocabulary (PLAN_V2 item 2, ADR-0018): what the storyboard may pick per montage shot.
+# Physics-led, from the two montage references in docs/PLAN_V2.md. Each entry declares what the
+# shot shows (needs_product / shows_person: the scene flags come from here, not from text
+# matching), how the product identity is made (identity_mode, item 3: none = plain text-to-image,
+# direct = Kontext from the locked packshot, composite = plain keyframe then Kontext multi swap)
+# and the defaults the prompt writer starts from. `fallback` is for the escalation ladder
+# (MORE_TIME 15, not built). `avoid_on` lists video endpoints that render the entry badly.
+# framing: macro | product | event | detail | silhouette | full
+
+[shots.cap_macro]
+label = "Extreme macro of the cap"
+framing = "macro"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "extreme_close_up"
+camera = "push_in"
+speed = "slow_motion"
+lighting = "one hard rim light raking across brushed metal, everything else in darkness"
+motion = "a very slow push-in while a thin band of light slides over the metal facets"
+keyframe_hint = "the cap fills the frame edge to edge; brushed-metal grain and facet edges razor sharp; black background"
+fallback = "light_sweep"
+avoid_on = []
+
+[shots.glass_edge_macro]
+label = "Macro of the glass edge and facets"
+framing = "macro"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "extreme_close_up"
+camera = "push_in"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a slow push-in along one faceted glass edge as the rim light glints"
+keyframe_hint = "one faceted glass edge of the bottle runs diagonally across the frame; the liquid glows behind it; black background"
+fallback = "light_sweep"
+avoid_on = []
+
+[shots.light_sweep]
+label = "Light sweep across the bottle"
+framing = "product"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "a single band of hard light that travels across the bottle, black surroundings"
+motion = "a band of hard light travels slowly across the bottle from left to right, revealing its facets"
+keyframe_hint = "the bottle stands in near darkness, one edge lit by a thin band of hard light"
+fallback = "rim_light_reveal"
+avoid_on = []
+
+[shots.rim_light_reveal]
+label = "Rim light reveal in darkness"
+framing = "product"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "medium_close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "only a rim light outlines the bottle against pure black"
+motion = "the rim light slowly brightens until the whole outline of the bottle glows"
+keyframe_hint = "the bottle seen only as a glowing outline of rim light against pure black"
+fallback = "hero_push_in"
+avoid_on = []
+
+[shots.turntable_glint]
+label = "Slow turntable glint"
+framing = "product"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "close_up"
+camera = "orbit"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a slow 30-degree orbit around the bottle; highlights travel over the facets"
+keyframe_hint = "the bottle at a three-quarter angle, a bright specular highlight on one facet; black background"
+fallback = "light_sweep"
+avoid_on = []
+
+[shots.water_drop_leaf]
+label = "A water drop hitting a leaf"
+framing = "event"
+needs_product = false
+shows_person = false
+identity_mode = "none"
+key_shot = false
+shot_type = "extreme_close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "a single hard backlight, black void around the leaf"
+motion = "one water drop falls onto the leaf and bursts into a small crown of droplets in extreme slow motion"
+keyframe_hint = "a single dark green leaf fills the lower half against a black void; one water drop hangs just above it; no bottle, no hand"
+fallback = "droplets_on_glass"
+avoid_on = []
+
+[shots.droplets_on_glass]
+label = "Droplets on the glass"
+framing = "macro"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "cold droplets slowly bead and one runs down the glass"
+keyframe_hint = "fine water droplets cover the glass of the bottle, sharp in the centre, the liquid glowing behind them; black background"
+fallback = "glass_edge_macro"
+avoid_on = []
+
+[shots.bottle_into_water]
+label = "The bottle falls into water"
+framing = "event"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "medium_close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "the bottle sinks into still black water, sending up a column of bubbles"
+keyframe_hint = "the bottle just under the surface of still black water, a crown of splash above it and bubbles around it"
+fallback = "water_ribbon"
+avoid_on = []
+
+[shots.water_ribbon]
+label = "A ribbon of water around the bottle"
+framing = "event"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "medium_close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a single clear ribbon of water swirls once around the standing bottle"
+keyframe_hint = "a clear ribbon of water curls around the standing bottle, frozen mid-air, lit by the rim light; black background"
+fallback = "bottle_on_rock"
+avoid_on = []
+
+[shots.spray_burst]
+label = "One spray burst, no bottle"
+framing = "event"
+needs_product = false
+shows_person = false
+identity_mode = "none"
+key_shot = false
+shot_type = "close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "a single hard backlight from behind the burst, black void around it"
+motion = "one short horizontal burst of fine mist enters from the left edge, catches the backlight and dissolves"
+keyframe_hint = "a horizontal burst of fine mist frozen mid-air against a black void, lit from behind; no bottle, no hand, no surface"
+fallback = "light_sweep"
+avoid_on = []
+
+[shots.bottle_on_rock]
+label = "The bottle on dark rock"
+framing = "product"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "close_up"
+camera = "push_in"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a slow push-in toward the bottle standing on wet dark rock"
+keyframe_hint = "the bottle stands on wet dark volcanic rock, water glistening around its base; black background"
+fallback = "hero_push_in"
+avoid_on = []
+
+[shots.cap_lift]
+label = "The cap lifting off"
+framing = "macro"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+shot_type = "extreme_close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "the cap lifts slowly straight up off the bottle, revealing the neck"
+keyframe_hint = "the cap hovering a finger's width above the bottle's neck, both razor sharp; black background"
+fallback = "cap_macro"
+avoid_on = []
+
+[shots.hero_push_in]
+label = "Hero push-in on the product"
+framing = "product"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = true
+shot_type = "medium_close_up"
+camera = "push_in"
+speed = "normal"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a slow, steady push-in on the bottle; the light settles"
+keyframe_hint = "the bottle centred and upright, sharp from cap to base, lower fifth of the frame dark and empty for the end card"
+fallback = "rim_light_reveal"
+avoid_on = []
+
+[shots.hand_cuff]
+label = "A hand and cuff with the bottle"
+framing = "detail"
+needs_product = true
+shows_person = true
+identity_mode = "composite"
+key_shot = false
+shot_type = "close_up"
+camera = "static"
+speed = "normal"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "the hand sets the bottle down gently and withdraws"
+keyframe_hint = "only a hand and the white cuff of the sleeve enter from the right, holding the bottle at its natural small size; no face"
+fallback = "bottle_on_rock"
+avoid_on = []
+
+[shots.jawline_chest]
+label = "Jawline to chest, with the bottle"
+framing = "detail"
+needs_product = true
+shows_person = true
+identity_mode = "composite"
+key_shot = false
+shot_type = "close_up"
+camera = "static"
+speed = "normal"
+lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
+motion = "a slight turn of the head; the light slides along the jawline"
+keyframe_hint = "a jawline-to-chest crop of a man, no eyes in frame, the bottle held low at its natural small size"
+fallback = "hand_cuff"
+avoid_on = []
+
+[shots.back_silhouette]
+label = "Back silhouette"
+framing = "silhouette"
+needs_product = false
+shows_person = true
+identity_mode = "none"
+key_shot = false
+shot_type = "medium"
+camera = "static"
+speed = "normal"
+lighting = "a hard backlight outlines a figure from behind, everything else black"
+motion = "the silhouette turns its head slightly toward the light"
+keyframe_hint = "a man seen from behind as a dark silhouette against a hard backlight; no face, no detail of the garment"
+fallback = "hand_cuff"
+avoid_on = []

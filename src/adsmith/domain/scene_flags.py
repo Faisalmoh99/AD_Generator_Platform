@@ -137,12 +137,20 @@ def detect_mentions(scene: Scene, bible: ContinuityBible | None = None) -> dict[
     }
 
 
+def person_mentions(*texts: str) -> list[str]:
+    """Generic person terms in free text (used to check a shot against a person-free vocabulary
+    entry: a "man walking" written into a water-drop shot is a full-figure person by stealth)."""
+    return _find(raw_tokens(" ".join(texts)), CHARACTER_TERMS_EN | CHARACTER_TERMS_AR)
+
+
 def enforce_scene_flags(
     scenes: list[Scene], bible: ContinuityBible | None = None
 ) -> list[FlagOverride]:
     """Upgrade false flags to true where the text mentions the element. Never downgrades."""
     overrides: list[FlagOverride] = []
     for scene in scenes:
+        if scene.vocab is not None:
+            continue  # flags come from the shot vocabulary entry (ADR-0018), not from text
         for flag, hits in detect_mentions(scene, bible).items():
             if hits and not getattr(scene, flag):
                 setattr(scene, flag, True)

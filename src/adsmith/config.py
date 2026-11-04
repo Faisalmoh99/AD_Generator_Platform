@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from adsmith.domain.formats import FormatLibrary
+from adsmith.domain.vocabulary import VocabLibrary
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -270,6 +271,12 @@ class Settings(BaseSettings):
         """Ad format grammars (config/formats.toml, ADR-0018)."""
         with (self.config_dir / "formats.toml").open("rb") as fh:
             return FormatLibrary.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def vocabulary(self) -> VocabLibrary:
+        """Shot vocabulary for montage shots (config/shot_vocabulary.toml, ADR-0018)."""
+        with (self.config_dir / "shot_vocabulary.toml").open("rb") as fh:
+            return VocabLibrary.model_validate(tomllib.load(fh))
 
     @cached_property
     def chaos_config(self) -> ChaosConfig:

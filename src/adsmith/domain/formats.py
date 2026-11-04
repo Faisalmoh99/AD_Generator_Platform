@@ -10,7 +10,7 @@ shot vocabulary (montage). Its messages feed the schema-repair loop, like the du
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, Self
 
@@ -21,6 +21,7 @@ from adsmith.domain.enums import CameraMove, ScenePurpose, Speed
 
 if TYPE_CHECKING:
     from adsmith.domain.scene import SceneDraft
+    from adsmith.domain.vocabulary import ShotVocab
 
 
 class AdFormat(StrEnum):
@@ -138,6 +139,7 @@ def format_block(lib: FormatLibrary, fmt: AdFormat) -> str:
 def grammar_problems(
     scenes: Sequence[SceneDraft],
     g: FormatGrammar,
+    vocab: Mapping[str, ShotVocab] | None = None,
 ) -> list[str]:
     """Deterministic checks of a storyboard draft against a format grammar (→ schema repair)."""
     n = len(scenes)
@@ -182,4 +184,27 @@ def grammar_problems(
                 f"only {share:.0%} of shots are product or physics shots; need at least "
                 f"{g.min_product_share:.0%}"
             )
+    if vocab is not None:
+        problems += _vocab_problems(scenes, g, vocab)
+    return problems
+
+
+def _vocab_problems(
+    scenes: Sequence[SceneDraft], g: FormatGrammar, vocab: Mapping[str, ShotVocab]
+) -> list[str]:
+    problems: list[str] = []
+    names = ", ".join(sorted(vocab))
+    for i, s in enumerate(scenes, 1):
+        if s.vocab is None:
+            problems.append(f"scene {i} has no vocab: pick one entry from the shot vocabulary")
+            continue
+        entry = vocab.get(s.vocab)
+        if entry is None:
+            problems.append(f"scene {i} vocab {s.vocab!r} is unknown; use one of: {names}")
+            continue
+        if entry.shows_person and g.person_framing and entry.framing not in g.person_framing:
+            problems.append(f"scene {i} vocab {s.vocab!r} frames a person as {entry.framing}")
+    last = vocab.get(scenes[-1].vocab or "") if scenes else None
+    if g.hero_last and last is not None and not last.needs_product:
+        problems.append("the final shot must use a vocabulary entry that shows the product")
     return problems

@@ -45,7 +45,7 @@ async def test_single_take_must_end_on_the_product(settings: Settings) -> None:
     orch, provider = make_orch(settings, full_scripts(storyboard=[bad[0], single_take()[0]]))
     run = orch.create_run(REQUEST, interactive=False)
     await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
-    assert "single-take ad ends on the product" in _repair_text(provider, "storyboard@v6")
+    assert "single-take ad ends on the product" in _repair_text(provider, "storyboard@v7")
 
 
 async def test_multi_scene_ads_keep_the_8s_scene_cap(settings: Settings) -> None:
@@ -61,7 +61,7 @@ async def test_multi_scene_ads_keep_the_8s_scene_cap(settings: Settings) -> None
     orch, provider = make_orch(settings, full_scripts(storyboard=[sb[0], steps("storyboard")[0]]))
     run = orch.create_run(REQUEST, interactive=False)
     await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
-    assert "each scene lasts at most 8s" in _repair_text(provider, "storyboard@v6")
+    assert "each scene lasts at most 8s" in _repair_text(provider, "storyboard@v7")
 
 
 async def test_video_profile_is_injected_into_planning_prompts(settings: Settings) -> None:

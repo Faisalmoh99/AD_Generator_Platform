@@ -68,7 +68,7 @@ async def test_storyboard_rejects_scenes_below_video_model_minimum(settings: Set
     run = orch.create_run(REQUEST, interactive=False)
     state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME
-    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v6") + 1]
+    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v7") + 1]
     assert "video model's 3s minimum" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]
 
 
@@ -120,5 +120,5 @@ async def test_storyboard_must_match_the_requested_shot_count(settings: Settings
     state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.KEYFRAME and state.storyboard is not None
     assert len(state.storyboard.scenes) == 4
-    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v6") + 1]
+    repair = provider.requests[[r.template for r in provider.requests].index("storyboard@v7") + 1]
     assert "asked for exactly 4 shot(s)" in repair.messages[-1].parts[0].text  # type: ignore[union-attr]

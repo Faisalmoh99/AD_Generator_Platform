@@ -111,6 +111,11 @@ class SceneDraft(DomainModel):
         description="True if the product (bottle, cap, label, packaging) is on screen. "
         "When in doubt, mark true.",
     )
+    vocab: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9_]{1,40}$",
+        description="Montage only: the shot vocabulary entry this shot uses; else null.",
+    )
 
 
 class SceneVersion(DomainModel):
@@ -123,6 +128,7 @@ class SceneVersion(DomainModel):
     shot: ShotSpec
     shows_character: bool
     shows_product: bool
+    vocab: str | None = None
     prompt: ScenePrompt | None
     reason: str = Field(max_length=500)
     patch_id: str | None = None
@@ -143,7 +149,7 @@ class SceneFailure(DomainModel):
 # downstream, so "spec unchanged" ⇔ "no regeneration needed" (up to bible changes, which the blast
 # radius handles explicitly, and prompt-template changes, which the request cache key handles).
 SPEC_FIELDS: frozenset[str] = frozenset(
-    {"purpose", "description", "duration_s", "shot", "shows_character", "shows_product"}
+    {"purpose", "description", "duration_s", "shot", "shows_character", "shows_product", "vocab"}
 )
 # Fields that only affect *motion*. Changing only these keeps the keyframe (StaleFrom.CLIP).
 # Shared with the blast-radius algorithm so the two can never disagree.
@@ -378,6 +384,7 @@ class Scene(SceneDraft):
             shot=self.shot.model_copy(deep=True),
             shows_character=self.shows_character,
             shows_product=self.shows_product,
+            vocab=self.vocab,
             prompt=self.prompt.model_copy(deep=True) if self.prompt else None,
             reason=reason,
             patch_id=patch_id,

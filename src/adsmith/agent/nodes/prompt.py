@@ -27,6 +27,7 @@ from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt, ScenePromptDraft
 from adsmith.domain.shot_lint import negative_contradictions
 from adsmith.domain.storyboard import Storyboard
+from adsmith.domain.vocabulary import entry_block
 
 
 def _neighbours(sb: Storyboard, scene: Scene) -> str:
@@ -66,6 +67,7 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
             scene_bible=bible.prompt_block(scene.uses_bible_sections()),
             render_s=f"{render_s:g}",
             visible_s=f"{visible_s:g}",
+            shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
         )
         return await ctx.llm.call_and_convert(
             LLMNode.PROMPT_WRITER,

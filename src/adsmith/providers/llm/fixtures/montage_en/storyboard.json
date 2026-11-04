@@ -20,7 +20,8 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "cap_macro"
         },
         {
           "purpose": "build",
@@ -40,7 +41,8 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": false
+          "shows_product": false,
+          "vocab": "water_drop_leaf"
         },
         {
           "purpose": "build",
@@ -60,7 +62,8 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "glass_edge_macro"
         },
         {
           "purpose": "build",
@@ -80,11 +83,12 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "droplets_on_glass"
         },
         {
           "purpose": "build",
-          "description": "One short burst of fine mist crosses the black frame.",
+          "description": "One short spray burst of fine mist crosses the black frame.",
           "duration_s": 1.35,
           "shot": {
             "shot_type": "close_up",
@@ -94,13 +98,14 @@
             "time_of_day": "night",
             "composition": "a horizontal band of mist enters from the left edge",
             "mood": "explosive, brief",
-            "subject_action": "One short burst of fine mist crosses a black void from the left edge.",
+            "subject_action": "One short spray burst of fine mist crosses a black void from the left edge.",
             "setting": "black void",
             "color_notes": null,
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": false
+          "shows_product": false,
+          "vocab": "spray_burst"
         },
         {
           "purpose": "build",
@@ -120,7 +125,8 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "bottle_into_water"
         },
         {
           "purpose": "build",
@@ -140,7 +146,8 @@
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "light_sweep"
         },
         {
           "purpose": "reveal",
@@ -160,7 +167,8 @@
             "speed": "normal"
           },
           "shows_character": true,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "hand_cuff"
         },
         {
           "purpose": "product",
@@ -180,7 +188,8 @@
             "speed": "normal"
           },
           "shows_character": false,
-          "shows_product": true
+          "shows_product": true,
+          "vocab": "hero_push_in"
         }
       ]
     }
