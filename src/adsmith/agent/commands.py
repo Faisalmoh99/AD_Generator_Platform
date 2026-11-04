@@ -6,10 +6,14 @@ moved on, ``ConcurrencyConflictError`` is raised and the client must re-read (AD
 
 from __future__ import annotations
 
+from pydantic import JsonValue
+
 from adsmith.agent.transitions import GATE_EXITS
-from adsmith.domain.enums import Stage
+from adsmith.domain.enums import SceneStatus, Stage, StaleFrom
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.run import RunState
+from adsmith.domain.scene import ShotSpec
+from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.storage import Storage
 
 
@@ -73,4 +77,63 @@ def approve_storyboard(
 
     return storage.runs.update(
         run_id, mutate, reason="storyboard approved", expected_version=expected_version
+    ).state
+
+
+def edit_scene_spec(
+    storage: Storage,
+    run_id: str,
+    scene_order: int,
+    *,
+    reason: str,
+    description: str | None = None,
+    shot: dict[str, object] | None = None,
+    expected_version: int | None = None,
+) -> RunState:
+    """Minimal scene edit (first real use: M11 S4 simplification; the full natural-language edit
+    flow is M7). Changes the creative spec of ONE scene, bumps its version (archiving the old spec
+    and prompt), marks it stale at prompt depth, and sends the run back to the ``prompt`` stage:
+    the prompt node rewrites only this scene's prompt and requeues it. Other scenes are untouched.
+    With no changes it is a pure re-prompt (e.g. after a prompt template upgrade)."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.storyboard is None or s.bible is None:
+            raise CommandRejectedError("the run has no storyboard yet")
+        matches = [sc for sc in s.storyboard.scenes if sc.order == scene_order]
+        if not matches:
+            raise CommandRejectedError(f"no scene {scene_order}")
+        scene = matches[0]
+        if scene.status is SceneStatus.GENERATING:
+            raise CommandRejectedError(f"scene {scene_order} is generating; retry when it settles")
+        unknown = set(shot or {}) - set(ShotSpec.model_fields)
+        if unknown:
+            raise CommandRejectedError(f"unknown shot fields: {sorted(unknown)}")
+        new_shot = ShotSpec.model_validate({**scene.shot.model_dump(), **(shot or {})})
+        scene.bump_version(f"edit: {reason}")
+        scene.shot = new_shot
+        if description is not None:
+            scene.description = description
+        scene.mark_stale(StaleFrom.PROMPT)
+        overrides = enforce_scene_flags([scene], s.bible)  # upgrade-only (ADR-0010)
+        s.stage = Stage.PROMPT
+        changed = sorted((shot or {}).keys()) + (["description"] if description else [])
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.PROMPT,
+                scene_id=scene.id,
+                type=EventType.DECISION,
+                summary=f"Scene {scene_order} edited ({reason}): "
+                f"{', '.join(changed) or 're-prompt only'}; v{scene.version}, stale from prompt. "
+                "Other scenes untouched.",
+                payload={
+                    "changed": list[JsonValue](changed),
+                    "version": scene.version,
+                    "flag_overrides": list[JsonValue]([o.flag for o in overrides]),
+                },
+            )
+        ]
+
+    return storage.runs.update(
+        run_id, mutate, reason=f"scene {scene_order} edited", expected_version=expected_version
     ).state

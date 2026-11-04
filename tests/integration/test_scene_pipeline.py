@@ -244,3 +244,33 @@ async def test_resume_releases_leases_after_a_crash(tmp_path: Path) -> None:
     resumed = await h.orch.resume(state.id)
     assert resumed.stage is Stage.DONE
     assert any("Released in-flight scenes [1]" in e.summary for e in events(h, state.id))
+
+
+async def test_scene_spec_edit_regenerates_only_that_scene(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path))
+    done = await run_auto(h)
+    assert done.stage is Stage.DONE and done.storyboard is not None
+    before = {s.id: (s.version, s.clip) for s in done.storyboard.scenes}
+    calls = h.provider_calls
+    edited = commands.edit_scene_spec(
+        h.rt.storage,
+        done.id,
+        2,
+        reason="simplify",
+        shot={"subject_action": "The bottle stands still while the camera pushes in slowly."},
+    )
+    assert edited.stage is Stage.PROMPT
+    assert edited.storyboard is not None
+    s2 = edited.storyboard.scenes[1]
+    assert s2.status is SceneStatus.STALE and s2.version == 2 and s2.prompt is None
+    assert s2.history[-1].reason == "edit: simplify"
+    final = await h.orch.run_until_blocked(done.id)
+    assert final.stage is Stage.DONE and final.storyboard is not None
+    for s in final.storyboard.scenes:
+        if s.order == 2:
+            assert s.status is SceneStatus.APPROVED and s.clip != before[s.id][1]
+        else:
+            assert (s.version, s.clip) == before[s.id]  # untouched
+    assert h.provider_calls - calls <= 2  # one keyframe + one clip at most (cache may hit)
+    with pytest.raises(commands.CommandRejectedError, match="unknown shot fields"):
+        commands.edit_scene_spec(h.rt.storage, done.id, 1, reason="x", shot={"bogus": 1})

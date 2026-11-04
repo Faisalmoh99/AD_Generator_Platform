@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import time
 from pathlib import Path
 
+from adsmith.agent import commands
 from adsmith.agent.context import AgentRuntime
+from adsmith.agent.orchestrator import Orchestrator
 from adsmith.agent.scenes import Critic
 from adsmith.domain.base import new_id
 from adsmith.domain.budget import BudgetLedger
@@ -108,7 +111,7 @@ def show_wallet(rt: AgentRuntime, since: int) -> int:
     return len(rows)
 
 
-async def main() -> None:  # noqa: PLR0915 - linear driver script
+async def main() -> None:  # noqa: PLR0912, PLR0915 - linear driver script
     ap = argparse.ArgumentParser()
     ap.add_argument("--source-data", type=Path)
     ap.add_argument("--run", required=True)
@@ -118,6 +121,9 @@ async def main() -> None:  # noqa: PLR0915 - linear driver script
     ap.add_argument("--long-side", type=int, default=1280)
     ap.add_argument("--loop", action="store_true", help="generate/QA until approved or failed")
     ap.add_argument("--max-steps", type=int, default=8)
+    ap.add_argument("--reprompt", action="store_true", help="re-write the scene prompt first")
+    ap.add_argument("--edit-json", type=Path, help="scene spec edit: {reason, description, shot}")
+    ap.add_argument("--stop-on-reject", action="store_true", help="no regeneration after a reject")
     args = ap.parse_args()
 
     from adsmith.config import Settings  # noqa: PLC0415
@@ -131,6 +137,21 @@ async def main() -> None:  # noqa: PLR0915 - linear driver script
         state = rt.storage.runs.load(args.run)
     assert state.storyboard is not None
     scene_id = next(s for s in state.storyboard.scenes if s.order == args.scene).id
+    if args.reprompt or args.edit_json:
+        edit = json.loads(args.edit_json.read_text()) if args.edit_json else {}
+        commands.edit_scene_spec(
+            rt.storage,
+            state.id,
+            args.scene,
+            reason=edit.get("reason", "re-prompt with the current templates"),
+            description=edit.get("description"),
+            shot=edit.get("shot"),
+        )
+        t = time.monotonic()
+        state = await Orchestrator(rt).step(state.id)  # the prompt node rewrites this scene only
+        print(f"prompt node: {time.monotonic() - t:.1f}s → stage {state.stage}")
+        assert state.storyboard is not None
+        show_prompt("new prompt", state.storyboard.by_id(scene_id))
     runner = rt.scene_runner(state)
     runner.critic = RecordingCritic(runner.critic, rt)
     mark = len(rt.fal_account().entries())
@@ -147,6 +168,12 @@ async def main() -> None:  # noqa: PLR0915 - linear driver script
             prompt_before = scene.prompt
             await runner._scene(state.id, scene_id, Stage.QA)
             after = load()
+            if args.stop_on_reject and after.status is not SceneStatus.APPROVED:
+                print("    stop-on-reject: not regenerating (rewrite shown below for reference)")
+                if after.prompt != prompt_before:
+                    show_prompt("rewrite the loop WOULD use next", after)
+                mark = show_wallet(rt, mark)
+                break
             if after.prompt != prompt_before:
                 show_prompt("revised prompt after QA rejection", after)
                 kept = after.keyframe is not None
