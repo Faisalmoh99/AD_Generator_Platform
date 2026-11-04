@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -443,3 +444,73 @@ async def test_flux_2_flex_payload_has_only_its_schema_fields(tmp_path: Path) ->
     assert out.cost_usd == pytest.approx(0.05)  # 0.92 MP rounds up to 1 MP at $0.05
     flux_dev = s.catalog.fal.image.endpoints["flux_dev"]
     assert flux_dev.params == {"num_inference_steps": 28, "num_images": 1}
+
+
+# ----------------------------------------------------------------------------- crash-safe resume
+
+
+async def test_a_new_process_resumes_the_persisted_request_instead_of_resubmitting(
+    tmp_path: Path,
+) -> None:
+    import asyncio  # noqa: PLC0415
+
+    from adsmith.domain.generation import RemoteRequest  # noqa: PLC0415
+    from adsmith.providers.media.base import RemoteControl  # noqa: PLC0415
+
+    s, acct = settings(tmp_path), account(tmp_path)
+    fake = FakeFal(IMAGE_RESULT, polls_in_progress=10_000)  # the job is still running
+    saved: list[RemoteRequest] = []
+    submitted = asyncio.Event()
+
+    def on_submit(req: RemoteRequest) -> None:
+        saved.append(req)
+        submitted.set()
+
+    first, _ = make_queue(fake, acct)
+    first._sleep = lambda _s: asyncio.sleep(0)  # yield so the 'crash' can land mid-poll
+    first._timeout = 1e9
+    job = image_job()
+    crashed = asyncio.ensure_future(
+        flux(s, first).generate_image(
+            replace(job, remote=RemoteControl(on_submitted=on_submit)),
+            tmp_path,
+        )
+    )
+    await submitted.wait()  # persisted right after submit, before polling
+    crashed.cancel()  # the process dies mid-poll
+    with pytest.raises(asyncio.CancelledError):
+        await crashed
+    assert first.submits == 1 and acct.summary().reserved_usd == pytest.approx(0.025)
+
+    fake.polls_in_progress = 0  # the job finished at fal meanwhile
+    second, _ = make_queue(fake, acct)  # a fresh process: nothing in memory
+    resumed = replace(job, remote=RemoteControl(resume=saved[0]))
+    out = await flux(s, second).generate_image(resumed, tmp_path)
+    assert second.submits == 0 and second.resumed == 1 and len(fake.submitted) == 1
+    assert out.meta["request_id"] == saved[0].request_id
+    summary = acct.summary()  # the dead process's reservation was settled, not duplicated
+    assert summary.settled_usd == pytest.approx(0.025) and summary.reserved_usd == 0
+
+
+async def test_a_resumed_request_that_is_gone_is_resubmitted_once(tmp_path: Path) -> None:
+    from adsmith.domain.generation import RemoteRequest  # noqa: PLC0415
+    from adsmith.providers.media.base import RemoteControl  # noqa: PLC0415
+
+    s, acct = settings(tmp_path), account(tmp_path)
+    stale_spend = acct.reserve(endpoint=FLUX, est_usd=0.025, ref="dead process")
+    gone = RemoteRequest(
+        request_id="old",
+        status_url="https://queue.fal.run/x/requests/old/status",
+        response_url="https://queue.fal.run/x/requests/old",
+        spend_id=stale_spend,
+    )
+    fake = FakeFal(IMAGE_RESULT, polls_in_progress=0)
+    fake.faults["status"] = [httpx.Response(404, json={"detail": "Request not found"})]
+    queue, _ = make_queue(fake, acct)
+    saved: list[RemoteRequest] = []
+    job = replace(image_job(), remote=RemoteControl(resume=gone, on_submitted=saved.append))
+    out = await flux(s, queue).generate_image(job, tmp_path)
+    assert queue.resumed == 1 and queue.submits == 1 and saved[0].request_id == "req1"
+    assert out.meta["request_id"] == "req1"
+    summary = acct.summary()  # stale reservation released, the new one settled
+    assert summary.reserved_usd == 0 and summary.settled_usd == pytest.approx(0.025)

@@ -600,6 +600,6 @@ without a `failure_kind` (rejected by the domain). Also: demo recovery counts we
 and the crash run shared the cache with the first run so nothing was left to kill (now its own data dir).
 **Smoke-tested commands**: run, choose, approve, run --auto, retry, edit, assemble [--partial slate],
 show, trace, export, list, history, resume. `serve` arrives in M10.
-**Known limit**: with real fal, a job in flight when the process dies is still billed and resume
+**Known limit (fixed right after, see ADR-0015 addendum)**: with real fal, a job in flight when the process dies is still billed and resume
 resubmits it (the in-flight handle lives in memory). Fix: persist the fal request id in the account
 ledger at submit time and resume polling it (MORE_TIME #12).

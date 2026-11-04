@@ -38,6 +38,6 @@ evidence prompted it. M12 folds this list into the README.
 11. **HARD check: no alcohol resemblance.** The single-take bottle (round body, tall black cap)
     reads as whisky. For Gulf audiences this is brand safety, not style. Make it a hard keyframe-gate
     and clip check, and tell the prompt writer to avoid decanter/whisky silhouettes for perfume.
-12. **Crash-safe fal resubmission.** Persist the fal request id (and idempotency key) in the account
+12. ~~**Crash-safe fal resubmission.**~~ **Done** (ADR-0015 addendum): the request id is persisted at submit and resumed by polling. Persist the fal request id (and idempotency key) in the account
     ledger at submit time; on resume, poll the existing request instead of submitting again. Today
     the in-flight handle lives in memory, so a process killed mid-call pays twice for that clip.

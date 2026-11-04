@@ -51,3 +51,21 @@ demo can show recovery live; and all of it must be reproducible in tests.
   budget refusal before calling, cache → 0 provider calls, crash → resume.
 - − Each scene commit re-serialises the whole run (fine at our scale, ADR-0011).
 - − The mock critic only detects injected faults. The LLM vision critic is M6.
+
+## Addendum (post-M9): crash-safe paid jobs
+A paid fal job that is in flight when the process dies used to be billed and then resubmitted on
+resume (the handle only lived in memory). Now:
+1. Right after a successful submit and **before polling**, the queue calls `on_submitted`; the scene
+   runner commits `GenerationAttempt.remote_request = {request_id, status_url, response_url,
+   spend_id}` in one atomic update.
+2. `resume` closes the interrupted attempt ("interrupted …", transient, run-budget reservation
+   released). The next attempt for the same request hash finds that `remote_request` and passes it
+   as `RemoteControl.resume`: the queue polls the existing request and settles the dead process's
+   wallet reservation. No new submit.
+3. Only if fal reports the resumed request gone or failed (a permanent error) is it submitted
+   again, once, and the stale wallet reservation released.
+4. Interrupted attempts do not count toward the keyframe seed, so the resumed attempt builds the
+   identical request (same hash) and can match the saved handle.
+Tests: provider level (fresh queue resumes with 0 submits; gone → exactly 1 resubmit) and end to
+end (pipeline cancelled after a clip submit, resumed by a fresh runtime: 4 image + 4 video
+submits in total, $0 reserved).

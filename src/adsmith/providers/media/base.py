@@ -8,11 +8,13 @@ the agent's job (``agent/media.py``, ``agent/scenes.py``), so every provider beh
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from adsmith.domain.enums import ScenePhase
+from adsmith.domain.generation import RemoteRequest
 
 
 @dataclass(frozen=True, slots=True)
@@ -47,6 +49,15 @@ class MediaLabel:
 
 
 @dataclass(frozen=True, slots=True)
+class RemoteControl:
+    """Crash-safety hooks for paid remote jobs: ``resume`` = a request submitted by an earlier,
+    interrupted attempt (poll it, do not resubmit); ``on_submitted`` = persist a new submission."""
+
+    resume: RemoteRequest | None = None
+    on_submitted: Callable[[RemoteRequest], None] | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ImageJob:
     prompt: str
     negative_prompt: str
@@ -54,6 +65,7 @@ class ImageJob:
     height: int
     seed: int
     label: MediaLabel
+    remote: RemoteControl | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +78,7 @@ class VideoJob:
     height: int
     params: dict[str, Any]
     label: MediaLabel
+    remote: RemoteControl | None = None
 
 
 @dataclass(frozen=True, slots=True)

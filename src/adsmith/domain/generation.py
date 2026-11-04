@@ -24,6 +24,16 @@ class Artifact(DomainModel):
     remote_url: str | None = None
 
 
+class RemoteRequest(DomainModel):
+    """A paid provider job that was submitted for this attempt (persisted right after submit, before
+    polling), so a process that dies mid-call can resume polling it instead of paying again."""
+
+    request_id: str = Field(min_length=1)
+    status_url: str = Field(min_length=1)
+    response_url: str = Field(min_length=1)
+    spend_id: str | None = None  # the wallet-ledger reservation it will settle
+
+
 class GenerationRequest(DomainModel):
     """Everything that determines a generation result. Its hash is the idempotency/cache key.
 
@@ -71,6 +81,7 @@ class GenerationAttempt(DomainModel):
     artifact: Artifact | None = None
     qa_score: float | None = Field(default=None, ge=0, le=1)
     qa_passed: bool | None = None  # the code-decided verdict (a high score can still fail)
+    remote_request: RemoteRequest | None = None
     chaos_injected: bool = False
     injected_fault: FailureKind | None = Field(
         default=None, description="Chaos Mode fault injected into this attempt, if any."

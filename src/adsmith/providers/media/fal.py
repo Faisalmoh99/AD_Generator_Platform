@@ -49,7 +49,14 @@ from adsmith.agent.recovery.errors import (
     TransientProviderError,
 )
 from adsmith.config import FalImageEndpoint, FalVideoEndpoint
-from adsmith.providers.media.base import ImageJob, MediaOutput, VideoCapabilities, VideoJob
+from adsmith.domain.generation import RemoteRequest
+from adsmith.providers.media.base import (
+    ImageJob,
+    MediaOutput,
+    RemoteControl,
+    VideoCapabilities,
+    VideoJob,
+)
 from adsmith.storage.account import AccountLimitError, SpendAccount
 
 QUEUE_BASE = "https://queue.fal.run"
@@ -63,6 +70,7 @@ class FalHandle:
     response_url: str
     spend_id: str | None
     key: str = ""  # idempotency key of the payload
+    resumed: bool = False  # recovered from a persisted RemoteRequest after a crash
 
 
 def data_uri(path: Path) -> str:
@@ -100,23 +108,56 @@ class FalQueue:
         # Circuit breaker: after an account-level refusal no further paid call is attempted.
         self.paused: AccountLockedError | None = None
         self.submits = 0  # paid submissions made (tests assert no double submit)
+        self.resumed = 0  # requests recovered from a persisted RemoteRequest
 
     # ------------------------------------------------------------------------ one generation
     async def run(
-        self, endpoint: str, payload: dict[str, Any], *, est_usd: float, ref: str
+        self,
+        endpoint: str,
+        payload: dict[str, Any],
+        *,
+        est_usd: float,
+        ref: str,
+        remote: RemoteControl | None = None,
     ) -> tuple[dict[str, Any], FalHandle]:
         """Submit (or resume) → wait → result. Returns the output JSON and the handle; the caller
-        settles the reservation once the output is safely stored (``settle``)."""
+        settles the reservation once the output is safely stored (``settle``).
+
+        Resumption, in order: an in-memory handle (a retry in this process); else a persisted
+        ``remote.resume`` request (a previous process died after submitting: poll it, settle its
+        wallet reservation); else a new submit, reported through ``remote.on_submitted`` BEFORE
+        polling so it is on disk if this process dies next. A resumed request that fal reports
+        gone or failed is resubmitted once."""
         key = _idempotency_key(endpoint, payload)
         handle = self._inflight.get(key)
+        if handle is None and remote is not None and remote.resume is not None:
+            r = remote.resume
+            handle = FalHandle(r.request_id, r.status_url, r.response_url, r.spend_id, key, True)
+            self._inflight[key] = handle
+            self.resumed += 1
         if handle is None:
             handle = await self._submit(endpoint, payload, est_usd=est_usd, ref=ref, key=key)
             self._inflight[key] = handle
+            if remote is not None and remote.on_submitted is not None:
+                remote.on_submitted(
+                    RemoteRequest(
+                        request_id=handle.request_id,
+                        status_url=handle.status_url,
+                        response_url=handle.response_url,
+                        spend_id=handle.spend_id,
+                    )
+                )
         try:
             await self._wait(endpoint, handle)
             result = await self._get_json(endpoint, handle.response_url)
         except TransientProviderError:
             raise  # keep the handle: a retry resumes this request, it does not resubmit
+        except PermanentProviderError:
+            self.release(handle)
+            if handle.resumed and remote is not None:  # gone or failed at fal: submit again
+                fresh = RemoteControl(resume=None, on_submitted=remote.on_submitted)
+                return await self.run(endpoint, payload, est_usd=est_usd, ref=ref, remote=fresh)
+            raise
         except AgentError:
             self.release(handle)
             raise
@@ -254,6 +295,7 @@ class FalImageProvider:
             payload,
             est_usd=est,
             ref=f"s{lbl.scene_order}v{lbl.scene_version} keyframe a{lbl.attempt_no}",
+            remote=job.remote,
         )
         nsfw = result.get("has_nsfw_concepts") or []
         images = result.get("images") or []
@@ -310,6 +352,7 @@ class FalVideoProvider:
             payload,
             est_usd=est,
             ref=f"s{lbl.scene_order}v{lbl.scene_version} clip a{lbl.attempt_no}",
+            remote=job.remote,
         )
         video = result.get("video") or {}
         url = video.get("url")

@@ -27,7 +27,7 @@ import asyncio
 import contextlib
 import random
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -41,12 +41,13 @@ from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError, CostCategory
 from adsmith.domain.enums import FailureKind, RecoveryAction, ScenePhase, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
-from adsmith.domain.generation import GenerationAttempt
+from adsmith.domain.generation import GenerationAttempt, RemoteRequest
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt
 from adsmith.logging import get_logger
+from adsmith.providers.media.base import RemoteControl
 from adsmith.storage import StaleWriteError, Storage
 from adsmith.storage.repo import Mutation
 
@@ -344,6 +345,7 @@ class SceneStageRunner:
 
             if not self._start(run_id, stage, scene, attempt, prepared):
                 return False
+            prepared = self._with_remote(run_id, scene, attempt, prepared)
             tries = 0
 
             async def call(p: PreparedJob = prepared) -> GatewayResult:
@@ -391,6 +393,35 @@ class SceneStageRunner:
                 self._attempt_failed(run_id, stage, scene, attempt, exc, give_up=True)
                 return False
             return self._succeed(run_id, stage, scene, attempt, result, reserved=True)
+
+    def _with_remote(
+        self, run_id: str, scene: Scene, attempt: GenerationAttempt, prepared: PreparedJob
+    ) -> PreparedJob:
+        """Crash safety for paid remote jobs: resume the request an interrupted attempt of this
+        exact request left behind, and persist any new submission atomically before polling."""
+        resume = next(
+            (
+                a.remote_request
+                for a in reversed(scene.attempts)
+                if a.remote_request is not None
+                and a.request_hash == attempt.request_hash
+                and a.outcome == "failed"
+                and (a.error_message or "").startswith("interrupted")
+            ),
+            None,
+        )
+
+        def on_submitted(req: RemoteRequest) -> None:
+            def mutate(s: RunState) -> list[AgentEvent]:
+                sc = self._same_version(s, scene)
+                self._attempt(sc, attempt.id).remote_request = req
+                return []
+
+            with contextlib.suppress(StaleWriteError):
+                self.storage.runs.update(run_id, mutate, reason="remote request submitted")
+
+        ctl = RemoteControl(resume=resume, on_submitted=on_submitted)
+        return replace(prepared, job=replace(prepared.job, remote=ctl))
 
     # ------------------------------------------------------------------------ commits
     def _start(
@@ -830,8 +861,14 @@ class SceneStageRunner:
 
     def _prepare(self, state: RunState, scene: Scene, phase: ScenePhase) -> PreparedJob:
         assert state.brief is not None and state.bible is not None
+        # Interrupted attempts (a crashed process) do not count: the resumed attempt must build the
+        # same request (same keyframe seed, same hash) to find and poll the job it left behind.
         phase_attempts = sum(
-            1 for a in scene.attempts if a.scene_version == scene.version and a.phase is phase
+            1
+            for a in scene.attempts
+            if a.scene_version == scene.version
+            and a.phase is phase
+            and not (a.error_message or "").startswith("interrupted")
         )
         return self.gateway.prepare(
             scene,
