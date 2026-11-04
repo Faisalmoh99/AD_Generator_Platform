@@ -634,3 +634,13 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - New: `agent/prompts.py` (template loader, static-SYSTEM rule), `agent/schemas.py` (template → output schema registry), `agent/pricing.py`, `domain/llm.py` (`LLMCallRecord`, `TokenUsage`), `BudgetLedger.record_actual`.
 - Template sections: `=== SYSTEM ===` (static, cached), optional `=== CONTEXT ===` (cached per run), `=== USER ===`.
 - Arabic scripted fixtures (`perfume_ar`) and the remaining node schemas/fixtures land in M4 with their nodes.
+
+### M4 split
+- M4 is split into **M4a** (orchestrator, transitions, run loop, resume, human gates, understand → ideate → select) and **M4b** (storyboard → continuity → prompt, scene-flag wiring, Production Pack, Arabic fixtures). Stop for review after each.
+- After M4b: real planning pipeline (balanced, `--auto`) on 3 requests (Arabic perfume, English Jeddah coffee shop, Saudi-dialect 10 s delivery app), with per-stage latency, cost and repairs, plus a creative-quality critique.
+
+### M4a
+- Nodes return `NodeResult(deltas, events, llm_calls)` with typed deltas (`agent/deltas.py`); pure transitions in `agent/transitions.py`; gate commands in `agent/commands.py` (ADR-0013).
+- In interactive mode `ideate → awaiting_concept_choice` directly (the `select` node runs only in auto mode).
+- `run_until_blocked(stop_before=...)` and CLI `--until <stage>` (planning-only runs stop before `keyframe`).
+- `RunConfig.scripted_scenario` (scripted LLM scenario per run, defaulting to `perfume_<request language>`).

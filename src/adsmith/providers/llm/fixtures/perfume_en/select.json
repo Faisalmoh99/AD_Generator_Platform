@@ -1,0 +1,35 @@
+[
+  {
+    "output": {
+      "scores": [
+        {
+          "concept_number": 1,
+          "brief_fit": 9,
+          "producibility": 8,
+          "product_hero": 8,
+          "cultural_fit": 8,
+          "distinctiveness": 7,
+          "rationale": "Strongest fit for young men and a clear story arc; driving shots carry some motion risk."
+        },
+        {
+          "concept_number": 2,
+          "brief_fit": 7,
+          "producibility": 9,
+          "product_hero": 9,
+          "cultural_fit": 7,
+          "distinctiveness": 6,
+          "rationale": "Very producible and product-centric, but abstract liquid-gold imagery is a category clich\u00e9."
+        },
+        {
+          "concept_number": 3,
+          "brief_fit": 7,
+          "producibility": 6,
+          "product_hero": 7,
+          "cultural_fit": 9,
+          "distinctiveness": 8,
+          "rationale": "Warm and culturally resonant, but two characters and hand interactions raise continuity risk."
+        }
+      ]
+    }
+  }
+]

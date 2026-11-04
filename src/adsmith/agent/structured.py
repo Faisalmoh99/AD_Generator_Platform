@@ -30,6 +30,7 @@ from adsmith.agent.prompts import PromptLibrary, RenderedPrompt
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AgentError, ContentPolicyError, InvalidLLMOutputError
 from adsmith.config import LLMNode, NodeModel, Settings
+from adsmith.domain.budget import USD_DECIMALS
 from adsmith.domain.llm import CallKind, CallOutcome, LLMCallRecord
 from adsmith.providers.llm.base import (
     AssistantMessage,
@@ -262,7 +263,7 @@ class StructuredCaller:
                 **base,
                 served_model=resp.served_model,
                 usage=resp.usage,
-                cost_usd=round(cost, 8),
+                cost_usd=round(cost, USD_DECIMALS),
                 priced_conservatively=conservative,
                 latency_ms=resp.latency_ms,
                 simulated=bool(resp.extras.get("simulated", False)),

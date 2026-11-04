@@ -198,3 +198,49 @@ or `.env`, like the app does; before, they only looked at `os.environ`.)
 - Prompt caching confirmed: Sonnet call 1 wrote 2,358 prefix tokens ($0.0063); call 2 read them
   ($0.00086, ~83% cheaper than uncached). Haiku hit the cache written by an earlier run.
 - No refusals occurred, so served model = requested model.
+
+---
+
+## M4a: Orchestrator + understand / ideate / select (2026-11-04)
+
+**Built**
+- `agent/transitions.py`: declared table of pure guards for every loop stage (interactive vs. auto,
+  QA loop, done vs. done_partial); `GATE_EXITS`.
+- `agent/deltas.py`: typed deltas + `apply_delta`; `agent/nodes/{base,common,understand,ideate,
+  select}.py`; `agent/context.py` (`AgentRuntime`, `NodeContext` without storage).
+- `agent/orchestrator.py`: `create_run`, `run_until_blocked(stop_before)`, `step` (atomic commit
+  of deltas + LLM cost + events + next stage, timing per stage), `resume` (errored → failed stage,
+  lease release), failure → `errored` with user-language reason, stale result → discarded + event.
+- `agent/commands.py`: `choose_concept` (number or id, stage check, optional expected_version).
+- `agent/i18n.py`: EN/AR stage labels and failure messages.
+- Prompts `understand/v1`, `ideate/v1`, `select/v1`; judge schema `ConceptJudgementDraft` (LLM
+  scores 1-10 on 5 weighted criteria, code picks the argmax); `select` fixture; deterministic
+  `detect_language`.
+- CLI: `run [--auto] [--until STAGE]`, `resume`, `choose`, `show`, `trace`.
+
+**Key decisions** (ADR-0013): typed deltas; nodes can't touch storage; failures are run state, not
+crashes; resume is always safe; language from brief, else request script.
+
+**Real-API check of the new prompts** (one Arabic request, `--auto`, balanced profile):
+understand 19.7 s / $0.0007 (Haiku), ideate 41.6 s / $0.052 (Sonnet high), select 6.4 s / $0.012,
+0 repairs. It surfaced two prompt bugs, fixed before commit:
+1. Concept 3 copied the illustrative example in the ideate SYSTEM prompt (a reflection that smiles a
+   second early). Replaced with an example from an unrelated category, plus "never reuse examples
+   from these instructions". The rerun produced no borrowed imagery.
+2. The select rationale was in English for an Arabic request. The select prompt now takes the user
+   language, and the rerun rationale is in Arabic.
+Also found: cache writes are ~2-2.6k tokens per call against ~600-token system prompts, which
+suggests the output JSON schema is part of the cached prefix. Haiku `understand` at medium effort is
+slow (20 s) and will be tuned in M4b.
+
+**Bug found by tests**: ledger rounded to 6 dp while call records use 8 dp, so the ledger drifted
+from the trace. Unified on `USD_DECIMALS = 8`.
+
+**Tests**: `make check` green, **254 passed, 2 skipped** (live). New: transitions (every edge,
+gates/terminals illegal, table completeness), orchestrator (event sequence, snapshot versions,
+cost = trace, choose + version conflict, auto-select, stop_before, language override, typed
+failure → resume, failed calls booked, Arabic error before brief, unexpected exception, stale
+result discarded, resume in a fresh process with no re-calls).
+
+**Next**: M4b: storyboard → continuity → prompt, scene-flag wiring, Production Pack, Arabic
+fixtures, then the 3 real runs and critique.

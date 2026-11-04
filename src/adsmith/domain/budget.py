@@ -10,6 +10,7 @@ from pydantic import Field
 from adsmith.domain.base import DomainModel, utcnow
 
 CostCategory = Literal["llm", "image", "video"]
+USD_DECIMALS = 8  # same precision as LLMCallRecord.cost_usd, so ledger and trace always agree
 
 
 class BudgetEntry(DomainModel):
@@ -55,5 +56,5 @@ class BudgetLedger(DomainModel):
                 ref=ref,
             )
         )
-        self.spent_usd = round(self.spent_usd + usd, 6)
-        self.by_category[category] = round(self.by_category.get(category, 0.0) + usd, 6)
+        self.spent_usd = round(self.spent_usd + usd, USD_DECIMALS)
+        self.by_category[category] = round(self.by_category.get(category, 0.0) + usd, USD_DECIMALS)

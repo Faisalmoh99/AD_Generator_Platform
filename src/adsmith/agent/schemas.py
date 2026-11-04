@@ -6,17 +6,18 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from adsmith.domain.brief import BriefDraft
-from adsmith.domain.concept import ConceptSetDraft
+from adsmith.domain.concept import ConceptJudgementDraft, ConceptSetDraft
 from adsmith.domain.continuity import ContinuityBibleDraft
 from adsmith.domain.edit import ScenePatchDraft
 from adsmith.domain.qa import QAVerdictDraft
 from adsmith.domain.storyboard import StoryboardDraft
 
-# Nodes added in later milestones (select, prompt_writer, conflict_check, policy_rewrite) register
+# Nodes added in later milestones (prompt_writer, conflict_check, policy_rewrite) register
 # their schemas here when they are built.
 OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "understand": BriefDraft,
     "ideate": ConceptSetDraft,
+    "select": ConceptJudgementDraft,
     "storyboard": StoryboardDraft,
     "continuity": ContinuityBibleDraft,
     "edit_parser": ScenePatchDraft,

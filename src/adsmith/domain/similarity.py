@@ -132,3 +132,17 @@ def too_similar_pairs(
 
 def join_fields(parts: Iterable[str]) -> str:
     return " \n ".join(p for p in parts if p)
+
+
+_ARABIC_LETTER = re.compile("[\u0621-\u064a\u0671-\u06d3]")
+_LATIN_LETTER = re.compile("[A-Za-z]")
+
+
+def detect_language(text: str) -> str:
+    """Deterministic script-based language guess ("ar" | "en"). Arabic wins if at least 30% of the
+    letters are Arabic: brand names and English loanwords are common inside Arabic requests."""
+    ar = len(_ARABIC_LETTER.findall(text))
+    latin = len(_LATIN_LETTER.findall(text))
+    if ar + latin == 0:
+        return "en"
+    return "ar" if ar / (ar + latin) >= 0.3 else "en"

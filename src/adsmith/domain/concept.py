@@ -98,3 +98,45 @@ class ConceptSet(DomainModel):
         if concept_id not in {c.id for c in self.concepts}:
             raise ValueError(f"unknown concept {concept_id!r}")
         self.selected_id, self.selected_by, self.selection_rationale = concept_id, by, rationale
+
+
+# ------------------------------------------------------------------------------ auto-selection
+JUDGE_WEIGHTS: dict[str, float] = {
+    "brief_fit": 0.30,
+    "producibility": 0.25,  # can current video models render it well in ≤15 s?
+    "product_hero": 0.20,
+    "cultural_fit": 0.15,
+    "distinctiveness": 0.10,
+}
+Score = Annotated[int, Field(ge=1, le=10)]
+
+
+class ConceptScore(DomainModel):
+    concept_number: int = Field(ge=1, le=CONCEPT_COUNT, description="1, 2 or 3, in given order")
+    brief_fit: Score
+    producibility: Score
+    product_hero: Score
+    cultural_fit: Score
+    distinctiveness: Score
+    rationale: Annotated[str, Field(min_length=1, max_length=400)]
+
+    def weighted(self) -> float:
+        total: float = sum(float(getattr(self, k)) * w for k, w in JUDGE_WEIGHTS.items())
+        return round(total, 4)
+
+
+class ConceptJudgementDraft(DomainModel):
+    """``select`` output. The LLM scores; code computes the weighted total and the winner."""
+
+    scores: list[ConceptScore] = Field(min_length=CONCEPT_COUNT, max_length=CONCEPT_COUNT)
+
+    @model_validator(mode="after")
+    def _one_score_per_concept(self) -> Self:
+        numbers = sorted(s.concept_number for s in self.scores)
+        if numbers != list(range(1, CONCEPT_COUNT + 1)):
+            raise ValueError(f"need exactly one score for each concept 1..3, got {numbers}")
+        return self
+
+    def winner(self) -> ConceptScore:
+        """Highest weighted score; ties broken by brief_fit, then lowest concept number."""
+        return max(self.scores, key=lambda s: (s.weighted(), s.brief_fit, -s.concept_number))

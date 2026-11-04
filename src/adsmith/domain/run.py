@@ -25,6 +25,7 @@ from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.edit import ScenePatch
 from adsmith.domain.enums import FailureKind, Stage
 from adsmith.domain.generation import Artifact
+from adsmith.domain.similarity import detect_language
 from adsmith.domain.storyboard import Storyboard
 
 _DURATION_EPS = 1e-6
@@ -45,6 +46,7 @@ class RunConfig(DomainModel):
     target_duration_s: float = Field(default=15.0, gt=0, le=60)
     music_path: str | None = None
     endcard: bool = True
+    scripted_scenario: str | None = None  # which canned fixtures the scripted LLM replays
 
 
 class RunError(DomainModel):
@@ -137,4 +139,5 @@ class RunState(DomainModel):
 
     @property
     def language(self) -> str:
-        return self.brief.language.value if self.brief else "en"
+        """User-facing language: the brief's, or the request's script before a brief exists."""
+        return self.brief.language.value if self.brief else detect_language(self.request)

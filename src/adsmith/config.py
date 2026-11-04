@@ -158,6 +158,7 @@ class Settings(BaseSettings):
     qa_mode: Literal["auto", "mock", "llm"] = "auto"
     model_profile: ProfileName | None = None
     model: dict[LLMNode, str] = Field(default_factory=dict)  # per-node model overrides
+    scripted_scenario: str | None = None  # default: perfume_<request language>
     fal_video_model: str | None = None
     fal_image_model: str | None = None
 
