@@ -236,3 +236,12 @@ def video_capabilities(endpoint: FalVideoEndpoint) -> VideoCapabilities:
         allowed_durations_s=allowed,
         supports_negative=endpoint.adapter not in {"seedance", "ltx"},
     )
+
+
+def render_window(settings: Settings, run: RunState, duration_s: float) -> tuple[float, float]:
+    """(rendered, visible) seconds for a scene on this run's video model. Models snap durations
+    upwards (LTX-2.3 Fast renders ≥6 s) and assembly cuts the tail, so prompts must plan motion
+    for the visible window (ADR-0017)."""
+    fal = settings.catalog.fal.video
+    ep = fal.endpoints[run.config.video_model or settings.fal_video_model or fal.default]
+    return video_capabilities(ep).snap(duration_s), duration_s

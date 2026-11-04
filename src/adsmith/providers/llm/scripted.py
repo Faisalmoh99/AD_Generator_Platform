@@ -133,8 +133,10 @@ class ScriptedLLMProvider:
 
 
 def _echo_prompt(request: LLMRequest) -> str:
-    last = request.messages[-1]
-    texts = [p.text for p in getattr(last, "parts", ()) if isinstance(p, TextPart)]
+    # Search the whole conversation: during a repair the last turn is the repair message.
+    texts = [
+        p.text for m in request.messages for p in getattr(m, "parts", ()) if isinstance(p, TextPart)
+    ]
     body = "\n".join(texts)
     start, end = body.find("<current_prompt>"), body.find("</current_prompt>")
     if start < 0 or end < 0:

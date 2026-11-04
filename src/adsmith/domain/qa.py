@@ -13,6 +13,8 @@ IssueCategory = Literal[
 ]
 # Issues in these categories mean the *look* is wrong, so the keyframe must be regenerated too.
 KEYFRAME_ISSUE_CATEGORIES: frozenset[str] = frozenset({"product", "character", "composition"})
+# The critic sees the keyframe as image 0 and the clip frames as images 1..n.
+KEYFRAME_IMAGE_INDEX = 0
 
 
 class QAChecks(DomainModel):
@@ -59,6 +61,14 @@ class QAVerdict(QAVerdictDraft):
 
     @property
     def needs_new_keyframe(self) -> bool:
+        """The still itself is wrong: a non-minor look issue (product/character/composition), or
+        any non-minor non-motion issue the critic located in image 0, which is the keyframe
+        (e.g. key light from the wrong side is a "lighting" issue, but it lives in the still)."""
         return any(
-            i.category in KEYFRAME_ISSUE_CATEGORIES and i.severity != "minor" for i in self.issues
+            i.severity != "minor"
+            and (
+                i.category in KEYFRAME_ISSUE_CATEGORIES
+                or (i.frame_index == KEYFRAME_IMAGE_INDEX and i.category != "motion")
+            )
+            for i in self.issues
         )

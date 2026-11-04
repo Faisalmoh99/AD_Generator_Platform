@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 
-from adsmith.agent.context import NodeContext
+from adsmith.agent.context import NodeContext, render_window
 from adsmith.agent.deltas import Delta, FailScenes, SetScenePrompts
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.nodes.base import NodeResult
@@ -54,6 +54,7 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
     template = ctx.prompts.get("prompt_writer")
 
     async def write(scene: Scene) -> StructuredResult[ScenePrompt]:
+        render_s, visible_s = render_window(ctx.settings, state, scene.duration_s)
         rendered = template.render(
             bible=bible.prompt_block(),
             concept=concept_block(concept),
@@ -63,6 +64,8 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
             neighbours=_neighbours(sb, scene),
             sections=", ".join(sorted(s.value for s in scene.uses_bible_sections())),
             scene_bible=bible.prompt_block(scene.uses_bible_sections()),
+            render_s=f"{render_s:g}",
+            visible_s=f"{visible_s:g}",
         )
         return await ctx.llm.call_and_convert(
             LLMNode.PROMPT_WRITER,

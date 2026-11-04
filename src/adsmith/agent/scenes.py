@@ -31,7 +31,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
 
-from adsmith.agent.context import NodeContext
+from adsmith.agent.context import NodeContext, render_window
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.media import GatewayResult, MediaGateway, PreparedJob
 from adsmith.agent.nodes.rewrite import ReasonKind, rewrite_prompt
@@ -392,7 +392,16 @@ class SceneStageRunner:
         scene, bible = self._find(state, scene_id), state.bible
         assert bible is not None
         try:
-            res = await rewrite_prompt(self.node_ctx, scene, bible, reason=reason, detail=detail)
+            render_s, _ = render_window(self.node_ctx.settings, state, scene.duration_s)
+            res = await rewrite_prompt(
+                self.node_ctx,
+                scene,
+                bible,
+                reason=reason,
+                detail=detail,
+                render_s=render_s,
+                keep_keyframe=None if verdict is None else not verdict.needs_new_keyframe,
+            )
         except AgentError as exc:
             self._fail_scene(
                 run_id,

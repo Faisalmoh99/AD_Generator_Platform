@@ -18,7 +18,7 @@ from PIL import Image
 from adsmith.agent.qa import check_verdict
 from adsmith.domain.enums import FailureKind, ScenePhase, SceneStatus, Stage
 from adsmith.domain.events import EventType
-from adsmith.domain.qa import QAVerdictDraft
+from adsmith.domain.qa import QAVerdict, QAVerdictDraft
 from adsmith.domain.run import RunState
 from adsmith.media.frames import played_duration, sample_frames, sample_times
 from adsmith.providers.llm.base import ImagePart, TextPart, UserMessage
@@ -228,3 +228,72 @@ async def test_packaged_scenario_runs_with_the_llm_critic(tmp_path: Path) -> Non
     state = await run_auto(h)
     assert state.config.qa_mode == "llm"
     assert state.stage is Stage.DONE
+
+
+# ----------------------------------------------------------------------------- M11 refinements
+
+
+def test_major_issue_located_in_the_keyframe_needs_a_new_keyframe() -> None:
+    def v(category: str, severity: str, frame: int) -> bool:
+        draft = verdict(0.4, issues=[issue(category, severity, frame)])["output"]
+        return QAVerdict.from_draft(
+            QAVerdictDraft.model_validate(draft), threshold=0.7
+        ).needs_new_keyframe
+
+    assert v("lighting", "major", 0)  # wrong key-light side lives in the still
+    assert not v("lighting", "major", 2)  # a lighting flicker in the clip does not
+    assert not v("lighting", "minor", 0)
+    assert not v("motion", "major", 0)
+    assert v("product", "major", 2)  # look categories regenerate wherever they are seen
+
+
+def _requests(h: Harness, template: str) -> list[str]:
+    assert h.llm is not None
+    out = []
+    for r in h.llm.requests:
+        if r.template.startswith(f"{template}@"):
+            msg = r.messages[0]
+            assert isinstance(msg, UserMessage)
+            out.append("\n".join(p.text for p in msg.parts if isinstance(p, TextPart)))
+    return out
+
+
+async def test_prompt_writer_is_told_render_length_and_visible_window(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path))
+    await run_auto(h)
+    texts = _requests(h, "prompt_writer")
+    # perfume_en scene 1 is 3.5 s; the default video model (Kling) renders whole seconds → 4 s
+    assert any("renders 4 seconds" in t and "only the first 3.5 seconds" in t for t in texts)
+
+
+async def test_kept_keyframe_is_enforced_on_the_rewrite(tmp_path: Path) -> None:
+    changed = {
+        "output": {
+            "keyframe_prompt": "A completely different still image of the bottle, " * 2,
+            "motion_prompt": "Light slides slowly across the bottle over three seconds.",
+            "negative_prompt": "text, watermark",
+        }
+    }
+    h = make_harness(
+        fast_settings(tmp_path, qa_mode="llm", scene_concurrency=1),
+        scripts={
+            "qa_critic": [REJECT_MOTION, PASS],
+            "prompt_rewrite": [changed, {"transform": "echo_prompt"}],
+        },
+    )
+    state = await run_auto(h)
+    assert state.stage is Stage.DONE
+    rewrites = _requests(h, "prompt_rewrite")
+    assert "keyframe is KEPT" in rewrites[0] and "renders 4 seconds" in rewrites[0]
+    assert h.llm is not None
+    repair = [r for r in h.llm.requests if r.template.startswith("prompt_rewrite@")][1]
+    last = repair.messages[-1]
+    assert isinstance(last, UserMessage)
+    assert any("byte-identical" in p.text for p in last.parts if isinstance(p, TextPart))
+    assert h.image.calls == 4  # the keyframe really was reused
+
+
+async def test_regenerated_keyframe_is_announced_to_the_rewrite(tmp_path: Path) -> None:
+    h = harness(tmp_path, [REJECT_PRODUCT, PASS])
+    await run_auto(h)
+    assert "WILL BE REGENERATED" in _requests(h, "prompt_rewrite")[0]
