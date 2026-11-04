@@ -46,3 +46,23 @@ internally consistent, and must never turn a rejection into a free re-serve of t
   specific reason).
 - A rejected keyframe retry is a real generation (cost), which is the point.
 - Forks from a pre-keyframe snapshot still get seed 0 on attempt 1, so the cache demo is unchanged.
+
+## Addendum (M11, after the first real clips)
+1. **Stricter pass rule, in code**: pass ⇔ score ≥ threshold AND `product_visible` AND
+   `continuity_ok` AND `brand_safe` AND fewer than 2 major issues AND no blocker
+   (`QAVerdict.fail_reasons`). Reason: a real LTX clip passed at 0.72 with 2 major issues and 2 failed
+   checks. Attempts store `qa_passed`, so high-score rejections count toward the regeneration
+   limit (counting `qa_score < threshold` alone would loop).
+2. **The rule is applied at decision time, not on load.** Tightening it made a stored approved
+   snapshot fail its load invariant. The snapshot invariant now only requires a clip plus a
+   verdict, and `approve()` enforces the current rule. History is not re-judged.
+3. **Keyframe as its own image**: a non-minor, non-motion issue located in image 0 regenerates the
+   keyframe, whatever its category (e.g. key light from the wrong side). The rewrite is told the
+   code's decision, and a kept keyframe is enforced on its output.
+4. **qa_critic v2**: an explicit keyframe checklist (key-light side vs. spec/bible, required negative
+   space, unrequested objects, framing/product), and `product_visible` = clearly readable in
+   every shown frame (veiled/hazed/occluded = false). Calibrated on identical real inputs
+   against v1 (M11 log in PROGRESS.md).
+5. Known limits seen on real output: the critic is not deterministic (the same clip scored 0.72,
+   then 0.62, under v1), and v2 still missed product-identity drift (cap shape, engraved
+   lettering on the collar) on a regenerated keyframe.
