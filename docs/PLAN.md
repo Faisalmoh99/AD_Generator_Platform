@@ -614,3 +614,7 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - `RunState.pending_patches` → `patches` (full edit history).
 - Storyboard owns `target_duration_s`; the cross-check against the brief lives on `RunState` (ADR-0010).
 - Concept distinctness: trigram Jaccard, threshold 0.35, calibrated (ADR-0009).
+
+### Pre-M2 fix (scene flags fail-safe)
+- `shows_character` / `shows_product` default to `True`; deterministic upgrade-only cross-check in `domain/scene_flags.py` emits `decision` events (ADR-0010).
+- **M4 must:** say "when in doubt, mark true" in `prompts/storyboard/v1.md`; run `enforce_scene_flags(scenes)` after `storyboard` and `enforce_scene_flags(scenes, bible)` after `continuity`, appending each override's event. **M7 must:** re-run it on every patched scene.

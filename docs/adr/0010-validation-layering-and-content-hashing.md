@@ -50,6 +50,30 @@ A second hash, `keyframe_spec_hash()`, is the spec **minus motion-only fields**
 invalidation depth `clip`. These constants (`MOTION_SCENE_FIELDS`, `MOTION_SHOT_FIELDS`) are the
 same ones the blast-radius algorithm uses, so hashing and invalidation cannot disagree.
 
+### The bible-dependency flags are biased toward `True`
+`shows_character` / `shows_product` decide which scenes a bible change invalidates. They come from
+the LLM, and the two errors are **not symmetric**:
+
+| Error | Effect | Cost |
+|---|---|---|
+| False positive (flag true, element absent) | scene is regenerated after a bible edit it didn't need | one extra keyframe + clip (~$0.45) |
+| False negative (flag false, element present) | scene keeps the **old** wardrobe/bottle after the bible changes | silent continuity bug in the final ad |
+
+So we bias toward true at three layers:
+1. Schema defaults are `True`, and the field descriptions (part of the prompt) say "when in doubt,
+   mark true". The storyboard template repeats it (M4).
+2. A deterministic cross-check (`domain/scene_flags.py`) **upgrades** a flag to `True` when the
+   scene's description, action or composition mentions the element. It uses generic EN/AR terms
+   (man/hand/he, شاب/يد/هو; perfume/bottle, عطر/زجاجة), with Arabic article and clitic handling.
+   Once the bible exists it adds the bible's own terms: wardrobe items and the product name/label.
+   It runs after `storyboard` (generic terms), after `continuity` (bible terms) and after every
+   edit.
+3. It **never downgrades**. Every override is emitted as a `decision` event with the matched terms,
+   so the trace explains why a scene was later regenerated.
+Known false positives (accepted): a wardrobe colour word ("black") can match a product-only scene
+("black bottle"), and an Arabic prefix match can catch an unrelated word. Both cost a regeneration,
+never continuity.
+
 **Three layers of change detection, each with one job:**
 1. `content_hash` / `keyframe_spec_hash`: *did the scene's spec change?* (blast radius, staleness)
 2. `ContinuityBible.section_hash(section)`: *which bible sections changed?*

@@ -78,6 +78,12 @@ def _strip_ar_article(token: str) -> str:
     return token
 
 
+def raw_tokens(text: str) -> list[str]:
+    """Normalised tokens with the Arabic article stripped, but **no** stop-word filtering
+    (pronouns like "he"/"هو" are signals for scene-flag detection)."""
+    return [_strip_ar_article(t) for t in _TOKEN_SPLIT.split(normalize_text(text)) if t]
+
+
 def tokens(text: str) -> list[str]:
     out: list[str] = []
     for raw in _TOKEN_SPLIT.split(normalize_text(text)):

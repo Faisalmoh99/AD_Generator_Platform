@@ -78,8 +78,19 @@ class SceneDraft(DomainModel):
     )
     duration_s: float = Field(ge=MIN_SCENE_S, le=MAX_SCENE_S)
     shot: ShotSpec
-    shows_character: bool
-    shows_product: bool
+    # Fail-safe defaults (ADR-0010): a false negative silently breaks continuity after a bible
+    # edit, a false positive only costs one regeneration. Code upgrades them further
+    # (domain/scene_flags.py) but never downgrades.
+    shows_character: bool = Field(
+        default=True,
+        description="True if the character (or any part: hands, face, silhouette) is on screen. "
+        "When in doubt, mark true.",
+    )
+    shows_product: bool = Field(
+        default=True,
+        description="True if the product (bottle, cap, label, packaging) is on screen. "
+        "When in doubt, mark true.",
+    )
 
 
 class SceneVersion(DomainModel):
