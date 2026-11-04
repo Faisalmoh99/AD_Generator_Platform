@@ -1,0 +1,26 @@
+[
+  {
+    "output": {
+      "score": 0.86,
+      "checks": {
+        "product_visible": true,
+        "matches_shot_spec": true,
+        "lighting_matches": true,
+        "continuity_ok": true,
+        "artifacts_free": true,
+        "brand_safe": true
+      },
+      "issues": [
+        {
+          "category": "motion",
+          "severity": "minor",
+          "observation": "Slight softness on the edges of the frame in image 2 during the camera move.",
+          "fix": "Add 'steady, slow camera move, subject stays sharp' to the motion prompt.",
+          "frame_index": 2
+        }
+      ],
+      "revised_prompt_hint": "",
+      "frames_inspected": 4
+    }
+  }
+]

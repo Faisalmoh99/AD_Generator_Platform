@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from adsmith.agent.context import AgentRuntime, video_capabilities
 from adsmith.agent.media import MediaGateway
@@ -39,6 +40,7 @@ class Harness:
     image: MockImageProvider
     video: MockVideoProvider
     sleeps: list[float] = field(default_factory=list)
+    llm: ScriptedLLMProvider | None = None
 
     @property
     def provider_calls(self) -> int:
@@ -51,10 +53,12 @@ def make_harness(
     fail_plan: str = "",
     chaos: ChaosConfig | None = None,
     scenario: str = "perfume_en",
+    scripts: dict[str, list[dict[str, Any]]] | None = None,
 ) -> Harness:
-    rt = AgentRuntime.from_settings(
-        settings, llm_provider=ScriptedLLMProvider.from_scenario(scenario)
-    )
+    llm = ScriptedLLMProvider.from_scenario(scenario)
+    for template, steps in (scripts or {}).items():
+        llm.override(template, steps)
+    rt = AgentRuntime.from_settings(settings, llm_provider=llm)
     sleeps: list[float] = []
 
     async def no_wait(seconds: float) -> None:
@@ -90,4 +94,4 @@ def make_harness(
         )
 
     rt.media_factory = factory
-    return Harness(Orchestrator(rt), rt, image, video, sleeps)
+    return Harness(Orchestrator(rt), rt, image, video, sleeps, llm)

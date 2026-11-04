@@ -39,6 +39,13 @@ class CacheStore:
                 (key, artifact.model_dump_json(), utcnow().isoformat()),
             )
 
+    def evict(self, key: str) -> bool:
+        """Forget a result that turned out to be bad (e.g. rejected by QA), so an identical
+        request is generated again instead of returning the known-bad artifact."""
+        with self._db.write() as conn:
+            cur = conn.execute("DELETE FROM cache WHERE key = ?", (key,))
+        return cur.rowcount > 0
+
     def hits(self, key: str) -> int:
         with self._db.read() as conn:
             row = conn.execute("SELECT hits FROM cache WHERE key = ?", (key,)).fetchone()

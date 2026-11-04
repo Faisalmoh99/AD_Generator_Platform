@@ -116,7 +116,7 @@ class StructuredCaller:
         prompt: RenderedPrompt,
         schema: type[D],
         *,
-        images: Sequence[ImagePart] = (),
+        images: Sequence[ImagePart | TextPart] = (),  # labelled images allowed
     ) -> StructuredResult[D]:
         return await self.call_and_convert(node, prompt, schema, lambda d: d, images=images)
 
@@ -127,7 +127,7 @@ class StructuredCaller:
         schema: type[D],
         convert: Callable[[D], R],
         *,
-        images: Sequence[ImagePart] = (),
+        images: Sequence[ImagePart | TextPart] = (),  # labelled images allowed
     ) -> StructuredResult[R]:
         cache_on = self.settings.llm_prompt_cache
         first: list[TextPart | ImagePart] = []

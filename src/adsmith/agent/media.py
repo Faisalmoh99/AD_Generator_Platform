@@ -87,7 +87,10 @@ class MediaGateway:
 
     def _prepare_image(self, prompt: ScenePrompt, aspect: str, label: MediaLabel) -> PreparedJob:
         w, h = frame_size(aspect, long_side=self.long_side)
-        seed = 0  # fixed: same prompt → same keyframe (and same cache key)
+        # First attempt: seed 0, so the same prompt gives the same keyframe (and cache key). A
+        # retry (e.g. after QA rejected the look) gets a new seed, so even an unchanged prompt
+        # yields a different image instead of the rejected one.
+        seed = label.attempt_no - 1
         request = GenerationRequest(
             provider=self.image.name,
             model=self.image.model,

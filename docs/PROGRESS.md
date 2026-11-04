@@ -350,3 +350,41 @@ resume tests) and `tests/unit/test_media_units.py` (chaos determinism, fail plan
 snapping, adapters, budget ledger).
 
 **Next**: M6: LLM vision QA critic (frame sampling).
+
+---
+
+## M6: Vision QA critic (2026-11-04)
+
+**Built**
+- `media/frames.py`: frame sampling at 15/50/85% of the *played* clip (scene duration, not the
+  snapped render length), JPEG ≤768 px; keyframe re-encode.
+- `agent/qa.py`: `LLMCritic` (keyframe + 3 labelled frames + shot spec + scene bible sections +
+  prompts → `QAVerdict`), `check_verdict` (failed check ⇒ matching issue; `frame_index` in range →
+  repair), `frames_inspected` set by code. Wired via `qa_mode` (`auto` → LLM with real media).
+- `prompts/qa_critic/v1.md` (severity and score anchors, fixes phrased as prompt edits, category
+  decides keyframe reuse). Packaged `qa_critic` fixtures for both scripted scenarios.
+- `StructuredCaller` accepts interleaved text labels with images; `ScriptedLLMProvider.override`.
+- `CacheStore.evict`; QA rejection evicts the rejected clip (and keyframe for look issues);
+  keyframe retries get `seed = attempt_no - 1`.
+
+**Key decisions** (ADR-0016): judge only the played part; LLM fills fields, code decides; consistency
+rules go through repair; known-bad outputs never served from cache; cross-scene reference image
+deferred until real output shows whether it's needed.
+
+**Bug found by the new tests**: a product/look rejection whose rewrite kept `keyframe_prompt`
+unchanged re-served the **rejected keyframe from cache** at $0 (same request hash), so the
+regeneration was a no-op and would be rejected again. Fixed by eviction + per-attempt seed; the
+test asserts the identical-prompt retry is a real generation and the bad entries are gone.
+
+**Not done on purpose**: no live critic run. Mock frames would always fail, so calibration is M11 step 2
+on real LTX output.
+
+**Tests**: `make check` green, **358 passed, 2 skipped** (live). New
+`tests/integration/test_qa_critic.py` (12): sample times / played duration, bounded JPEG decode
+from a real mock clip, verdict rules, what the model receives (4 JPEGs, labels, prompts), motion
+rejection keeps keyframe, product rejection regenerates it (new seed, cache evicted), repeated
+rejection fails only that scene, inconsistent verdict → repair, critic error isolated, packaged
+scenario end to end with `qa_mode=llm`.
+
+**Next (reordered by the user)**: M11 fal provider (LTX-2.3 Fast dev model + Kling v3 Pro + Flux,
+endpoints verified from fal docs), then M7.

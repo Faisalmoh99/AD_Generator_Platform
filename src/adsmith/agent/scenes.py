@@ -579,12 +579,30 @@ class SceneStageRunner:
 
         if not self._update(run_id, note, "qa rejected"):
             return
+        self._evict_rejected(scene, verdict)
         detail = "\n".join(
             f"- [{i.severity}] {i.category}: {i.observation} → fix: {i.fix}" for i in verdict.issues
         ) + (f"\nHint: {verdict.revised_prompt_hint}" if verdict.revised_prompt_hint else "")
         await self._revise(run_id, Stage.QA, scene_id, "qa_feedback", detail, verdict=verdict)
 
     # ------------------------------------------------------------------------ helpers
+    def _evict_rejected(self, scene: Scene, verdict: QAVerdict) -> None:
+        """Known-bad outputs are never served from cache (ADR-0015): forget the rejected clip,
+        and the keyframe too when the look itself was rejected."""
+        doomed = [scene.last_attempt(ScenePhase.CLIP)]
+        if verdict.needs_new_keyframe:
+            doomed += [
+                a
+                for a in scene.attempts
+                if a.phase is ScenePhase.KEYFRAME
+                and scene.keyframe is not None
+                and a.artifact is not None
+                and a.artifact.sha256 == scene.keyframe.sha256
+            ]
+        for att in doomed:
+            if att is not None:
+                self.storage.cache.evict(att.request_hash)
+
     def _prepare(self, state: RunState, scene: Scene, phase: ScenePhase) -> PreparedJob:
         assert state.brief is not None and state.bible is not None
         phase_attempts = sum(

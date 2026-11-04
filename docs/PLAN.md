@@ -663,3 +663,8 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 - Mock media priced at the fal rates and using fal duration rules; deterministic fail plan (`ADSMITH_MOCK_FAIL_PLAN`); chaos decisions are a pure function of (seed, scene, version, phase, attempt); demo seed 66.
 - CLI: `run --chaos`, `approve`, `history`, `resume --from-version` (fork).
 - ffmpeg here has no `drawtext`: all on-frame text is rendered with Pillow and composited.
+
+### M6 (QA critic)
+- Frames sampled from the played part of the clip only; `frames_inspected` set by code; consistency rules (failed check ⇒ issue, frame index in range) go through repair (ADR-0016).
+- QA rejection evicts the rejected clip (and keyframe for look issues) from the cache; keyframe retries use `seed = attempt_no - 1`.
+- **Reordered:** M11 (fal provider) runs right after M6, before M7, with a cheap "dev" video model (LTX-2.3 Fast) next to Kling. Hard spend ceiling: the user's $10 prepaid fal balance; per-run cap $5 for the full ad.

@@ -109,16 +109,16 @@ class AgentRuntime:
         )
 
     def scene_runner(self, run: RunState) -> SceneStageRunner:
-        from adsmith.agent.qa import MockCritic  # noqa: PLC0415
+        from adsmith.agent.qa import LLMCritic, MockCritic  # noqa: PLC0415
         from adsmith.agent.scenes import SceneStageRunner  # noqa: PLC0415
 
-        if run.config.qa_mode == "llm":
-            raise RuntimeError("the LLM vision critic is implemented in M6; use qa_mode=mock")
+        node_ctx = self.node_context(run)
+        critic = LLMCritic(node_ctx) if run.config.qa_mode == "llm" else MockCritic()
         return SceneStageRunner(
             storage=self.storage,
             gateway=self.media_gateway(run),
-            node_ctx=self.node_context(run),
-            critic=MockCritic(),
+            node_ctx=node_ctx,
+            critic=critic,
             concurrency=self.settings.scene_concurrency,
             sleep=self.sleep,
             rng=self.rng,

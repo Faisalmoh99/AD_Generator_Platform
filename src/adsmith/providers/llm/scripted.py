@@ -72,6 +72,13 @@ class ScriptedLLMProvider:
         }
         return cls(scripts)
 
+    def override(self, template_name: str, steps: list[Step]) -> None:
+        """Replace (or add) one template's script, e.g. critic verdicts in a test."""
+        if not steps:
+            raise ValueError("a script needs at least one step")
+        self._scripts[template_name] = steps
+        self._calls[template_name] = 0
+
     def calls_for(self, template_name: str) -> int:
         return self._calls[template_name]
 

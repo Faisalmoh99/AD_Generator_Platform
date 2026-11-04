@@ -1,14 +1,40 @@
-"""QA critics. ``MockCritic`` (default with mock media) is deterministic: it passes clips unless
-Chaos Mode injected a quality fault into the attempt that produced them, in which case it returns
-concrete, prompt-actionable issues, exactly like the LLM vision critic (M6) will."""
+"""QA critics.
+
+- ``MockCritic`` (default with mock media) is deterministic: it passes clips unless Chaos Mode
+  injected a quality fault into the attempt that produced them, in which case it returns concrete,
+  prompt-actionable issues, exactly as the vision critic does.
+- ``LLMCritic`` (default with real media) is the vision critic: keyframe + frames sampled at
+  15/50/85% of the *played* part of the clip, the shot spec, the scene's bible sections and the
+  prompts used → a validated ``QAVerdict``. The LLM fills fields; ``passed`` is computed by code.
+
+Deterministic checks on the critic's output (violations go through the schema-repair loop):
+every failed check must be explained by an issue of a matching category, and every cited
+``frame_index`` must name an image that was actually sent. ``frames_inspected`` is set by code.
+"""
 
 from __future__ import annotations
 
+import asyncio
+import base64
+from dataclasses import dataclass
+
+from adsmith.agent.context import NodeContext
+from adsmith.agent.nodes.common import scene_block
+from adsmith.agent.recovery.errors import PermanentProviderError
+from adsmith.config import LLMNode
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.llm import LLMCallRecord
-from adsmith.domain.qa import QAChecks, QAIssue, QAVerdict
+from adsmith.domain.qa import QAChecks, QAIssue, QAVerdict, QAVerdictDraft
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene
+from adsmith.media.frames import (
+    DEFAULT_FRACTIONS,
+    DEFAULT_LONG_SIDE,
+    image_to_jpeg,
+    played_duration,
+    sample_frames,
+)
+from adsmith.providers.llm.base import ImagePart, TextPart
 
 _ALL_OK = QAChecks(
     product_visible=True,
@@ -18,6 +44,16 @@ _ALL_OK = QAChecks(
     artifacts_free=True,
     brand_safe=True,
 )
+
+# A failed check must be explained by at least one issue in one of these categories.
+CHECK_CATEGORIES: dict[str, frozenset[str]] = {
+    "product_visible": frozenset({"product", "composition", "continuity"}),
+    "matches_shot_spec": frozenset({"composition", "motion", "character", "product"}),
+    "lighting_matches": frozenset({"lighting"}),
+    "continuity_ok": frozenset({"continuity", "character", "product"}),
+    "artifacts_free": frozenset({"artifact", "motion", "character", "product"}),
+    "brand_safe": frozenset({"safety"}),
+}
 
 
 class MockCritic:
@@ -43,3 +79,77 @@ class MockCritic:
             threshold=threshold,
         )
         return verdict, []
+
+
+def check_verdict(draft: QAVerdictDraft, *, n_images: int) -> list[str]:
+    """Deterministic consistency rules for a critic verdict. Returns the problems found."""
+    problems: list[str] = []
+    for check, ok in draft.checks.model_dump().items():
+        if ok:
+            continue
+        allowed = CHECK_CATEGORIES[check]
+        if not any(i.category in allowed for i in draft.issues):
+            problems.append(
+                f"checks.{check} is false but no issue explains it "
+                f"(add an issue with category in {sorted(allowed)})"
+            )
+    for n, issue in enumerate(draft.issues):
+        if issue.frame_index is not None and issue.frame_index >= n_images:
+            problems.append(
+                f"issues.{n}.frame_index={issue.frame_index} but only images 0..{n_images - 1} "
+                "were provided"
+            )
+    return problems
+
+
+@dataclass(frozen=True, slots=True)
+class LLMCritic:
+    ctx: NodeContext
+    fractions: tuple[float, ...] = DEFAULT_FRACTIONS
+    long_side: int = DEFAULT_LONG_SIDE
+
+    async def review(self, state: RunState, scene: Scene) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        if scene.clip is None or scene.keyframe is None or scene.prompt is None:
+            raise PermanentProviderError(f"scene {scene.order} has no clip/keyframe to review")
+        assert state.bible is not None
+        arts = self.ctx.artifacts
+        played = played_duration(scene.duration_s, scene.clip.duration_s)
+        keyframe_jpeg = await asyncio.to_thread(
+            image_to_jpeg, arts.resolve(scene.keyframe), long_side=self.long_side
+        )
+        frames = await sample_frames(
+            arts.resolve(scene.clip), played, fractions=self.fractions, long_side=self.long_side
+        )
+        parts: list[ImagePart | TextPart] = [
+            TextPart("Image 0: keyframe (the still the clip was animated from)"),
+            ImagePart("image/jpeg", base64.b64encode(keyframe_jpeg).decode("ascii")),
+        ]
+        labels = ["0: keyframe"]
+        for n, f in enumerate(frames, start=1):
+            label = f"{n}: clip frame at {f.time_s:.2f}s ({f.fraction:.0%} of the played clip)"
+            parts += [TextPart(f"Image {label}"), ImagePart("image/jpeg", f.b64)]
+            labels.append(label)
+        n_images = len(frames) + 1
+
+        rendered = self.ctx.prompts.get("qa_critic").render(
+            scene=scene_block(scene),
+            scene_bible=state.bible.prompt_block(scene.uses_bible_sections()),
+            keyframe_prompt=scene.prompt.keyframe_prompt,
+            motion_prompt=scene.prompt.motion_prompt,
+            negative_prompt=scene.prompt.negative_prompt or "(none)",
+            image_list="\n".join(f"- image {label}" for label in labels),
+            played_s=f"{played:g}",
+        )
+        threshold = state.config.qa_threshold
+
+        def convert(d: QAVerdictDraft) -> QAVerdict:
+            problems = check_verdict(d, n_images=n_images)
+            if problems:
+                raise ValueError("; ".join(problems))
+            fixed = d.model_copy(update={"frames_inspected": n_images})
+            return QAVerdict.from_draft(fixed, threshold=threshold)
+
+        res = await self.ctx.llm.call_and_convert(
+            LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
+        )
+        return res.value, res.calls
