@@ -187,3 +187,14 @@ repeated prefix is read from cache.
 
 **Next**: M4: orchestrator + planning nodes (understand → ideate → select → storyboard →
 continuity → prompt), human gates, resume, scene-flag wiring, Production Pack, Arabic fixtures.
+
+---
+
+## Live API verification (2026-11-04)
+`uv run pytest --live -m live`: **2 passed**. (The tests now read the key via `Settings`, i.e. env
+or `.env`, like the app does; before, they only looked at `os.environ`.)
+- Models API: `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` all exist.
+- Structured output through our adapter works on Haiku 5.5 and Sonnet 5.5.
+- Prompt caching confirmed: Sonnet call 1 wrote 2,358 prefix tokens ($0.0063); call 2 read them
+  ($0.00086, ~83% cheaper than uncached). Haiku hit the cache written by an earlier run.
+- No refusals occurred, so served model = requested model.

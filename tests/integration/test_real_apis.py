@@ -8,7 +8,6 @@ reads on a repeated prefix of at least 512 tokens.
 from __future__ import annotations
 
 import asyncio
-import os
 import random
 
 import anthropic
@@ -20,9 +19,16 @@ from adsmith.agent.structured import StructuredCaller
 from adsmith.config import PROJECT_ROOT, LLMNode, Settings
 from adsmith.providers.llm.anthropic import AnthropicProvider
 
+
+def _key() -> str | None:
+    """Same source as the app: env or .env via Settings (not os.environ alone)."""
+    key = Settings().anthropic_api_key
+    return key.get_secret_value() if key else None
+
+
 pytestmark = [
     pytest.mark.live,
-    pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="ANTHROPIC_API_KEY not set"),
+    pytest.mark.skipif(_key() is None, reason="ANTHROPIC_API_KEY not set (env or .env)"),
 ]
 
 
@@ -31,7 +37,7 @@ class Tagline(BaseModel):
     language: str
 
 
-# ~800 tokens of static guidance, above the 512-token minimum cacheable prefix.
+# ~2,350 tokens of static guidance (measured), above the 512-token minimum cacheable prefix.
 STATIC_SYSTEM = "You write short perfume taglines. " + " ".join(
     f"Rule {i}: keep it evocative, concise, and free of competitor brand names." for i in range(80)
 )
@@ -39,7 +45,7 @@ STATIC_SYSTEM = "You write short perfume taglines. " + " ".join(
 
 async def test_configured_model_ids_exist() -> None:
     settings = Settings(llm_provider="anthropic")
-    client = anthropic.AsyncAnthropic()
+    client = anthropic.AsyncAnthropic(api_key=_key())
     for model_id in settings.catalog.llm_models:
         model = await client.models.retrieve(model_id)
         assert model.id == model_id
