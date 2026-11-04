@@ -364,3 +364,24 @@ async def test_high_score_rejections_still_count_toward_the_limit(tmp_path: Path
     clips = [a for a in s1.attempts if a.phase is ScenePhase.CLIP]
     assert [a.qa_passed for a in clips] == [False, False, False]
     assert all(a.qa_score == 0.95 for a in clips)
+
+
+async def test_scene_approved_under_an_older_rule_still_loads(tmp_path: Path) -> None:
+    """Regression (seen live in M11): tightening the pass rule made a stored approved snapshot
+    unloadable, because the load-time invariant re-judged the old verdict with the new rule."""
+    h = make_harness(fast_settings(tmp_path))
+    state = await run_auto(h)
+    old_style = verdict(0.72, issues=[issue("motion"), issue("lighting")])["output"]  # 2 majors
+    old = QAVerdict.from_draft(QAVerdictDraft.model_validate(old_style), threshold=0.7)
+    assert not old.passed  # fails today's rule
+
+    def backdate(s: RunState) -> list[Any]:
+        assert s.storyboard is not None
+        s.storyboard.scenes[0].qa = old  # as if approved before the rule changed
+        return []
+
+    h.rt.storage.runs.update(state.id, backdate, reason="simulate an older approval")
+    reloaded = h.rt.storage.runs.load(state.id)
+    assert scenes(reloaded)[0].status is SceneStatus.APPROVED
+    with pytest.raises(Exception, match="failing verdict"):
+        scenes(reloaded)[1].approve(old)  # new decisions still use the current rule

@@ -187,10 +187,10 @@ class Scene(SceneDraft):
             raise ValueError("status 'stale' and stale_from must go together")
         if s is SceneStatus.QA_REVIEW and self.clip is None:
             raise ValueError("qa_review requires a clip")
-        if s is SceneStatus.APPROVED and (
-            self.clip is None or self.qa is None or not self.qa.passed
-        ):
-            raise ValueError("approved requires a clip and a passing QA verdict")
+        # The pass rule is applied at decision time (approve()), not on every load: a scene approved
+        # under an older rule must stay loadable when the rule tightens (history is not re-judged).
+        if s is SceneStatus.APPROVED and (self.clip is None or self.qa is None):
+            raise ValueError("approved requires a clip and a QA verdict")
         active = s in {SceneStatus.PENDING, SceneStatus.GENERATING}
         if self.phase is ScenePhase.CLIP and active and self.keyframe is None:
             raise ValueError("clip phase requires a keyframe")
