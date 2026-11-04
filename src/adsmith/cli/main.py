@@ -162,6 +162,20 @@ def edit(
 
 
 @app.command()
+def assemble(
+    run_id: str,
+    partial: Annotated[str | None, typer.Option(help="skip | slate for failed scenes")] = None,
+) -> None:
+    """Re-assemble a finished run (end card, partial mode) without generating anything."""
+    orch = _orchestrator()
+    commands.reassemble(orch.rt.storage, run_id, partial_mode=partial)
+    state = asyncio.run(orch.run_until_blocked(run_id))
+    _print_state(state)
+    if state.final is not None:
+        console.print(f"Final: {orch.rt.storage.artifacts.run_dir(run_id) / 'final.mp4'}")
+
+
+@app.command()
 def history(run_id: str) -> None:
     """List the run's snapshots (for inspection or --from-version)."""
     table = Table("version", "stage", "reason", "size")

@@ -79,6 +79,9 @@ class EndCardStyle:
     text: tuple[int, int, int] = (243, 234, 215)
 
 
+MIN_TEXT_LUMINANCE = 180
+
+
 def _hex(color: str) -> tuple[int, int, int]:
     c = color.lstrip("#")
     return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
@@ -100,7 +103,9 @@ def style_from_palette(palette: list[str]) -> EndCardStyle:
     light = max(rgb, key=lum)
     accent = max((c for c in rgb if c not in (dark, light)), key=sat, default=light)
     bg = tuple(max(0, int(v * 0.55)) for v in dark)
-    return EndCardStyle(background=bg, accent=accent, text=light)  # type: ignore[arg-type]
+    # Text must stay readable on the darkened card: a dark-only palette falls back to warm cream.
+    text = light if lum(light) >= MIN_TEXT_LUMINANCE else EndCardStyle().text
+    return EndCardStyle(background=bg, accent=accent, text=text)  # type: ignore[arg-type]
 
 
 def render_endcard(
@@ -112,6 +117,7 @@ def render_endcard(
     height: int,
     style: EndCardStyle | None = None,
     background_frame: Path | None = None,
+    text: bool = True,
 ) -> Path:
     """Vertical-safe layout: brand centred slightly above the middle, a short accent rule, the
     tagline below. If a background frame is given (the ad's last frame) it is blurred and darkened
@@ -125,6 +131,10 @@ def render_endcard(
         img = Image.blend(bg, shade, 0.72)
     else:
         img = Image.new("RGB", (width, height), st.background)
+    if not text:  # background plate for the dissolve: no brand, rule or tagline
+        out.parent.mkdir(parents=True, exist_ok=True)
+        img.save(out)
+        return out
     draw = ImageDraw.Draw(img)
     margin = int(width * 0.1)
     max_w = width - 2 * margin
@@ -134,9 +144,9 @@ def render_endcard(
         brand_font = font(int(brand_font.size * 0.9), "Bold")
     tag_font = font(int(width * 0.052), "Medium")
     tag_lines = wrap(tagline, tag_font, max_w)[:3]
-    for text, f in ((brand, brand_font), (tagline, tag_font)):
-        if missing := missing_glyphs(text, f):
-            raise ValueError(f"end-card font lacks glyphs {missing} for {text!r}")
+    for content, f in ((brand, brand_font), (tagline, tag_font)):
+        if missing := missing_glyphs(content, f):
+            raise ValueError(f"end-card font lacks glyphs {missing} for {content!r}")
 
     def centred(text: str, f: ImageFont.FreeTypeFont, y: int, fill: tuple[int, int, int]) -> int:
         shaped = shape(text)

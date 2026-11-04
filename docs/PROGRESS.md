@@ -556,3 +556,19 @@ markers); matching against the cached CONTEXT made every scene look like scene 1
 USER section only); the mock $5 budget (priced at Kling rates) ran out after three edits, which is
 the guard working (the demo uses `ADSMITH_BUDGET_USD=15` for simulated money).
 **Tests**: 433 passed, 2 skipped (11 in `tests/integration/test_edits.py`).
+
+## M8: Assembly + Arabic end card (2026-11-05)
+**Built**: `media/endcard.py` (reshaper + bidi per logical line, missing-glyph guard),
+`media/ffmpeg.py`, rewritten `assemble` (normalise → skip or slate failed scenes → end card
+dissolving in over the blurred last frame → concat → optional user music → ffprobe duration check),
+`endcard_copy` node (fictional brand + tagline when the brief has none; real-brand denylist →
+repair; PLACEHOLDER in trace + Production Pack; copy kept in run state across edits),
+`commands.reassemble` + CLI `adsmith assemble <run> [--partial slate]`. 446 tests.
+**Found by looking at the render**: Tajawal (first pick), Cairo and Almarai lack ~56 Arabic
+Presentation Forms the reshaper emits → boxes. Switched to Noto Naskh Arabic (OFL, full
+coverage) and added a guard + test covering every letter in every joining form. Also fixed: the
+dissolve plate showed the accent rule; a dark-only palette gave low-contrast gold text (now cream).
+**Real ads re-assembled (ffmpeg + one Haiku call each, $0 fal)**: majlis 3-scene →
+`data/runs/run_01M6JF4T2D78QNQJ7ZSE8GA8WR/final.mp4` (13.0 s, placeholder «أثر المجلس — العطر اللي
+يبقى بعدك، والناس تسأل عنك»); single take → `data/runs/run_01M6JH38ZT2WRDPSQ2GM833F7T/final.mp4`
+(12.0 s, placeholder «نبض الليل — يحسّون بك قبل لا تدخل»).

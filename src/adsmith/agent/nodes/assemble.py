@@ -131,7 +131,7 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         style = style_from_palette(palette)
         await asyncio.to_thread(
             render_endcard, bg, brand=" ", tagline=" ", width=w, height=h, style=style,
-            background_frame=last,
+            background_frame=last, text=False,
         )  # fmt: skip
         await asyncio.to_thread(
             render_endcard, card, brand=copy.brand_name, tagline=copy.tagline, width=w, height=h,

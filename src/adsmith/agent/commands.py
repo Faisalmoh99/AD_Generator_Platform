@@ -137,3 +137,27 @@ def edit_scene_spec(
     return storage.runs.update(
         run_id, mutate, reason=f"scene {scene_order} edited", expected_version=expected_version
     ).state
+
+
+def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None) -> RunState:
+    """Re-run only the assembly of a finished run (new end card / partial mode), no generation:
+    ffmpeg plus at most one small LLM call for the end-card copy."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.stage not in {Stage.DONE, Stage.DONE_PARTIAL}:
+            raise CommandRejectedError(f"run is at {s.stage}; reassemble needs a finished run")
+        if partial_mode is not None:
+            if partial_mode not in {"skip", "slate"}:
+                raise CommandRejectedError("partial_mode must be 'skip' or 'slate'")
+            s.config = s.config.model_copy(update={"partial_mode": partial_mode})
+        s.stage = Stage.ASSEMBLE
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.ASSEMBLE,
+                type=EventType.DECISION,
+                summary=f"Re-assembling (partial mode: {s.config.partial_mode}).",
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="reassemble").state
