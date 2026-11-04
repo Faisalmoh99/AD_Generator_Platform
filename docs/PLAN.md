@@ -618,3 +618,10 @@ Each milestone ends with: quality gate → conventional commit(s) → `docs/PROG
 ### Pre-M2 fix (scene flags fail-safe)
 - `shows_character` / `shows_product` default to `True`; deterministic upgrade-only cross-check in `domain/scene_flags.py` emits `decision` events (ADR-0010).
 - **M4 must:** say "when in doubt, mark true" in `prompts/storyboard/v1.md`; run `enforce_scene_flags(scenes)` after `storyboard` and `enforce_scene_flags(scenes, bible)` after `continuity`, appending each override's event. **M7 must:** re-run it on every patched scene.
+
+### M2 (storage)
+- Write API is `RunRepository.update(run_id, mutate_fn, reason, expected_version=None)`: load → mutate → validate → snapshot → events in **one** `BEGIN IMMEDIATE` transaction. There is no "save the state I'm holding" (ADR-0011).
+- Snapshots are zlib-compressed (`snapshots.state_z`); measured ~3–4 KB per version.
+- Added `storage/cache.py` (`CacheStore`) and a `Storage` facade (`Storage.open(data_dir)`).
+- Scene results must carry the scene version they were produced for; their mutation raises `StaleWriteError` if the scene changed (wired in M5).
+- `RunRepository.fork(run_id, from_version)` backs `resume --from-version`.

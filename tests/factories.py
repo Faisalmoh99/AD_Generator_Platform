@@ -21,6 +21,7 @@ from adsmith.domain.enums import (
     Language,
     ScenePurpose,
     ShotType,
+    Stage,
     TimeOfDay,
 )
 from adsmith.domain.generation import Artifact
@@ -201,3 +202,17 @@ def make_run(**over: Any) -> RunState:
         "budget": BudgetLedger(limit_usd=10, max_attempts_per_scene=6, max_total_attempts=40),
     }
     return RunState(**(base | over))
+
+
+def make_full_run(stage: Stage = Stage.PROMPT) -> RunState:
+    """A run with brief, selected concept, prompted storyboard and bible."""
+    sb = make_storyboard(concept_id="cpt_a")
+    for s in sb.scenes:
+        s.set_prompt(make_prompt())
+    return make_run(
+        stage=stage,
+        brief=make_brief(),
+        concepts=make_concept_set(selected="cpt_a"),
+        storyboard=sb,
+        bible=make_bible(),
+    )

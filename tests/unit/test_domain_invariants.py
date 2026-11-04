@@ -18,6 +18,7 @@ from tests.factories import (
     make_bible,
     make_brief,
     make_concept_set,
+    make_full_run,
     make_prompt,
     make_run,
     make_scene,
@@ -217,19 +218,6 @@ def test_failed_attempt_needs_kind() -> None:
 # ---------------------------------------------------------------------------- run state
 
 
-def _full_run(stage: Stage = Stage.PROMPT) -> RunState:
-    sb = make_storyboard(concept_id="cpt_a")
-    for s in sb.scenes:
-        s.set_prompt(make_prompt())
-    return make_run(
-        stage=stage,
-        brief=make_brief(),
-        concepts=make_concept_set(selected="cpt_a"),
-        storyboard=sb,
-        bible=make_bible(),
-    )
-
-
 @pytest.mark.parametrize(
     ("stage", "missing"),
     [
@@ -248,14 +236,14 @@ def test_stage_prerequisites(stage: Stage, missing: str) -> None:
 
 def test_storyboard_target_must_match_brief_duration() -> None:
     """Cross-aggregate rule: lives on RunState, the only object that sees both."""
-    run = _full_run()
+    run = make_full_run()
     run.brief = make_brief(duration_s=30.0)
     with pytest.raises(ValueError, match=r"brief 30\.0s"):
         run.check_invariants()
 
 
 def test_storyboard_must_belong_to_selected_concept() -> None:
-    run = _full_run()
+    run = make_full_run()
     assert run.concepts is not None
     run.concepts.select("cpt_b", "user", None)
     with pytest.raises(ValueError, match="selected concept"):
@@ -263,7 +251,7 @@ def test_storyboard_must_belong_to_selected_concept() -> None:
 
 
 def test_prompt_cannot_reference_future_bible() -> None:
-    run = _full_run()
+    run = make_full_run()
     assert run.storyboard is not None
     run.storyboard.scenes[0].prompt = make_prompt(bible_version=2)
     with pytest.raises(ValueError, match="future bible"):
@@ -278,7 +266,7 @@ def test_errored_run_with_record_is_valid() -> None:
 
 
 def test_full_run_json_round_trip_is_lossless() -> None:
-    run = _full_run()
+    run = make_full_run()
     again = RunState.model_validate_json(run.model_dump_json())
     assert again == run
     assert again.storyboard is not None and run.storyboard is not None

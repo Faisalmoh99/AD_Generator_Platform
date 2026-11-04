@@ -84,3 +84,49 @@ the factory; the domain was correct.
 
 **Next**: M2: storage (SQLite WAL, versioned snapshots with optimistic locking, event store with
 tail, artifact/CAS store).
+
+---
+
+## Pre-M2 fix: fail-safe scene flags (2026-11-04)
+`shows_character` / `shows_product` default to `True`. `domain/scene_flags.py` upgrades (never
+downgrades) a flag when the scene text mentions the character or product, using generic EN/AR terms
+and, once the bible exists, wardrobe and product-name terms. Each override becomes a `decision`
+event. The asymmetry is documented in ADR-0010. 8 tests. Wiring into the storyboard/continuity
+nodes and edits is listed as an M4/M7 must in PLAN.md §14.
+
+**Process slip, corrected:** the first commit of this fix ran after a red typecheck, because
+`make check | tail -1` hid the exit code. The fix was amended before moving on (local, unpushed). The
+gate is now always run to a log file and its exit code checked before any commit.
+
+---
+
+## M2: Storage (2026-11-04)
+
+**Built** (`src/adsmith/storage/`)
+- `db.py`: SQLite (WAL, `synchronous=NORMAL`, FKs, 5 s busy timeout), one locked connection per
+  process, explicit `write()` transactions (`BEGIN IMMEDIATE`, all-or-nothing), append-only
+  migrations tracked with `PRAGMA user_version`.
+- `repo.py`: `RunRepository`: `create`, `update(mutate_fn)` (atomic read-modify-write plus events),
+  `load`, `load_version`, `history`, `list_runs`, `fork`. Errors: `RunNotFoundError`,
+  `ConcurrencyConflictError` (optimistic lock, opt-in), `StaleWriteError` (mutation veto).
+- `events.py`: `EventStore` with gap-free per-run `seq` (assigned in-transaction), `tail(after_seq)`.
+- `artifacts.py`: content-addressed store with atomic writes and path-escape protection.
+- `cache.py`: request-hash → artifact cache; first writer wins; self-healing on missing files.
+- `Storage.open(data_dir)` facade.
+
+**Key decisions** (ADR-0011)
+1. Snapshot growth: full compressed JSON per version, ~3–4 KB each, ~0.1–0.3 MB per run. Smaller
+   than the run's video, and it buys trivial resume and time travel.
+2. Event `seq` = `MAX+1` inside the serialised write transaction: monotonic, gap-free, commit order
+   = seq order.
+3. Conflicts: automated writers can't lose updates (the read happens under the write lock).
+   Outdated scene results are vetoed semantically. `expected_version` is only for human commands.
+
+**Tests**: `make check` green, **160 tests** (+21 storage): round-trips, history/time travel,
+rollback on mutation error and on invalid resulting state, no seq consumed on rollback, optimistic
+lock, **2 connections × 4 threads × 25 writes** (no lost updates, versions contiguous, seqs
+gap-free), concurrent asyncio appends, stale-result veto, tail semantics, Arabic payload
+round-trip, fork, compressed snapshot < 8 KB, CAS idempotency/move/path escape, cache semantics.
+
+**Next**: M3: LLM layer (`LLMProvider`, Anthropic + Scripted + OpenAI skeleton, `structured_call`
+with the schema-repair loop, prompt-template loader).
