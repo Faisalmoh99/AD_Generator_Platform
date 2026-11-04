@@ -80,3 +80,32 @@ internally consistent, and must never turn a rejection into a free re-serve of t
   runs. At 768 px in a three-quarter view a cylinder and a squared block have nearly the same
   outline. *Mitigation ("more time"):* give the critic a product reference image (an approved
   hero keyframe or a real product photo) to compare against, instead of text alone.
+
+## Addendum 3 (M11, final): severity calibration (hard vs. soft)
+**The calibration story, measured on real fal output:**
+1. *Too lenient* (v1, "only blockers fail"): a real LTX clip with 2 major issues and 2 failed checks
+   passed at 0.72.
+2. *Too strict* (v2–v3 plus "2+ majors fail", then the keyframe gate): in the first full real run
+   the gate rejected **10 of 10** keyframes. Eyeballing them showed most rejections were about
+   staging (light side, prop placement, a lower fifth that was not perfectly empty), not about
+   whether the ad works. A gate that rejects everything is as useless as one that accepts everything.
+3. *Hard/soft split* (current; `qa_keyframe` v2, `qa_critic` v5):
+   - **HARD** checks can fail a shot on their own: product readable (`product_visible`), product
+     and character identity vs. the bible checklist (`continuity_ok`), no text, logos or garbled
+     letters (`text_free`, new, default true for stored verdicts), brand safety.
+   - **SOFT** categories (`lighting`, `composition`: light side, unrequested background objects,
+     prop and doorway placement, exact composition, negative-space precision) are **capped at minor
+     by code**, whatever severity the LLM chose. They only lower the score (prompted at about −0.05 each).
+   - Pass ⇔ no hard check false AND no blocker AND score ≥ threshold. The "2+ majors" rule is gone.
+     Soft issues never force a keyframe regeneration on their own.
+
+**Re-judging the 14 stored keyframes** (no fal spend, $0.17 on Anthropic) moved the verdicts from 1/14
+passing to 11/14. Eyeball check: 12 of 14 new verdicts are right. The 2 errors are both **false passes on a
+round cap that should be squared** (the known fine-identity gap, addendum 2). The old gate had wrongly
+rejected 9 of the 14.
+
+**Consequences.** + The gate now stops broken products and stray text, not staging details.
+− Screen-direction mistakes (e.g. a doorway on the wrong side) now pass as soft issues. That is the
+right trade for a single bounded attempt, but a continuity-sensitive storyboard may want "screen
+direction" promoted to hard. − Fine product identity still depends on perception (product reference
+image: MORE_TIME.md).
