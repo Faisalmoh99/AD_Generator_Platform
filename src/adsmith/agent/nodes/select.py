@@ -1,4 +1,5 @@
-"""select (auto mode only): LLM scores each concept on a fixed rubric; code picks the winner."""
+"""select: the LLM scores each concept on a fixed rubric and code computes the winner. Auto mode
+selects it; interactive mode only records the scores and a recommendation (the human picks)."""
 
 from __future__ import annotations
 
@@ -33,8 +34,9 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
     best = judgement.winner()
     chosen = concepts[best.concept_number - 1]
     ranking = sorted(judgement.scores, key=lambda s: -s.weighted())
+    verb = "Recommends" if state.config.interactive else "Selected"
     summary = (
-        f"Selected concept {best.concept_number} '{chosen.title}' "
+        f"{verb} concept {best.concept_number} '{chosen.title}' "
         f"(score {best.weighted():.2f}/10): "
         + ", ".join(
             f"#{s.concept_number}={s.weighted():.2f}"
@@ -42,14 +44,19 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
             for s in ranking
         )
     )
-    return NodeResult(
-        deltas=[
+    deltas = (
+        []
+        if state.config.interactive
+        else [
             SelectConcept(
                 concept_id=chosen.id,
                 by="agent",
                 rationale=f"{best.rationale} (weighted {best.weighted():.2f}/10)",
             )
-        ],
+        ]
+    )
+    return NodeResult(
+        deltas=list(deltas),
         events=[
             decision(
                 ctx.run_id,
@@ -57,6 +64,7 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
                 summary,
                 weights=dict(JUDGE_WEIGHTS),
                 scores=[s.model_dump() | {"weighted": s.weighted()} for s in judgement.scores],
+                recommended=best.concept_number,
             )
         ],
         llm_calls=result.calls,

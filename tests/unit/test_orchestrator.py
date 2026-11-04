@@ -66,13 +66,18 @@ async def test_interactive_run_stops_at_concept_gate(settings: Settings) -> None
         "llm_call",
         "decision",
         "stage_completed",  # ideate
+        "stage_started",
+        "llm_call",
+        "decision",  # the judge recommends (it does not select in interactive mode)
+        "stage_completed",  # select
         "awaiting_input",
     ]
     hist = orch.rt.storage.runs.history(run.id)
     assert [(h.state_version, h.stage) for h in hist] == [
         (1, Stage.UNDERSTAND),
         (2, Stage.IDEATE),
-        (3, Stage.AWAITING_CONCEPT_CHOICE),
+        (3, Stage.SELECT),
+        (4, Stage.AWAITING_CONCEPT_CHOICE),
     ]
 
 
@@ -89,7 +94,7 @@ async def test_llm_cost_is_booked_and_matches_trace(settings: Settings) -> None:
         assert isinstance(cost, float)
         traced += cost
     assert state.budget.spent_usd == pytest.approx(traced) and traced > 0
-    assert len(state.budget.entries) == len(calls) == 2
+    assert len(state.budget.entries) == len(calls) == 3  # understand, ideate, select
 
 
 async def test_choose_concept_then_continue(settings: Settings) -> None:

@@ -18,8 +18,9 @@ class IllegalStageError(RuntimeError):
     pass
 
 
-def _after_ideate(s: RunState) -> Stage:
-    return Stage.AWAITING_CONCEPT_CHOICE if s.config.interactive else Stage.SELECT
+def _after_select(s: RunState) -> Stage:
+    # Interactive: the judge only recommends; the human picks at the gate.
+    return Stage.AWAITING_CONCEPT_CHOICE if s.config.interactive else Stage.STORYBOARD
 
 
 def _after_keyframe(s: RunState) -> Stage:
@@ -43,8 +44,8 @@ def _after_assemble(s: RunState) -> Stage:
 
 TRANSITIONS: dict[Stage, Guard] = {
     Stage.UNDERSTAND: lambda s: Stage.IDEATE,
-    Stage.IDEATE: _after_ideate,
-    Stage.SELECT: lambda s: Stage.STORYBOARD,
+    Stage.IDEATE: lambda s: Stage.SELECT,
+    Stage.SELECT: _after_select,
     Stage.STORYBOARD: lambda s: Stage.CONTINUITY,
     Stage.CONTINUITY: lambda s: Stage.PROMPT,
     Stage.PROMPT: lambda s: Stage.KEYFRAME,

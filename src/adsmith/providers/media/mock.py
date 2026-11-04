@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import textwrap
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from adsmith.agent.recovery.errors import (
     AccountLockedError,
@@ -114,42 +113,87 @@ def _palette(label: MediaLabel, seed: str) -> list[tuple[int, int, int]]:
     return [(digest[i], digest[i + 1], digest[i + 2]) for i in range(0, 9, 3)]
 
 
-def render_card(job: ImageJob, path: Path) -> None:
+def render_card(job: ImageJob, path: Path) -> None:  # noqa: PLR0915 - one linear drawing
+    """A cinematic *abstract* frame instead of a text dump: the bible palette as a graded
+    background, a soft key light, a subject silhouette sized by shot type, vignette and grain.
+    No prompt text is drawn (Arabic would need shaping), but every visual parameter is derived
+    from the prompt's hash, so an edited prompt visibly yields a different keyframe."""
     w, h = job.width, job.height
     colors = _palette(job.label, job.prompt)
-    top, bottom = colors[0], colors[1 % len(colors)]
-    img = Image.new("RGB", (w, h))
-    draw = ImageDraw.Draw(img)
-    for y in range(h):  # vertical gradient between the first two palette colours
+    digest = hashlib.sha256(job.prompt.encode()).digest()
+
+    def unit(i: int) -> float:
+        return digest[i] / 255
+
+    dark = min(colors, key=sum)
+    light = max(colors, key=sum)
+    warm = max(colors, key=lambda c: max(c) - min(c))  # most saturated: the key light's tint
+    mid = sorted(colors, key=sum)[len(colors) // 2]
+    base = Image.new("RGB", (w, h))
+    draw = ImageDraw.Draw(base)
+    for y in range(h):  # graded background: light top -> deep bottom
         t = y / max(1, h - 1)
-        draw.line(
-            [(0, y), (w, y)],
-            fill=tuple(int(a + (b - a) * t) for a, b in zip(top, bottom, strict=True)),
+        c = tuple(int(a * (1 - t) * 0.55 + b * t * 0.35) for a, b in zip(mid, dark, strict=True))
+        draw.line([(0, y), (w, y)], fill=c)
+    # soft key light (position from the prompt hash)
+    glow = Image.new("RGB", (w, h), (0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    cx, cy, r = int(w * (0.2 + 0.6 * unit(0))), int(h * (0.15 + 0.35 * unit(1))), int(w * 0.55)
+    gd.ellipse([(cx - r, cy - r), (cx + r, cy + r)], fill=warm)
+    glow = glow.filter(ImageFilter.GaussianBlur(radius=w // 5))
+    img = Image.blend(base, glow, 0.55)
+    # subject silhouette by shot type
+    sil = Image.new("L", (w, h), 0)
+    sd = ImageDraw.Draw(sil)
+    shot = job.label.shot
+    sx = int(w * (0.35 + 0.3 * unit(2)))
+    if shot in {"close_up", "extreme_close_up", "insert"}:  # an object: tall rounded block
+        bw, bh = int(w * 0.34), int(h * 0.42)
+        sd.rounded_rectangle(
+            [(sx - bw // 2, int(h * 0.36)), (sx + bw // 2, int(h * 0.36) + bh)],
+            radius=bw // 8,
+            fill=255,
         )
-    accent = colors[2 % len(colors)] if len(colors) > 2 else (230, 200, 90)
-    draw.rectangle([(0, 0), (w, int(h * 0.18))], fill=(0, 0, 0))
+        sd.rectangle([(sx - bw // 6, int(h * 0.28)), (sx + bw // 6, int(h * 0.37))], fill=255)
+    elif shot in {"wide", "extreme_wide", "establishing"}:  # a small figure in a big space
+        fw, fh = int(w * 0.07), int(h * 0.26)
+        sd.ellipse([(sx - fw // 2, int(h * 0.5)), (sx + fw // 2, int(h * 0.5) + fw)], fill=255)
+        sd.rounded_rectangle(
+            [(sx - fw, int(h * 0.5) + fw), (sx + fw, int(h * 0.5) + fh)], radius=fw // 2, fill=255
+        )
+    else:  # medium: a mid-sized form
+        mw, mh = int(w * 0.26), int(h * 0.38)
+        sd.rounded_rectangle(
+            [(sx - mw // 2, int(h * 0.42)), (sx + mw // 2, int(h * 0.42) + mh)],
+            radius=mw // 3,
+            fill=255,
+        )
+    sil = sil.filter(ImageFilter.GaussianBlur(radius=max(2, w // 90)))
+    shade = Image.new("RGB", (w, h), tuple(int(v * 0.25) for v in dark))
+    img = Image.composite(shade, img, sil)
+    # rim light on the silhouette edge, vignette, grain
+    edge = sil.filter(ImageFilter.FIND_EDGES).filter(
+        ImageFilter.GaussianBlur(radius=max(1, w // 160))
+    )
+    img = Image.composite(
+        Image.new("RGB", (w, h), light), img, edge.point(lambda v: min(255, v * 3))
+    )
+    vig = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(vig).ellipse([(-w * 0.25, -h * 0.1), (w * 1.25, h * 1.1)], fill=255)
+    vig = vig.filter(ImageFilter.GaussianBlur(radius=w // 6))
+    img = Image.composite(img, Image.new("RGB", (w, h), (0, 0, 0)), vig)
+    noise = Image.effect_noise((w, h), 18).convert("RGB")
+    img = Image.blend(img, noise, 0.05)
+    draw = ImageDraw.Draw(img)
+    caption = f"{shot.replace('_', ' ')} · {job.label.camera.replace('_', ' ')}"
     draw.text(
-        (int(w * 0.06), int(h * 0.04)),
-        f"S{job.label.scene_order}",
-        font=_font(int(h * 0.08)),
-        fill=accent,
+        (int(w * 0.06), int(h * 0.94)),
+        caption.upper(),
+        font=_font(max(10, h // 48)),
+        fill=(230, 222, 210),
     )
     draw.text(
-        (int(w * 0.32), int(h * 0.06)),
-        f"{job.label.shot}\n{job.label.camera}",
-        font=_font(int(h * 0.025)),
-        fill=(235, 235, 235),
-    )
-    body = textwrap.fill(job.prompt[:420], width=max(20, w // 15))
-    draw.multiline_text(
-        (int(w * 0.06), int(h * 0.24)),
-        body,
-        font=_font(int(h * 0.022)),
-        fill=(245, 245, 245),
-        spacing=6,
-    )
-    draw.text(
-        (int(w * 0.06), int(h * 0.93)), "MOCK KEYFRAME", font=_font(int(h * 0.02)), fill=accent
+        (int(w * 0.06), int(h * 0.04)), "MOCK", font=_font(max(9, h // 60)), fill=(200, 190, 175)
     )
     img.save(path)
 

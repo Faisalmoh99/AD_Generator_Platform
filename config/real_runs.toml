@@ -1,0 +1,41 @@
+# Real fal runs shown in the web UI's "Real runs" gallery (M11). Each item points at a run in the
+# data dir; missing runs are skipped, so a fresh checkout simply shows an empty gallery.
+
+[[items]]
+key = "majlis"
+title = "The majlis remembers him"
+subtitle = "4-scene ad · Kling v3 Pro · FLUX dev keyframes · gate on"
+run = "run_01M6JF4T2D78QNQJ7ZSE8GA8WR"
+kind = "final"
+caption = """A young man leaves the majlis; his things linger, then the bottle. 3 of 4 scenes passed: \
+the keyframe gate rejected one round decanter before any video was paid for, and scene 3 was \
+rejected twice (smoke rising from the bottle) until the $3 budget guard refused a third clip, so \
+assembly skipped it. fal spend $2.93."""
+defects = "Seen by eye, passed by the critic: a doorway appears mid-clip in scene 1; the bottle shape differs between scenes 2 and 4."
+
+[[items]]
+key = "single_take"
+title = "Single take: the silk corridor"
+subtitle = "One continuous 10 s shot · Kling v3 Pro · ideated around the model's strengths"
+run = "run_01M6JH38ZT2WRDPSQ2GM833F7T"
+kind = "final"
+caption = """The agent designed three single-take concepts around the video model's capability \
+profile and picked the safest. One keyframe, one clip, both passed first time: $1.43. Perfect \
+product consistency within the take, but the promised beat (the bottle flying at the lens) never \
+happened, and QA let it pass as a 'soft' issue."""
+defects = "Brand safety: the round bottle with a tall black cap reads like a whisky bottle; this should be a hard check."
+
+[[items]]
+key = "curtain"
+title = "Before → after: the curtain veil"
+subtitle = "Scene 4, LTX-2.3 Fast · a real failure the critic caught"
+run = "run_01M6JA6FP1Q7P2WE70C6GGVQTN"
+kind = "attempts"
+scene = 4
+attempts = [2, 3]
+labels = ["Before: rejected 0.50", "After: rewritten prompt"]
+caption = """'A curtain shadow drifts across the bottle' was taken literally: a translucent curtain \
+veiled the product. The critic rejected it (score 0.50); the QA loop rewrote the motion prompt from \
+its fixes (light described as light, nothing between camera and product) and kept the keyframe. \
+The second clip shows a clean, readable bottle."""
+defects = ""

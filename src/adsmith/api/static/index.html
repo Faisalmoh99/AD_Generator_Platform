@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adsmith Studio</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark">A</span>
+      <div>
+        <div class="wordmark">Adsmith</div>
+        <div class="tag">AI ad studio · Arabic &amp; English</div>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab active" data-view="studio">Studio</button>
+      <button class="tab" data-view="gallery">Real runs</button>
+    </nav>
+    <div class="top-right">
+      <span class="mode-badge" id="mode-badge">—</span>
+      <select id="recent" class="recent" title="Recent runs"><option value="">Recent runs</option></select>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main id="studio" class="view">
+      <section class="composer card">
+        <h1 class="hero">Describe your ad.</h1>
+        <p class="sub">The agent writes three concepts, storyboards the winner, generates keyframes and clips, checks them, recovers from failures and assembles the ad.</p>
+        <textarea id="request" dir="auto" rows="2" placeholder="سوّ لي إعلان ١٥ ثانية لعطر رجالي فاخر…"></textarea>
+        <div class="examples" id="examples"></div>
+        <div class="composer-row">
+          <label class="switch"><input type="checkbox" id="auto" checked><span></span>Agent picks the concept</label>
+          <label class="switch chaos"><input type="checkbox" id="chaos"><span></span>Chaos mode <em>inject faults</em></label>
+          <button id="go" class="btn primary">Generate ad</button>
+        </div>
+      </section>
+
+      <section id="run" class="run hidden">
+        <div class="run-head">
+          <div>
+            <div class="eyebrow">Run</div>
+            <div class="run-request" id="run-request" dir="auto"></div>
+          </div>
+          <div class="run-meta" id="run-meta"></div>
+        </div>
+        <ol class="pipeline" id="pipeline"></ol>
+
+        <div id="concepts-wrap" class="block hidden">
+          <div class="block-head"><h2>Concepts</h2><span class="hint" id="concepts-hint"></span></div>
+          <div class="concepts" id="concepts"></div>
+          <p class="selection" id="selection" dir="auto"></p>
+        </div>
+
+        <div id="board-wrap" class="block hidden">
+          <div class="block-head">
+            <h2>Storyboard</h2>
+            <div class="legend">
+              <span class="chip s-pending">pending</span><span class="chip s-generating">generating</span>
+              <span class="chip s-qa_review">QA</span><span class="chip s-approved">approved</span>
+              <span class="chip s-failed">failed</span><span class="chip s-stale">stale</span>
+            </div>
+          </div>
+          <div class="edit-bar">
+            <input id="edit" dir="auto" placeholder="Edit the ad in plain words…  خل المشهد الثاني أبطأ">
+            <button id="edit-go" class="btn">Apply edit</button>
+          </div>
+          <div class="edit-suggest" id="edit-suggest"></div>
+          <div class="blast hidden" id="blast"></div>
+          <div class="board" id="board"></div>
+          <div class="gate hidden" id="approve-wrap">
+            <span>Keyframes are ready. Approve to start paid video generation.</span>
+            <button id="approve" class="btn primary">Approve storyboard</button>
+          </div>
+        </div>
+
+        <div id="final-wrap" class="block hidden">
+          <div class="block-head"><h2>Final ad</h2></div>
+          <div class="final">
+            <video id="final-video" controls playsinline></video>
+            <div class="final-side">
+              <div class="final-stats" id="final-stats"></div>
+              <div class="endcard-note" id="endcard-note" dir="auto"></div>
+              <a id="pack" class="btn">Download Production Pack</a>
+            </div>
+          </div>
+        </div>
+        <p class="error hidden" id="error"></p>
+      </section>
+    </main>
+
+    <main id="gallery" class="view hidden">
+      <section class="gallery-head">
+        <h1 class="hero">Real runs</h1>
+        <p class="sub">Generated with real models on fal.ai (FLUX keyframes, LTX-2.3 and Kling v3 Pro clips), judged by the vision critic. What worked, what failed, and what the critic missed.</p>
+      </section>
+      <div class="gallery" id="gallery-grid"></div>
+    </main>
+
+    <aside class="panel">
+      <div class="panel-section">
+        <div class="panel-title">Budget</div>
+        <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
+        <div class="meter-text" id="meter-text">—</div>
+        <div class="meter-cats" id="meter-cats"></div>
+      </div>
+      <div class="panel-section trace-section">
+        <div class="panel-title"><span class="live-dot" id="live-dot"></span>Agent trace</div>
+        <div class="filters" id="filters">
+          <button class="filter active" data-f="all">All</button>
+          <button class="filter" data-f="recovery">Recoveries</button>
+          <button class="filter" data-f="qa">QA</button>
+          <button class="filter" data-f="cost">Cost</button>
+          <button class="filter" data-f="edit">Edits</button>
+        </div>
+        <ol class="trace" id="trace"><li class="empty">Start a run to see the agent think and act.</li></ol>
+      </div>
+    </aside>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

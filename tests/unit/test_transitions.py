@@ -21,7 +21,6 @@ def run(interactive: bool = True) -> RunState:
     ("completed", "expected"),
     [
         (Stage.UNDERSTAND, Stage.IDEATE),
-        (Stage.SELECT, Stage.STORYBOARD),
         (Stage.STORYBOARD, Stage.CONTINUITY),
         (Stage.CONTINUITY, Stage.PROMPT),
         (Stage.PROMPT, Stage.KEYFRAME),
@@ -32,11 +31,19 @@ def test_linear_edges(completed: Stage, expected: Stage) -> None:
     assert next_stage(run(), completed) is expected
 
 
+@pytest.mark.parametrize("interactive", [True, False])
+def test_the_judge_always_scores_after_ideate(interactive: bool) -> None:
+    assert next_stage(run(interactive), Stage.IDEATE) is Stage.SELECT
+
+
 @pytest.mark.parametrize(
-    ("interactive", "expected"), [(True, Stage.AWAITING_CONCEPT_CHOICE), (False, Stage.SELECT)]
+    ("interactive", "expected"),
+    [(True, Stage.AWAITING_CONCEPT_CHOICE), (False, Stage.STORYBOARD)],
 )
-def test_after_ideate_depends_on_mode(interactive: bool, expected: Stage) -> None:
-    assert next_stage(run(interactive), Stage.IDEATE) is expected
+def test_after_select_the_human_picks_in_interactive_mode(
+    interactive: bool, expected: Stage
+) -> None:
+    assert next_stage(run(interactive), Stage.SELECT) is expected
 
 
 @pytest.mark.parametrize(
