@@ -139,6 +139,11 @@ class LLMCritic:
             motion_prompt=scene.prompt.motion_prompt,
             negative_prompt=scene.prompt.negative_prompt or "(none)",
             image_list="\n".join(f"- image {label}" for label in labels),
+            product_checklist=(
+                "\n".join(f"- {item}" for item in state.bible.product.checklist())
+                if scene.shows_product
+                else "(the product is not in this scene)"
+            ),
             played_s=f"{played:g}",
         )
         threshold = state.config.qa_threshold

@@ -385,3 +385,19 @@ async def test_scene_approved_under_an_older_rule_still_loads(tmp_path: Path) ->
     assert scenes(reloaded)[0].status is SceneStatus.APPROVED
     with pytest.raises(Exception, match="failing verdict"):
         scenes(reloaded)[1].approve(old)  # new decisions still use the current rule
+
+
+async def test_product_checklist_is_derived_from_the_bible_and_sent(tmp_path: Path) -> None:
+    h = harness(tmp_path, [PASS])
+    state = await run_auto(h)
+    assert state.bible is not None
+    product = state.bible.product
+    items = product.checklist()
+    assert items[0].startswith("Form and shape:") and product.form in items[0]
+    wordless = product.model_copy(update={"branding_text": ""})
+    assert "WORDLESS" in wordless.checklist()[-1]
+    texted = product.model_copy(update={"branding_text": "NOOR"})
+    assert "only the text 'NOOR'" in texted.checklist()[-1]
+    sent = _requests(h, "qa_critic")
+    with_product = [s for s, sc in zip(sent, scenes(state), strict=True) if sc.shows_product]
+    assert with_product and all(product.form in t for t in with_product)

@@ -30,6 +30,7 @@ async def main() -> None:
     ap.add_argument("--source-run", required=True)
     ap.add_argument("--versions", type=int, nargs="+", default=[1, 2])
     ap.add_argument("--out", type=Path)
+    ap.add_argument("--clip-attempts", type=int, nargs="*", default=[])
     args = ap.parse_args()
 
     rt = AgentRuntime.from_settings(Settings())
@@ -39,13 +40,25 @@ async def main() -> None:
     source = Storage.open(args.source_data).runs.load(args.source_run)
     assert source.storyboard is not None
     original_prompt = next(s for s in source.storyboard.scenes if s.order == args.scene).prompt
-    keyframe = next(a.artifact for a in scene.attempts if a.phase is ScenePhase.KEYFRAME)
-    clips = [a for a in scene.attempts if a.phase is ScenePhase.CLIP and a.artifact]
+    # Each clip is judged with the keyframe it was animated from: the latest one before it.
+    pairs = []
+    keyframe = None
+    for a in scene.attempts:
+        if a.phase is ScenePhase.KEYFRAME and a.artifact:
+            keyframe = a.artifact
+        elif (
+            a.phase is ScenePhase.CLIP
+            and a.artifact
+            and keyframe is not None
+            and (not args.clip_attempts or a.attempt_no in args.clip_attempts)
+        ):
+            pairs.append((a, keyframe))
 
     results = []
     ctx = rt.node_context(state)
-    for n, clip in enumerate(clips):
-        prompt = original_prompt if n == 0 else scene.prompt
+    first_clip = next(a.attempt_no for a in scene.attempts if a.phase is ScenePhase.CLIP)
+    for clip, keyframe in pairs:
+        prompt = original_prompt if clip.attempt_no == first_clip else scene.prompt
         subject = scene.model_copy(
             update={"clip": clip.artifact, "keyframe": keyframe, "prompt": prompt}
         )

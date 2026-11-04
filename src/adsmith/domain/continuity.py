@@ -39,6 +39,28 @@ class ProductSpec(DomainModel):
     distinctive_features: list[Concrete] = Field(default_factory=list, max_length=6)
     hero_angle: Concrete
 
+    def checklist(self) -> list[str]:
+        """Item-by-item identity checks for the QA critic, derived only from this spec. Any
+        mismatch is a major product issue (ADR-0016). Wordless branding (no branding_text) means
+        no lettering of any kind is allowed on the product."""
+        items = [
+            f"Form and shape: {self.form}",
+            f"Materials and finish: {self.materials}",
+            f"Colours: {self.colors}",
+            *(f"Detail: {f}" for f in self.distinctive_features),
+        ]
+        if self.branding_text:
+            items.append(
+                f"Branding: only the text '{self.branding_text}', styled as: "
+                f"{self.branding_style}. Any other lettering, logo or engraving is a mismatch."
+            )
+        else:
+            items.append(
+                f"Branding: {self.branding_style}. The product is WORDLESS: any letters, words, "
+                "logos, monograms, engraving or printed marks anywhere on it are a mismatch."
+            )
+        return items
+
 
 class ColorGrade(DomainModel):
     palette: list[HexColor] = Field(min_length=2, max_length=6)
