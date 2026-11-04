@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from adsmith.domain.enums import Stage
@@ -28,6 +29,9 @@ _GATE_POSITION = {
 }
 
 
+_ABS_PATH = re.compile(r"/\S*/(data/\S+)")
+
+
 def media_url(path: str | None) -> str | None:
     return f"/files/{path}" if path else None
 
@@ -47,7 +51,7 @@ def event_json(e: AgentEvent) -> dict[str, Any]:
         tags.append("edit")
     if p.get("chaos_injected") or "chaos" in e.summary:
         tags.append("chaos")
-    summary = e.summary
+    summary = _ABS_PATH.sub(r"\1", e.summary)  # never show local absolute paths
     if e.type is EventType.LLM_CALL:
         summary = (
             f"llm {p.get('node')} · {str(p.get('requested_model', '')).replace('claude-', '')} · "
@@ -215,6 +219,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
         ),
         "concepts": concepts,
         "selection": state.concepts.selection_rationale if state.concepts else None,
+        "selected_by": state.concepts.selected_by if state.concepts else None,
         "scenes": scenes,
         "blast": _blast(state, events),
         "endcard": state.endcard.model_dump(mode="json") if state.endcard else None,
@@ -226,6 +231,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
             "spent": round(b.spent_usd, 4),
             "reserved": round(b.reserved_usd, 4),
             "by_category": {k: round(v, 4) for k, v in b.by_category.items()},
+            "simulated": state.config.media_provider == "mock",
         },
         "busy": stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}
         and stage not in _GATE_POSITION,

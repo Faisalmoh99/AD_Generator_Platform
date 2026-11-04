@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Adsmith Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e2b059'/%3E%3Ctext x='32' y='45' font-family='Georgia' font-size='38' text-anchor='middle' fill='%231b140a'%3EA%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -39,6 +40,8 @@
           <button id="go" class="btn primary">Generate ad</button>
         </div>
       </section>
+
+      <section id="teaser" class="teaser"></section>
 
       <section id="run" class="run hidden">
         <div class="run-head">
@@ -106,6 +109,7 @@
         <div class="panel-title">Budget</div>
         <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
         <div class="meter-text" id="meter-text">—</div>
+        <div class="meter-note" id="meter-note"></div>
         <div class="meter-cats" id="meter-cats"></div>
       </div>
       <div class="panel-section trace-section">

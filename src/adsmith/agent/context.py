@@ -112,6 +112,7 @@ class AgentRuntime:
                 latency_s=s.mock_latency_s,
                 sleep=self.sleep,
                 fail_plan=plan,
+                debug_badge=s.mock_debug_badge,
             ),
             adapter=ADAPTERS["mock"],
             storage=self.storage,

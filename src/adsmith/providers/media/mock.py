@@ -265,9 +265,11 @@ class MockVideoProvider:
         latency_s: float,
         sleep: Sleep,
         fail_plan: FailPlan,
+        debug_badge: bool = False,
     ) -> None:
         self.usd_per_second = usd_per_second
         self.capabilities = capabilities
+        self.debug_badge = debug_badge  # "S3 · v2 · attempt 1" burned in, for debugging only
         self._latency, self._sleep, self._plan = latency_s, sleep, fail_plan
         self.calls = 0
 
@@ -278,23 +280,28 @@ class MockVideoProvider:
         lbl = job.label
         stem = f"clip_s{lbl.scene_order}_v{lbl.scene_version}_a{lbl.attempt_no}"
         badge, out = out_dir / f"{stem}_badge.png", out_dir / f"{stem}.mp4"
-        await asyncio.to_thread(_badge, lbl, badge, job.width)
         frames = max(1, round(job.duration_s * FPS))
-        filt = (
+        # A different prompt must give a different clip (as with a real model), even without the
+        # debug badge: a tiny, invisible grade shift derived from the prompt.
+        shift = (hashlib.sha256(job.prompt.encode()).digest()[0] - 128) / 128 * 0.02
+        move = (
             f"[0:v]scale={job.width * 2}:{job.height * 2},"
-            f"{_zoompan(lbl.camera, frames, job.width, job.height)}[v];"
-            f"[v][1:v]overlay=12:main_h-overlay_h-56,format=yuv420p"
+            f"{_zoompan(lbl.camera, frames, job.width, job.height)},eq=brightness={shift:.4f}"
         )
+        inputs = ["-i", str(job.image_path)]
+        if self.debug_badge:
+            await asyncio.to_thread(_badge, lbl, badge, job.width)
+            inputs += ["-i", str(badge)]
+            filt = f"{move}[v];[v][1:v]overlay=12:main_h-overlay_h-56,format=yuv420p"
+        else:
+            filt = f"{move},format=yuv420p"
         await _run(
             "ffmpeg",
             "-hide_banner",
             "-loglevel",
             "error",
             "-y",
-            "-i",
-            str(job.image_path),
-            "-i",
-            str(badge),
+            *inputs,
             "-filter_complex",
             filt,
             "-frames:v",

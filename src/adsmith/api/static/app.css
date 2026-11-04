@@ -290,3 +290,19 @@ h2 { font: 500 24px/1.2 var(--serif); margin: 0; }
   .pipeline { grid-template-columns: repeat(5, 1fr); }
   .final, .g-card { grid-template-columns: 1fr; }
 }
+
+/* ---------- review fixes */
+.layout.no-panel { grid-template-columns: minmax(0, 1fr); }
+.layout.no-panel .panel { display: none; }
+.meter-note { font-size: 11.5px; color: var(--amber); margin-top: 6px; opacity: 0.85; }
+.scene .meta { font-size: 11.5px; gap: 8px; }
+.scene .meta span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.teaser { margin-top: 26px; }
+.teaser-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.link { background: none; border: 0; color: var(--gold-2); font-size: 13.5px; padding: 0; }
+.link:hover { text-decoration: underline; }
+.teaser-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.teaser-card { position: relative; display: block; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #000; aspect-ratio: 16 / 10; text-align: left; transition: border-color 0.2s, transform 0.2s; }
+.teaser-card:hover { border-color: rgba(226, 176, 89, 0.5); transform: translateY(-2px); }
+.teaser-card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.85; }
+.teaser-card span { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 14px 12px; font: 500 16px/1.3 var(--serif); color: var(--text); background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)); }

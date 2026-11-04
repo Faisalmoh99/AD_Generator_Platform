@@ -25,7 +25,13 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
             continue
         videos: list[dict[str, Any]] = []
         if item.get("kind") == "final" and state.final is not None:
-            videos.append({"url": media_url(state.final.path), "label": "Final ad"})
+            videos.append(
+                {
+                    "url": media_url(state.final.path),
+                    "label": "Final ad",
+                    "poster": item.get("poster"),
+                }
+            )
         elif item.get("kind") == "attempts" and state.storyboard is not None:
             scene = state.storyboard.scenes[int(item["scene"]) - 1]
             labels = item.get("labels", [])
@@ -39,10 +45,12 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
                     None,
                 )
                 if att is not None and att.artifact is not None:
+                    posters = item.get("posters", [])
                     videos.append(
                         {
                             "url": media_url(att.artifact.path),
                             "label": labels[n] if n < len(labels) else f"Attempt {attempt_no}",
+                            "poster": posters[n] if n < len(posters) else None,
                         }
                     )
         if not videos:

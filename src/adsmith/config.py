@@ -206,6 +206,7 @@ class Settings(BaseSettings):
     chaos: bool = False
     mock_latency_s: float = Field(default=1.5, ge=0)
     mock_fail_plan: str | None = None  # e.g. "2:clip:permanent,1:keyframe:transient*3"
+    mock_debug_badge: bool = False  # burn "S3 · v2 · attempt 1" into mock clips
     media_long_side: int = Field(default=960, ge=256, le=4096)
     # assembly (M8)
     endcard_s: float = Field(default=2.0, ge=0, le=6)

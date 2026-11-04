@@ -7,6 +7,7 @@ title = "The majlis remembers him"
 subtitle = "4-scene ad · Kling v3 Pro · FLUX dev keyframes · gate on"
 run = "run_01M6JF4T2D78QNQJ7ZSE8GA8WR"
 kind = "final"
+poster = 1.5
 caption = """A young man leaves the majlis; his things linger, then the bottle. 3 of 4 scenes passed: \
 the keyframe gate rejected one round decanter before any video was paid for, and scene 3 was \
 rejected twice (smoke rising from the bottle) until the $3 budget guard refused a third clip, so \
@@ -19,6 +20,7 @@ title = "Single take: the silk corridor"
 subtitle = "One continuous 10 s shot · Kling v3 Pro · ideated around the model's strengths"
 run = "run_01M6JH38ZT2WRDPSQ2GM833F7T"
 kind = "final"
+poster = 6.0
 caption = """The agent designed three single-take concepts around the video model's capability \
 profile and picked the safest. One keyframe, one clip, both passed first time: $1.43. Perfect \
 product consistency within the take, but the promised beat (the bottle flying at the lens) never \
@@ -34,6 +36,7 @@ kind = "attempts"
 scene = 4
 attempts = [2, 3]
 labels = ["Before: rejected 0.50", "After: rewritten prompt"]
+posters = [2.0, 2.0]  # seconds: show the veiled moment, not the clean first frame
 caption = """'A curtain shadow drifts across the bottle' was taken literally: a translucent curtain \
 veiled the product. The critic rejected it (score 0.50); the QA loop rewrote the motion prompt from \
 its fixes (light described as light, nothing between camera and product) and kept the keyframe. \

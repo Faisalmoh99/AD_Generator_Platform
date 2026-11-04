@@ -43,6 +43,7 @@ async function boot() {
   document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => showView(t.dataset.view)));
   $("#recent").onchange = (ev) => ev.target.value && openRun(ev.target.value);
   await loadRecent();
+  loadTeaser();
   const m = location.hash.match(/run=([\w]+)/);
   if (location.hash.includes("gallery")) showView("gallery");
   if (m) openRun(m[1]);
@@ -58,6 +59,7 @@ function showView(v) {
   document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === v));
   $("#studio").classList.toggle("hidden", v !== "studio");
   $("#gallery").classList.toggle("hidden", v !== "gallery");
+  document.querySelector(".layout").classList.toggle("no-panel", v === "gallery");
   if (v === "gallery") loadGallery();
 }
 
@@ -100,6 +102,7 @@ function openRun(id) {
   state.run = id; state.events = []; location.hash = `run=${id}`;
   showView("studio");
   $("#run").classList.remove("hidden");
+  $("#teaser").classList.add("hidden");
   $("#trace").innerHTML = "";
   if (state.es) state.es.close();
   state.es = new EventSource(`/api/runs/${id}/events`);
@@ -142,7 +145,10 @@ function renderConcepts(v) {
   if (!v.concepts.length) return;
   const awaiting = v.stage === "awaiting_concept_choice";
   const rec = v.concepts.find((c) => c.recommended);
-  $("#concepts-hint").textContent = awaiting ? (rec ? `The judge recommends 0${rec.number} · you pick` : "Pick one to continue") : (v.concepts.some((c) => c.selected) ? "Weighted rubric · code picks the winner" : "");
+  const sel = v.concepts.find((c) => c.selected);
+  $("#concepts-hint").textContent = awaiting
+    ? (rec ? `The judge recommends 0${rec.number} · you pick` : "Pick one to continue")
+    : sel ? (v.selected_by === "user" ? `You picked 0${sel.number}${rec ? ` · the judge recommended 0${rec.number}` : ""}` : `The agent picked 0${sel.number} · weighted rubric, code decides`) : "";
   const maxScore = 10;
   $("#concepts").innerHTML = v.concepts.map((c) => {
     const flags = [];
@@ -203,7 +209,7 @@ function renderBoard(v) {
     el.innerHTML = `<div class="media">${media}<div class="top"><span class="order">S${s.order}</span><span class="chip s-${s.status}">${STATUS_LABEL[s.status] || s.status}</span></div>${tag}</div>
       <div class="body">
         <div class="desc" dir="auto">${esc(s.description)}</div>
-        <div class="meta"><span>${s.duration_s}s · ${esc(s.camera.replace("_", " "))}</span><span>v${s.version} · ${s.attempts} att · ${money(s.spend)}</span></div>
+        <div class="meta" title="${esc(s.camera.replace("_", " "))} · ${s.attempts} attempts"><span>${s.duration_s}s · v${s.version}</span><span>${money(s.spend)}</span></div>
         ${s.recoveries.length ? `<div class="recov">${s.recoveries.map((r) => `<span>${r === "retry" ? "↻" : "✎"} ${esc(r)}</span>`).join("")}</div>` : ""}
         ${s.failure ? `<div class="fail" dir="auto">${esc(s.failure)}</div><button class="btn retry" data-retry="${s.order}">Retry scene</button>` : ""}
         ${s.qa != null && s.status === "approved" ? `<div class="meta"><span>QA ${s.qa.toFixed(2)}</span><span>${s.keyframe_approved ? "keyframe gate ✓" : ""}</span></div>` : ""}
@@ -243,6 +249,7 @@ function renderBudget(b) {
   $("#meter-fill").style.width = `${pct}%`;
   $("#meter-fill").style.backgroundPosition = `${100 - pct}% 0`;
   $("#meter-text").textContent = `${money(b.spent)} of ${money(b.limit)}${b.reserved ? `  ·  ${money(b.reserved)} reserved` : ""}`;
+  $("#meter-note").textContent = b.simulated === true ? "simulated: mock media priced at real Kling rates, no money spent" : b.simulated === false ? "real spend (fal + Anthropic)" : "";
   $("#meter-cats").innerHTML = Object.entries(b.by_category).map(([k, val]) => `<span>${k} ${money(val)}</span>`).join("");
 }
 
@@ -272,12 +279,23 @@ function renderTrace() {
   list.scrollTop = list.scrollHeight;
 }
 
+// ------------------------------------------------------------------ landing teaser
+async function loadTeaser() {
+  const items = await api("/api/gallery").catch(() => []);
+  const el = $("#teaser");
+  if (!items.length) { el.classList.add("hidden"); return; }
+  el.innerHTML = `<div class="teaser-head"><span class="eyebrow">Made with real models</span><button class="link" id="teaser-all">See all real runs →</button></div>
+    <div class="teaser-row">${items.map((it) => { const v = it.videos[it.videos.length > 1 ? 0 : 0];
+      return `<button class="teaser-card" data-key="${esc(it.key)}"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" muted playsinline preload="auto"></video><span>${esc(it.title)}</span></button>`; }).join("")}</div>`;
+  el.onclick = (ev) => { if (ev.target.closest(".teaser-card") || ev.target.id === "teaser-all") showView("gallery"); };
+}
+
 // ------------------------------------------------------------------ gallery
 async function loadGallery() {
   const items = await api("/api/gallery");
   $("#gallery-grid").innerHTML = items.length ? items.map((it) => `
     <article class="g-card">
-      <div class="g-videos">${it.videos.map((v) => `<div class="g-video"><video src="${v.url}" controls muted loop playsinline preload="metadata"></video><div class="vlabel ${/rejected|before/i.test(v.label) ? "bad" : /after/i.test(v.label) ? "good" : ""}">${esc(v.label)}</div></div>`).join("")}</div>
+      <div class="g-videos">${it.videos.map((v) => `<div class="g-video"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" controls muted loop playsinline preload="auto"></video><div class="vlabel ${/rejected|before/i.test(v.label) ? "bad" : /after/i.test(v.label) ? "good" : ""}">${esc(v.label)}</div></div>`).join("")}</div>
       <div class="g-text">
         <div class="subtitle">${esc(it.subtitle)}</div>
         <h3>${esc(it.title)}</h3>
