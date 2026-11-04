@@ -146,3 +146,43 @@ def negative_contradictions(subject_action: str, composition: str, negative: str
         if not qualified and len(words) == 1 and words[0] in required:
             problems.append(f"'{term}' excludes '{words[0]}', which this shot requires")
     return problems
+
+
+# ------------------------------------------------------------------------------ product presence
+MIN_PRODUCT_SCENES = 2
+# Things through which a product is visible on screen, across categories (bottle → perfume,
+# cup → café, phone/screen → app). The brief's own product words are added per run.
+_PRODUCT_CARRIERS = frozenset(
+    """product bottle flacon perfume fragrance cologne cap label cup mug glass coffee espresso
+    latte drink phone smartphone screen app bag box package packaging can jar tube pack logo
+    packshot""".split()
+)
+_TEASE = frozenset("reflection reflected glimpse silhouette partial background blurred".split())
+
+
+def _mentions_product(text: str, product_words: frozenset[str]) -> bool:
+    words = {_stem(w) for w in _WORD.findall(_NEGATED.sub(" ", text.lower()))}
+    return bool(words & ({_stem(w) for w in _PRODUCT_CARRIERS} | product_words))
+
+
+def product_presence_problem(scenes: list[tuple[str, bool, str]], product: str) -> str | None:
+    """``scenes`` = (purpose, shows_product, English shot text) in order. Social viewers skip
+    before the end, so the product must be on screen or teased in ≥2 scenes, hero shot last."""
+    product_words = frozenset(_stem(w) for w in _WORD.findall(product.lower()) if len(w) >= 3)
+    present = [
+        i
+        for i, (_, shows, text) in enumerate(scenes, 1)
+        if shows and _mentions_product(text, product_words)
+    ]
+    problems = []
+    if len(present) < MIN_PRODUCT_SCENES:
+        problems.append(
+            f"the product is visibly present in {len(present)} scene(s) {present or ''}, need at "
+            f"least {MIN_PRODUCT_SCENES}: show or tease it earlier (in the background, a "
+            "reflection, a partial glimpse), set shows_product=true, and name it in that "
+            "scene's subject_action or composition"
+        )
+    last_purpose, last_shows, _ = scenes[-1]
+    if last_purpose != "product" or not last_shows:
+        problems.append("the final scene must be the product hero shot (purpose 'product')")
+    return "; ".join(problems) or None

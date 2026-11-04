@@ -18,7 +18,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags
-from adsmith.domain.shot_lint import multi_action_problem
+from adsmith.domain.shot_lint import multi_action_problem, product_presence_problem
 from adsmith.domain.storyboard import Storyboard, StoryboardDraft
 
 
@@ -27,7 +27,8 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     concept = state.concepts.selected
     assert concept is not None
     min_s, max_s = scene_duration_bounds(ctx.settings)
-    duration = state.brief.duration_s
+    brief = state.brief
+    duration = brief.duration_s
     max_scenes = max(2, min(6, int(duration // min_s)))
 
     def convert(draft: StoryboardDraft) -> Storyboard:
@@ -44,6 +45,19 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
             for i, s in enumerate(draft.scenes, 1)
             if (problem := multi_action_problem(s.shot.subject_action))
         ]
+        product = product_presence_problem(
+            [
+                (
+                    s.purpose.value,
+                    s.shows_product,
+                    f"{s.shot.subject_action} {s.shot.composition} {s.shot.setting}",
+                )
+                for s in draft.scenes
+            ],
+            brief.product,
+        )
+        if product:
+            busy.append(product)
         if busy:
             raise ValueError("; ".join(busy))
         return Storyboard.from_draft(draft, concept_id=concept.id, target_duration_s=duration)

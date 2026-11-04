@@ -12,7 +12,8 @@
           "originality": 7,
           "uses_category_cliche": false,
           "insight": 8,
-          "single_shot_plausible": true
+          "single_shot_plausible": true,
+          "product_only_at_end": false
         },
         {
           "concept_number": 2,
@@ -20,11 +21,12 @@
           "producibility": 9,
           "product_hero": 9,
           "cultural_fit": 7,
-          "rationale": "Very producible and product-centric, but abstract liquid-gold imagery is a category cliché.",
+          "rationale": "Very producible and product-centric, but abstract liquid-gold imagery is a category clich\u00e9.",
           "originality": 6,
           "uses_category_cliche": true,
           "insight": 6,
-          "single_shot_plausible": true
+          "single_shot_plausible": true,
+          "product_only_at_end": false
         },
         {
           "concept_number": 3,
@@ -36,7 +38,8 @@
           "originality": 8,
           "uses_category_cliche": false,
           "insight": 8,
-          "single_shot_plausible": true
+          "single_shot_plausible": true,
+          "product_only_at_end": false
         }
       ]
     }

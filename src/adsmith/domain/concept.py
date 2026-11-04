@@ -134,6 +134,7 @@ JUDGE_WEIGHTS: dict[str, float] = {
 # other strengths alone (ADR-0014).
 CLICHE_PENALTY = 1.5
 IMPLAUSIBLE_SHOT_PENALTY = 1.5
+PRODUCT_LATE_PENALTY = 1.0  # most social viewers skip before the end
 Score = Annotated[int, Field(ge=1, le=10)]
 
 
@@ -149,6 +150,9 @@ class ConceptScore(DomainModel):
         description="True only if every beat can be filmed as one continuous shot per scene. "
         "Scale tricks, transformations and reveals that need an edit make this false."
     )
+    product_only_at_end: bool = Field(
+        description="True if the product is neither shown nor teased before the final beat."
+    )
     uses_category_cliche: bool = Field(
         description="True if the concept's core idea or main visual relies on a category cliché "
         "(listed or otherwise)."
@@ -161,6 +165,8 @@ class ConceptScore(DomainModel):
             total -= CLICHE_PENALTY
         if not self.single_shot_plausible:
             total -= IMPLAUSIBLE_SHOT_PENALTY
+        if self.product_only_at_end:
+            total -= PRODUCT_LATE_PENALTY
         return round(total, 4)
 
 

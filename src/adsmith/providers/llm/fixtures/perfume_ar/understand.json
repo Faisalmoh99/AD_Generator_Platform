@@ -3,34 +3,37 @@
     "output": {
       "language": "ar",
       "dialect": "saudi_najdi",
-      "product": "Luxury men's perfume",
-      "product_category": "Men's fragrance",
+      "product": "Luxury men's fragrance",
+      "product_category": "Men's perfume / fragrance",
       "brand_name": null,
-      "target_audience": "Young men who care about style and luxury grooming",
+      "target_audience": "Young men (approximately 18–28) interested in premium grooming and personal style",
       "tone": [
         "luxurious",
-        "cinematic"
+        "cinematic",
+        "confident"
       ],
-      "visual_style": "Cinematic, high-end commercial look with dramatic lighting and premium textures",
+      "visual_style": "Cinematic production with dramatic lighting, rich textures, slow controlled camera movement, and a premium high-end look",
       "duration_s": 15.0,
       "aspect_ratio": "9:16",
       "must_include": [
-        "Luxury men's perfume bottle as the hero product"
+        "Men's luxury fragrance bottle as the hero product"
       ],
       "must_avoid": [
         "readable on-screen text inside the generated footage"
       ],
       "tagline": null,
       "tagline_language": null,
-      "cultural_notes": [],
-      "assumptions": [
-        "المنتج عطر رجالي فاخر، والمقصود بالشباب الرجال الشباب المهتمون بالأناقة",
-        "الأسلوب السينمائي يعني إضاءة درامية وتصوير عالي الجودة",
-        "مدة الإعلان 15 ثانية كما طلب العميل",
-        "لم تُحدد منصة أو نسبة عرض، لذلك تُركت فارغة",
-        "اللهجة سعودية نجدية بناءً على صيغة 'سوّ لي' و'إعلان' دون مؤشرات واضحة، وقد تكون أقرب للغة البيضاء"
+      "cultural_notes": [
+        "Men's wardrobe should be modest and in line with Gulf fashion norms"
       ],
-      "normalized_request_en": "15-second cinematic ad for a luxury men's perfume targeting young men who care about style"
+      "assumptions": [
+        "الجمهور المستهدف: شباب من عمر 18 إلى 28 سنة مهتمين بالعناية والأناقة",
+        "الأسلوب السينمائي يعني إضاءة درامية وحركة كاميرا هادئة ولقطات بجودة عالية",
+        "المدة 15 ثانية حسب الطلب",
+        "لم تُذكر منصة أو نسبة عرض، لذلك تركتها فارغة",
+        "لم يُذكر اسم علامة تجارية"
+      ],
+      "normalized_request_en": "A 15-second cinematic ad for a luxury men's fragrance targeting young men aged 18–28."
     }
   }
 ]

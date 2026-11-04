@@ -2,66 +2,66 @@
   {
     "output": {
       "character": {
-        "description": "One young Saudi man seen only in profile and from behind, calm and composed, face kept mostly in shadow as he crosses the frame and exits into darkness.",
-        "age_range": "mid 20s",
-        "appearance": "Warm olive skin, strong defined jawline, straight nose in profile, calm composed expression, face turned away from camera and mostly in shadow",
-        "hair": "Short black hair with a tight skin fade at the sides, neatly styled and slightly longer on top",
-        "grooming": "Neatly trimmed black beard with a sharp, clean line along the cheek and neck, clean eyebrows",
-        "build": "Lean athletic build, broad shoulders, upright confident posture, around 178 cm tall",
+        "description": "One young Saudi man, seen only from behind walking away and exiting frame-right through the majlis doorway; face never clearly shown",
+        "age_range": "20-26",
+        "appearance": "Medium-brown skin tone, upright confident posture, unhurried walk, face not visible to camera",
+        "hair": "Short black hair with a tight fade at the nape, mostly covered by a white ghutra",
+        "grooming": "Clean, neat trimmed beard line along the jaw visible only in faint side profile",
+        "build": "Slim athletic build, medium height, straight shoulders",
         "wardrobe": [
-          "Dark charcoal-black tailored jacket with structured shoulders and a subtle fabric sheen",
-          "Black fitted crew-neck knit top under the jacket",
-          "Dark tailored trousers",
-          "No visible logos, no jewelry except a slim dark watch with a plain unmarked face"
+          "Crisp creamy-white full-length Saudi thobe with a mandarin collar and plain buttoned cuffs",
+          "White ghutra folded neatly on the head, held by a black agal",
+          "Brown leather sandals or closed formal slip-on shoes",
+          "Slim dark-brown leather watch strap on the left wrist"
         ]
       },
       "product": {
         "name": "the fragrance",
-        "form": "Tall rectangular faceted glass bottle with weighty thick base, sharp beveled shoulders and a slim rectangular cap",
-        "materials": "Thick polished clear glass with smooth dark liquid inside, brushed metal cap with satin finish",
-        "colors": "Deep amber-brown liquid, smoky glass tint, brushed antique gold cap",
+        "form": "Rectangular faceted glass bottle with thick beveled base, chamfered shoulders and a heavy squared cap, about hand-sized",
+        "materials": "Thick transparent amber-tinted faceted glass with polished edges, brushed-gold metal cap, glossy liquid inside",
+        "colors": "Deep amber glass, warm honey liquid, brushed-gold cap",
         "branding_text": "",
-        "branding_style": "Wordless: plain unmarked glass surface with no label, no lettering and no logo, only a small embossed geometric facet detail on the glass",
+        "branding_style": "Completely wordless: no label, logo or printed text, only a plain smooth glass front panel and an unmarked gold collar",
         "distinctive_features": [
-          "Faceted glass edges catching long amber highlights",
-          "Heavy glass base that refracts golden light",
-          "Brushed gold cap with crisp rim light outline"
+          "Sharp light-catching facets along the glass edges",
+          "Heavy brushed-gold cap with a clean flat top",
+          "Thick glass base that glows amber when backlit"
         ],
-        "hero_angle": "Close-up at slight low angle, bottle centered in the upper two thirds of the 9:16 frame, standing on dark polished stone with a faint mirror reflection, camera slowly pushing in"
+        "hero_angle": "Close eye-level three-quarter view on the carved wooden side table, key light from camera-left grazing the facets, bottle upright and centered in the upper-middle of the frame"
       },
       "color_grade": {
         "palette": [
-          "#0B2A30",
-          "#123F45",
-          "#C98A2B",
-          "#E8B04A",
-          "#050708",
-          "#6FA6A3"
+          "#D8BC8F",
+          "#C8963E",
+          "#6B4226",
+          "#3B2416",
+          "#F3EAD7",
+          "#E8A64B"
         ],
-        "contrast": "High contrast low-key chiaroscuro with deep crushed blacks, bright amber highlights and soft highlight roll-off",
-        "saturation": "Moderate saturation with rich amber and teal, muted neutrals, skin tones kept warm and natural",
-        "film_emulation": "Cinematic 35mm film look with fine grain and subtle oval anamorphic flares"
+        "contrast": "Medium-high contrast with deep brown shadows that keep detail and soft amber highlights that never clip",
+        "saturation": "Moderately saturated warm tones, restrained and rich, no strong cool colours except the faint cool spill at the doorway",
+        "film_emulation": "Warm 35mm cinema film stock look with fine grain, soft highlight roll-off"
       },
       "location": {
-        "primary": "Dark polished marble corridor in a luxurious private residence with tall columns, heavy silk drapery, a tall window and a reflective floor",
+        "primary": "Refined traditional Najdi majlis with floor cushions, an armchair, a carved wooden side table, woven sadu textiles, a sand-toned patterned carpet and sand-colored walls, with a tall window camera-left and the doorway at frame-right",
         "secondary": [
-          "Dark marble hall with a single candle on a stone surface and a crystal chandelier glow refracting on the wall",
-          "Dark stone tabletop in the marble room with soft mist and faint golden dust in the background"
+          "Corner of the majlis with a wooden wall peg holding the ghutra, a brass dallah and small cup on a low tray",
+          "Window and doorway area with a sheer curtain, patterned carpet and a faint trail of oud smoke"
         ],
         "era": "contemporary"
       },
-      "mood": "Mysterious, hushed, anticipatory luxury with quiet confidence and a presence felt before it is seen",
-      "lighting": "Low-key chiaroscuro: hard warm amber (1900-3200K) key from a window, candle or side source against very low cool teal (6000-6500K) ambient fill, backlight catching floating golden dust and mist, deep black shadows, faint specular sheen on polished marble",
-      "audio_mood": "Deep sub-bass drone with soft silk rustle, a faint crystal shimmer and a single low warm cello note, hushed room tone, slow swell to a quiet resolved final note, no voices",
+      "mood": "Quiet, elegant, anticipatory, with a lingering presence after someone has left; ends in luxurious, confident stillness",
+      "lighting": "Golden-hour baseline: warm 3000-3200K sunlight from a tall window at camera-left casting long diagonal shadows, warm bounce from sand-colored walls, faint dust motes and steam catching amber rim light; the only deliberate deviation is the subtle cool 5600K spill from the open doorway at frame-right in the curtain scene",
+      "audio_mood": "Soft ambient room tone with a faint breath of wind, gentle oud and low warm cello pad, subtle fabric rustle and a quiet glass chime on the final bottle shot, no dialogue",
       "forbidden": [
-        "no readable text, lettering, signage or logos anywhere in frame",
-        "no brand name or label on the bottle",
-        "no alcohol or drinks",
-        "no additional people in frame beyond the single young man",
-        "no visible face close-up of the man",
-        "no bright daylight or flat even lighting",
-        "no cheap plastic or glossy neon looks",
-        "no cluttered background"
+        "No readable text, lettering, logos or captions anywhere in the footage, including on the bottle",
+        "No alcohol or alcohol-related items",
+        "No short sleeves, shorts or revealing clothing on the man",
+        "No additional people in frame",
+        "No clear view of the man's face",
+        "Door always at frame-right, never flip screen direction",
+        "No modern gadgets or bright neon or cool blue lighting",
+        "No changes to bottle shape, glass colour or cap between shots"
       ]
     }
   }

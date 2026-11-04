@@ -22,6 +22,7 @@ def score(n: int, *, cliche: bool = False, **over: int) -> dict[str, Any]:
         "originality": 7,
         "insight": 7,
         "single_shot_plausible": True,
+        "product_only_at_end": False,
         "producibility": 7,
         "product_hero": 7,
         "cultural_fit": 7,

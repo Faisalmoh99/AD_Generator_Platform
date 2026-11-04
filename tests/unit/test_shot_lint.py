@@ -6,7 +6,11 @@ import pytest
 
 from adsmith.domain.dialect import corrected_dialect
 from adsmith.domain.enums import Dialect
-from adsmith.domain.shot_lint import multi_action_problem, negative_contradictions
+from adsmith.domain.shot_lint import (
+    multi_action_problem,
+    negative_contradictions,
+    product_presence_problem,
+)
 
 BUSY = [
     # real run 3, scene 2 (delivery app)
@@ -111,3 +115,44 @@ def test_gulf_cues_correct_other_label(text: str, expected: Dialect) -> None:
 def test_dialect_left_alone_when_msa_or_already_specific() -> None:
     assert corrected_dialect("أريد إعلاناً لعطر فاخر", Dialect.MSA) is None
     assert corrected_dialect("أبي إعلان", Dialect.GULF) is None
+
+
+def test_product_only_in_final_scene_is_rejected() -> None:
+    """Real M4c perfume winner: curtain, candle, walk-through, then the bottle only at the end."""
+    scenes = [
+        ("hook", False, "The heavy silk curtain sways slowly"),
+        ("build", True, "The candle flame bends steadily"),  # flag set but nothing product-like
+        ("reveal", False, "A young man walks across the frame"),
+        ("product", True, "The camera pushes in very slowly on the bottle"),
+    ]
+    msg = product_presence_problem(scenes, "Luxury men's fragrance")
+    assert msg is not None and "need at least 2" in msg and "reflection" in msg
+
+
+def test_teased_product_passes_across_categories() -> None:
+    perfume = [
+        ("hook", True, "the bottle's silhouette glints in the background as the curtain sways"),
+        ("product", True, "push in on the bottle"),
+    ]
+    app = [
+        ("hook", True, "he glances at the phone screen on the table"),
+        ("product", True, "the app screen glows in his hand"),
+    ]
+    coffee = [
+        ("build", True, "a reflection of the cup in the window"),
+        ("product", True, "the specialty coffee rests on the marble"),
+    ]
+    assert product_presence_problem(perfume, "fragrance") is None
+    assert product_presence_problem(app, "delivery app") is None
+    assert product_presence_problem(coffee, "specialty coffee shop") is None
+
+
+def test_final_scene_must_be_product_hero() -> None:
+    scenes = [("product", True, "bottle on a table"), ("build", True, "bottle in his hand")]
+    msg = product_presence_problem(scenes, "fragrance")
+    assert msg is not None and "final scene" in msg
+
+
+def test_negated_mentions_do_not_count() -> None:
+    scenes = [("hook", True, "no bottle in frame, only smoke"), ("product", True, "bottle")]
+    assert product_presence_problem(scenes, "fragrance") is not None

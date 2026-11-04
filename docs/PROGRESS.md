@@ -313,3 +313,10 @@ Time 74–96 s, $0.15–0.16 per run. Dialect for "أبي إعلان…" is now 
 contradiction and legitimate-negative cases, dialect, judge insight/plausibility, fixture lints.
 
 **Next**: M5.
+
+---
+
+## Pre-M5 fix: product presence (2026-11-04)
+Product must be shown or teased in ≥2 scenes with the hero last: deterministic lint → repair, plus
+judge flag `product_only_at_end` (−1.0); prompts v3. Real perfume re-run: the bottle is teased in
+S2/S3 before the S4 hero (ADR-0014 addendum). `perfume_ar` re-harvested. 311 tests passed.

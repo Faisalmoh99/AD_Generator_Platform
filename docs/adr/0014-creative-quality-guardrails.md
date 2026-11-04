@@ -62,3 +62,15 @@ and a habit of checking real outputs, not just green tests.
 - Prompts bumped to v2 (understand, ideate, select, storyboard, prompt_writer); v1 is kept.
 - Re-run result: 0 multi-action scenes, 0 contradictions, 0 repairs across 3 runs. The implausible
   "statue turns its head" perfume concept and the coffee "aroma montage" are now penalised.
+
+## Addendum: product presence (pre-M5)
+In all three M4c winners the product appeared only in the final scene, but most social viewers skip
+before the end. Now:
+- **Deterministic lint** (`product_presence_problem`, storyboard `convert` → repair): at least **2**
+  scenes must set `shows_product` *and* name a product carrier in the shot text (bottle, cup,
+  phone, screen, bag… plus the brief's own product words; negated mentions don't count), and the
+  last scene must be the `product` hero.
+- **Judge flag** `product_only_at_end` → −1.0.
+- Prompts v3 (ideate, select, storyboard).
+- Perfume re-run: the winner "الغرفة تذكّره" teases the bottle in S2 (a background glint) and S3 (a
+  silhouette) before the S4 hero. One repair (a "then" in S4) was caught by the action lint.
