@@ -48,3 +48,25 @@ evidence prompted it. M12 folds this list into the README.
     Mark one scene as the money shot (storyboard field or user flag) and make its
     spec-defining composition items hard at the keyframe gate and clip QA. Also: FLUX dev ignores
     "burst from the left edge" for mist; try FLUX.2 flex (stronger prompt adherence) for that shot.
+14. **Step B: physics-led product montage cut to music (planned, not built).** A second ad format
+    designed around what image-to-video models do best (physical events, not acting), using the
+    run's locked product reference so the bottle is identical in every shot:
+    - **Structure:** 8–10 shots of 1–1.5 s each (Kling's 3 s minimum render, trimmed at assembly),
+      cut on the beats of a user-supplied track (`--music`; beat times from a simple onset detector,
+      e.g. librosa or ffmpeg `ebur128`/`silencedetect`, with no model involved).
+    - **Shot vocabulary** (one physical event per shot, the product always from the reference via
+      Kontext): a drop of amber liquid hitting still water; the bottle sliding into frame on wet
+      black stone; sand pouring past the cap; a slow 30° turntable glint; the cap lifting off in
+      macro; fine mist bursting past a backlight (no bottle, as in hero v2 S2); a silk ribbon falling
+      across the glass; a hard light sweep revealing facets; the final hero push-in + end card.
+    - **Planning:** a `montage` storyboard mode: the storyboard node picks N shots from that
+      vocabulary to fit the brief's mood, each with a 1–1.5 s "use window" (the frames assembly
+      keeps), so the prompt writer puts the event inside that window (already supported by
+      `render_window`). Requested shot count is enforced (ADR from hero v2).
+    - **QA:** dense sampling inside the use window only; key action = the one physical event;
+      money-shot composition hard (item 13) for the hero shot.
+    - **Cost (Kling v3 Standard, $0.084/s):** 10 × 3 s = $2.52 of video + ~10 × $0.04 Kontext stills,
+      about $2.90 per montage, so it needs a real budget, not the leftovers of this round.
+    - **Why:** every real failure in this project came from asking video models to *act* (a man
+      spraying at his neck, a bottle flying); the clips that worked were physical events around a
+      still product.
