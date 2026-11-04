@@ -696,3 +696,10 @@ placeholder). fal ledger for the round $1.765 (cap $1.80; ledger prices Kling at
 page says $0.084/s, so the real bill is likely ~$1.26). Contact sheet: `docs/screenshots/hero_v2_contact_sheet.png`.
 **Lessons:** the reference works (identical bottle in S1, S3 and the reference); the gate swung
 strict again until salient/fine; brief actions need denser frame sampling around the action.
+**Follow-up (same day, no fal):** dense frame sampling for key-action checks (8 frames across the
+played window for single takes and brief events like a spray). Re-judged S1 with 9 images: 0.45 →
+0.50, still failing; the critic now sees the burst but calls it "faint haze behind the shoulder"
+(it goes outward, not at the neck) and reads the tilted bottle as "slimmer". Per the user's rule,
+S1 was accepted with the new human override (`adsmith accept`, logged as `HUMAN OVERRIDE` with the
+failing verdict kept, shown in the UI) and the ad reassembled with ffmpeg only.
+**Final:** `data/runs/run_01M6MAK00158YYA7JN2YBD0VSR/final.mp4`, 11 s, three shots + end card. 486 tests.
