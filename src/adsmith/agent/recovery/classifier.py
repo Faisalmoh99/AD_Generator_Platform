@@ -9,6 +9,7 @@ import openai
 
 from adsmith.agent.recovery.errors import (
     AgentError,
+    BudgetExceededError,
     ContentPolicyError,
     PermanentProviderError,
     RateLimitedError,
@@ -69,6 +70,8 @@ def classify_openai(exc: Exception) -> AgentError:
 # fal returns content-safety rejections as 4xx with a typed detail (e.g.
 # {"detail": [{"type": "content_policy_violation", "msg": ...}]}); match the type/message.
 _FAL_POLICY_MARKERS = ("content_policy", "policy_violation", "nsfw", "safety", "flagged")
+# Account-level refusal (seen live in M11: HTTP 403 "User is locked. Reason: Exhausted balance").
+_FAL_BALANCE_MARKERS = ("exhausted balance", "top up your balance")
 
 
 def classify_fal_http(
@@ -82,6 +85,8 @@ def classify_fal_http(
         return RateLimitedError(msg, retry_after_s=_retry_after(headers))
     if status >= _SERVER_ERROR or status in {_REQUEST_TIMEOUT, _CONFLICT}:
         return TransientProviderError(msg)
+    if any(m in lowered for m in _FAL_BALANCE_MARKERS):
+        return BudgetExceededError(f"{msg} (the fal account has no usable balance)")
     if any(m in lowered for m in _FAL_POLICY_MARKERS):
         return ContentPolicyError(msg, category="fal_safety")
     if status in {401, 403}:

@@ -416,3 +416,14 @@ def test_fal_gateway_uses_the_run_models(tmp_path: Path) -> None:
     assert gw.video.model == "fal-ai/ltx-2.3/image-to-video/fast"
     assert gw.image.model == FLUX and gw.long_side == 1280
     assert gw.adapter.name == "ltx"
+
+
+async def test_locked_account_is_a_budget_failure_not_a_key_problem(tmp_path: Path) -> None:
+    s, acct = settings(tmp_path), account(tmp_path)
+    fake = FakeFal(IMAGE_RESULT)
+    locked = {"detail": "User is locked. Reason: Exhausted balance. Top up your balance at x."}
+    fake.faults["submit"] = [httpx.Response(403, json=locked)]  # verbatim shape seen live
+    queue, _ = make_queue(fake, acct)
+    with pytest.raises(BudgetExceededError, match="no usable balance"):
+        await flux(s, queue).generate_image(image_job(), tmp_path)
+    assert acct.summary().reserved_usd == 0
