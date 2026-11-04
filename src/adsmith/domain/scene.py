@@ -38,7 +38,11 @@ from adsmith.domain.qa import QAVerdict
 # cost a repair each time.
 SpecText = Annotated[str, Field(min_length=1, max_length=500)]
 MIN_SCENE_S = 1.5
-MAX_SCENE_S = 8.0
+# Absolute bound for any scene: a single-take ad is one scene up to the model's single-shot
+# limit (Kling: 15 s). In multi-scene ads each scene stays at most MULTI_SCENE_MAX_S
+# (enforced by the storyboard node, where the scene count is known).
+MAX_SCENE_S = 15.0
+MULTI_SCENE_MAX_S = 8.0
 
 
 class IllegalTransitionError(ValueError):

@@ -5,7 +5,13 @@ from __future__ import annotations
 from adsmith.agent.context import NodeContext
 from adsmith.agent.deltas import SelectConcept
 from adsmith.agent.nodes.base import NodeResult
-from adsmith.agent.nodes.common import brief_block, concept_block, decision, language_name
+from adsmith.agent.nodes.common import (
+    brief_block,
+    concept_block,
+    decision,
+    language_name,
+    video_profile_block,
+)
 from adsmith.config import LLMNode
 from adsmith.domain.concept import CLICHE_PENALTY, JUDGE_WEIGHTS, ConceptJudgementDraft
 from adsmith.domain.enums import Stage
@@ -17,6 +23,7 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
     concepts = state.concepts.concepts
     prompt = ctx.prompts.get("select").render(
         brief=brief_block(state.brief),
+        video_profile=video_profile_block(ctx.settings, state.config.video_model),
         concepts="\n\n".join(concept_block(c, i) for i, c in enumerate(concepts, start=1)),
         user_language=language_name(state.brief.language),
         cliches="\n".join(f"- {c}" for c in state.concepts.category_cliches) or "(none listed)",

@@ -169,6 +169,8 @@ def product_presence_problem(scenes: list[tuple[str, bool, str]], product: str) 
     """``scenes`` = (purpose, shows_product, English shot text) in order. Social viewers skip
     before the end, so the product must be on screen or teased in ≥2 scenes, hero shot last."""
     product_words = frozenset(_stem(w) for w in _WORD.findall(product.lower()) if len(w) >= 3)
+    if len(scenes) == 1:
+        return _single_take_presence(scenes[0], product_words)
     present = [
         i
         for i, (_, shows, text) in enumerate(scenes, 1)
@@ -185,4 +187,23 @@ def product_presence_problem(scenes: list[tuple[str, bool, str]], product: str) 
     last_purpose, last_shows, _ = scenes[-1]
     if last_purpose != "product" or not last_shows:
         problems.append("the final scene must be the product hero shot (purpose 'product')")
+    return "; ".join(problems) or None
+
+
+def _single_take_presence(
+    scene: tuple[str, bool, str], product_words: frozenset[str]
+) -> str | None:
+    """Single-take hero format: the one continuous shot IS the ad. The product must be in that shot
+    (named in its action/composition, shows_product true), and the shot ends on it as hero (purpose
+    'product'). Teasing early happens *within* the take; the storyboard prompt asks for it and the
+    judge's product_only_at_end flag penalises concepts that reveal it only at the last moment."""
+    purpose, shows, text = scene
+    problems = []
+    if not shows or not _mentions_product(text, product_words):
+        problems.append(
+            "a single-take ad must show the product inside the take: name it in subject_action "
+            "or composition (seen or teased early in the shot) and set shows_product=true"
+        )
+    if purpose != "product":
+        problems.append("a single-take ad ends on the product as hero: use purpose 'product'")
     return "; ".join(problems) or None

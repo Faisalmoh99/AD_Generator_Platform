@@ -123,6 +123,26 @@ usd_per_second = 0.14
 min_duration_s = 3
 max_duration_s = 15
 
+[fal.video.endpoints.kling_v3_pro.profile]
+# max_single_shot_s: duration enum "3".."15" in the verified schema. [observed] = seen in our M11
+# real runs; [expected] = vendor docs / general experience, not yet verified by us.
+max_single_shot_s = 15
+strengths = [
+  "keeps a product crisp, stable and true to the start frame through the whole clip [observed]",
+  "smooth continuous camera moves with real parallax: push-in, dolly, orbit [observed]",
+  "one continuous take up to 15 s, no cuts needed [expected]",
+  "physical motion: liquids splashing and pouring, fabric, objects tumbling or flying toward or past the lens [expected]",
+  "slow motion of one clear physical event [expected]",
+]
+weaknesses = [
+  "light-only events (a shadow passing, light changing) are often ignored [observed]",
+  "invents smoke or steam near the product when smoke, dust or particles are mentioned [observed]",
+  "renders 4-8 min per clip and costs ~$0.14/s: few retries affordable [observed]",
+  "identity across separate scenes: each scene is a new generation, so the same man or bottle drifts between scenes [observed]",
+  "small background objects and precise prop or doorway placement [observed in keyframes]",
+  "readable text, logos, signage; crowds; lip-sync; precise hand-object manipulation [expected]",
+]
+
 [fal.video.endpoints.ltx_23_fast]
 # Cheap "dev" model. Schema: image_url + prompt (required), duration int enum 6..20 step 2
 # (>10 s only at 25 fps/1080p; we stay <=10), fps 24|25|48|50, resolution 1080p|1440p|2160p,
@@ -133,6 +153,18 @@ adapter = "ltx"
 image_field = "image_url"
 usd_per_second = 0.06
 allowed_durations_s = [6, 8, 10]
+
+[fal.video.endpoints.ltx_23_fast.profile]
+max_single_shot_s = 10      # 6/8/10 s at 24 fps (12-20 s only at 25 fps 1080p)
+strengths = [
+  "cheap and fast: ~35 s and $0.06/s per clip, good for iteration [observed]",
+  "keeps the start frame's product stable when nothing crosses it [observed]",
+]
+weaknesses = [
+  "renders a passing shadow or fabric as a translucent veil over the frame [observed 2/3]",
+  "camera moves are faint (a push-in barely reads) [observed]",
+  "minimum render 6 s: shorter scenes are trimmed, so the action must resolve early [observed]",
+]
 
 # Not verified in M11 (not used); re-verify before enabling.
 [fal.video.endpoints.seedance_2]

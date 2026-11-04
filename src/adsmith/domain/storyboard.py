@@ -17,7 +17,7 @@ from adsmith.domain.base import DomainModel
 from adsmith.domain.scene import Scene, SceneDraft
 
 DURATION_TOLERANCE_S = 0.25
-MIN_SCENES = 2
+MIN_SCENES = 1  # 1 = single-take hero format (one continuous shot)
 MAX_SCENES = 6
 
 

@@ -82,6 +82,16 @@ class FalImageEndpoint(_Frozen):
         return self.usd_for(1000, 1000)
 
 
+class VideoProfile(_Frozen):
+    """What a video model renders well and badly, injected into ideation, selection and the
+    storyboard so concepts are designed around the model (M11). Each item says whether it was
+    observed in our own real runs or is expected (vendor docs, general experience)."""
+
+    strengths: list[str] = Field(min_length=1)
+    weaknesses: list[str] = Field(min_length=1)
+    max_single_shot_s: float = Field(gt=0, le=60)
+
+
 class FalVideoEndpoint(_Frozen):
     endpoint: str
     adapter: Literal["kling", "seedance", "veo", "ltx"]
@@ -90,6 +100,7 @@ class FalVideoEndpoint(_Frozen):
     min_duration_s: float | None = None
     max_duration_s: float | None = None
     allowed_durations_s: list[float] | None = None
+    profile: VideoProfile | None = None
 
     @model_validator(mode="after")
     def _duration_spec(self) -> Self:

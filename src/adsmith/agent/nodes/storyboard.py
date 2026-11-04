@@ -13,6 +13,7 @@ from adsmith.agent.nodes.common import (
     flag_override_events,
     language_name,
     scene_duration_bounds,
+    video_profile_block,
 )
 from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
@@ -26,12 +27,29 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     assert state.brief is not None and state.concepts is not None
     concept = state.concepts.selected
     assert concept is not None
-    min_s, max_s = scene_duration_bounds(ctx.settings)
+    video_model = state.config.video_model
+    min_s, max_s, single_max = scene_duration_bounds(ctx.settings, video_model)
     brief = state.brief
     duration = brief.duration_s
     max_scenes = max(2, min(6, int(duration // min_s)))
 
     def convert(draft: StoryboardDraft) -> Storyboard:
+        single = len(draft.scenes) == 1
+        if single and draft.scenes[0].duration_s > single_max:
+            raise ValueError(
+                f"a single take can last at most {single_max:g}s on this video model; split it "
+                "into scenes or shorten it"
+            )
+        long_ = [
+            f"{i}: {s.duration_s:g}s"
+            for i, s in enumerate(draft.scenes, 1)
+            if not single and s.duration_s > max_s
+        ]
+        if long_:
+            raise ValueError(
+                f"in a multi-scene ad each scene lasts at most {max_s:g}s: {', '.join(long_)}. "
+                f"Use a single continuous take (up to {single_max:g}s) or redistribute the time."
+            )
         short = [
             f"{i}: {s.duration_s:g}s" for i, s in enumerate(draft.scenes, 1) if s.duration_s < min_s
         ]
@@ -43,7 +61,9 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
         busy = [
             f"scene {i} subject_action {problem}"
             for i, s in enumerate(draft.scenes, 1)
-            if (problem := multi_action_problem(s.shot.subject_action))
+            # A single take is ONE continuous causal chain by design (the format's strength):
+            # the one-action-per-shot lint applies to multi-scene ads only.
+            if not single and (problem := multi_action_problem(s.shot.subject_action))
         ]
         product = product_presence_problem(
             [
@@ -68,6 +88,8 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
         duration=f"{duration:g}",
         min_scene=f"{min_s:g}",
         max_scene=f"{max_s:g}",
+        single_max=f"{single_max:g}",
+        video_profile=video_profile_block(ctx.settings, video_model),
         max_scenes=str(max_scenes),
         aspect_ratio=state.brief.aspect_ratio,
         user_language=language_name(state.brief.language),

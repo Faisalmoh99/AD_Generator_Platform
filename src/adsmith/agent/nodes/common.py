@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adsmith.config import Settings
+from adsmith.config import FalVideoEndpoint, Settings
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept
 from adsmith.domain.enums import Language, Stage
@@ -66,15 +66,38 @@ def decision(run_id: str, stage: Stage, summary: str, **payload: object) -> Agen
     )
 
 
-def scene_duration_bounds(settings: Settings) -> tuple[float, float]:
-    """Per-scene duration range the *real* video model can produce, so plans made in mock mode stay
-    producible on fal. Clips are trimmed to the scene duration at assembly."""
-    from adsmith.domain.scene import MAX_SCENE_S, MIN_SCENE_S  # noqa: PLC0415
-
+def _video_endpoint(settings: Settings, video_model: str | None = None) -> FalVideoEndpoint:
     video = settings.catalog.fal.video
-    endpoint = video.endpoints[settings.fal_video_model or video.default]
+    return video.endpoints[video_model or settings.fal_video_model or video.default]
+
+
+def scene_duration_bounds(
+    settings: Settings, video_model: str | None = None
+) -> tuple[float, float, float]:
+    """(per-scene minimum, per-scene maximum in a multi-scene ad, maximum for a single-take ad)
+    that the *real* video model can produce, so plans made in mock mode stay producible on fal.
+    Clips are trimmed to the scene duration at assembly."""
+    from adsmith.domain.scene import MAX_SCENE_S, MIN_SCENE_S, MULTI_SCENE_MAX_S  # noqa: PLC0415
+
+    endpoint = _video_endpoint(settings, video_model)
     model_min = endpoint.min_duration_s or min(endpoint.allowed_durations_s or [MIN_SCENE_S])
-    return max(MIN_SCENE_S, model_min), MAX_SCENE_S
+    model_max = endpoint.max_duration_s or max(endpoint.allowed_durations_s or [MAX_SCENE_S])
+    single = endpoint.profile.max_single_shot_s if endpoint.profile else model_max
+    return max(MIN_SCENE_S, model_min), MULTI_SCENE_MAX_S, min(single, model_max, MAX_SCENE_S)
+
+
+def video_profile_block(settings: Settings, video_model: str | None = None) -> str:
+    """The target video model's capability profile as prompt text (ideate, select, storyboard)."""
+    endpoint = _video_endpoint(settings, video_model)
+    p = endpoint.profile
+    if p is None:
+        return "(no capability profile for this video model)"
+    lines = [
+        f"Video model: {endpoint.endpoint} (one continuous take up to {p.max_single_shot_s:g} s)"
+    ]
+    lines += ["Renders well:", *(f"- {s}" for s in p.strengths)]
+    lines += ["Renders badly:", *(f"- {w}" for w in p.weaknesses)]
+    return "\n".join(lines)
 
 
 def scene_block(scene: Scene) -> str:
