@@ -79,6 +79,9 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         aspect_ratio=settings.aspect_ratio,
         target_duration_s=settings.target_duration_s,
         scripted_scenario=scenario,
+        image_model=settings.fal_image_model or settings.catalog.fal.image.default,
+        video_model=settings.fal_video_model or settings.catalog.fal.video.default,
+        media_long_side=settings.media_long_side,
     )
 
 
@@ -113,11 +116,17 @@ class Orchestrator:
         config = run_config_from_settings(s, request, interactive=interactive)
         if chaos is not None:
             config = config.model_copy(update={"chaos": chaos})
+        limit = s.budget_usd
+        if config.media_provider == "fal":
+            # Never let one run reserve more than what is left of the prepaid wallet.
+            limit = min(limit, self.rt.fal_account().summary().remaining_usd)
+            if limit <= 0:
+                raise RuntimeError("the fal account balance is exhausted (see the account ledger)")
         state = RunState(
             config=config,
             request=request,
             budget=BudgetLedger(
-                limit_usd=s.budget_usd,
+                limit_usd=limit,
                 max_attempts_per_scene=s.max_attempts_per_scene,
                 max_total_attempts=s.max_total_attempts,
             ),
@@ -128,7 +137,7 @@ class Orchestrator:
             EventType.DECISION,
             f"Run created ({'interactive' if interactive else 'auto'}, "
             f"{state.config.llm_provider}/{state.config.model_profile}, "
-            f"budget ${s.budget_usd:g}).",
+            f"budget ${limit:.2f}).",
             config=state.config.model_dump(mode="json"),
         )
         return self.rt.storage.runs.create(state, events=[created]).state

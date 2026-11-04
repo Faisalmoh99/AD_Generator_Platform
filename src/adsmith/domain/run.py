@@ -47,6 +47,10 @@ class RunConfig(DomainModel):
     music_path: str | None = None
     endcard: bool = True
     scripted_scenario: str | None = None  # which canned fixtures the scripted LLM replays
+    # Catalog keys (config/models.toml) of the media models: resume never switches model.
+    image_model: str | None = None
+    video_model: str | None = None
+    media_long_side: int | None = Field(default=None, ge=256, le=4096)
 
 
 class RunError(DomainModel):

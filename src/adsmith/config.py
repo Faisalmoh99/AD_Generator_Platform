@@ -8,6 +8,7 @@ Two sources, with separate jobs:
 
 from __future__ import annotations
 
+import math
 import tomllib
 from enum import StrEnum
 from functools import cached_property
@@ -65,12 +66,24 @@ class OpenAIModels(_Frozen):
 
 class FalImageEndpoint(_Frozen):
     endpoint: str
-    usd_per_image: float = Field(ge=0)
+    usd_per_megapixel: float = Field(ge=0)
+    round_up_megapixels: bool = True  # fal bills started megapixels on some endpoints
+
+    def usd_for(self, width: int, height: int) -> float:
+        mp = width * height / 1_000_000
+        billed = math.ceil(mp - 1e-9) if self.round_up_megapixels else mp
+        return round(max(billed, 0.0) * self.usd_per_megapixel, 6)
+
+    @property
+    def usd_per_image(self) -> float:
+        """Price of one image up to 1 MP (our keyframe sizes); used by the mock provider."""
+        return self.usd_for(1000, 1000)
 
 
 class FalVideoEndpoint(_Frozen):
     endpoint: str
-    adapter: Literal["kling", "seedance", "veo"]
+    adapter: Literal["kling", "seedance", "veo", "ltx"]
+    image_field: str = "image_url"  # name of the start-image field in the request body
     usd_per_second: float = Field(ge=0)
     min_duration_s: float | None = None
     max_duration_s: float | None = None
@@ -179,9 +192,15 @@ class Settings(BaseSettings):
     mock_latency_s: float = Field(default=1.5, ge=0)
     mock_fail_plan: str | None = None  # e.g. "2:clip:permanent,1:keyframe:transient*3"
     media_long_side: int = Field(default=960, ge=256, le=4096)
+    # Hard ceiling for ALL real fal spend on this machine (prepaid balance, no auto top-up).
+    # Every paid call reserves against it in the account ledger before it is submitted.
+    fal_balance_usd: float | None = Field(default=None, ge=0)
+    fal_poll_interval_s: float = Field(default=2.0, gt=0)
+    fal_timeout_s: float = Field(default=900.0, gt=0)
 
     # paths
     data_dir: Path = PROJECT_ROOT / "data"
+    account_db: Path = PROJECT_ROOT / "data" / "account.db"  # cross-run spend ledger
     config_dir: Path = PROJECT_ROOT / "config"
     prompts_dir: Path = PROJECT_ROOT / "prompts"
 
@@ -228,4 +247,8 @@ class Settings(BaseSettings):
             raise ValueError("ADSMITH_LLM_PROVIDER=openai requires OPENAI_API_KEY")
         if self.media_provider == "fal" and self.fal_key is None:
             raise ValueError("ADSMITH_MEDIA_PROVIDER=fal requires FAL_KEY")
+        if self.media_provider == "fal" and self.fal_balance_usd is None:
+            raise ValueError(
+                "ADSMITH_MEDIA_PROVIDER=fal requires ADSMITH_FAL_BALANCE_USD (prepaid ceiling)"
+            )
         return self

@@ -64,9 +64,68 @@ class GenericAdapter:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class KlingAdapter:
+    """Kling v3 Pro (schema verified M11): duration is a string enum "3".."15", negative prompt
+    supported, aspect ratio taken from the start image, audio off (we add our own in M8)."""
+
+    name: str = "kling"
+    cfg_scale: float = 0.5
+
+    def adapt(
+        self, prompt: ScenePrompt, duration_s: float, aspect_ratio: str, caps: VideoCapabilities
+    ) -> AdaptedVideo:
+        snapped = caps.snap(duration_s)
+        return AdaptedVideo(
+            prompt=_truncate(prompt.motion_prompt, min(caps.max_prompt_chars, 2500)),
+            negative_prompt=_truncate(prompt.negative_prompt, 800),
+            duration_s=snapped,
+            params={
+                "duration": str(int(snapped)),
+                "cfg_scale": self.cfg_scale,
+                "generate_audio": False,
+            },
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LtxAdapter:
+    """LTX-2.3 Fast (schema verified M11): duration int in {6,8,10,...}, no negative-prompt field.
+
+    The negative list is **dropped**, not folded into the prompt: in a diffusion prompt, naming
+    "text, watermark, logo" tends to summon them. The keyframe already fixes the look (FLUX dev
+    has no negative field either, so the positive keyframe prompt must stand on its own); the
+    video model only animates it.
+    """
+
+    name: str = "ltx"
+    fps: int = 24
+    resolution: str = "1080p"
+
+    def adapt(
+        self, prompt: ScenePrompt, duration_s: float, aspect_ratio: str, caps: VideoCapabilities
+    ) -> AdaptedVideo:
+        snapped = caps.snap(duration_s)
+        params: dict[str, Any] = {
+            "duration": int(snapped),
+            "fps": self.fps,
+            "resolution": self.resolution,
+            "generate_audio": False,
+        }
+        if aspect_ratio in {"16:9", "9:16"}:
+            params["aspect_ratio"] = aspect_ratio
+        return AdaptedVideo(
+            prompt=_truncate(prompt.motion_prompt, caps.max_prompt_chars),
+            negative_prompt="",
+            duration_s=snapped,
+            params=params,
+        )
+
+
 ADAPTERS: dict[str, PromptAdapter] = {
     "mock": GenericAdapter(name="mock"),
-    "kling": GenericAdapter(name="kling", extra=(("cfg_scale", 0.5),)),
+    "kling": KlingAdapter(),
+    "ltx": LtxAdapter(),
     "seedance": GenericAdapter(name="seedance", fold_negative=True),
     "veo": GenericAdapter(name="veo"),
 }

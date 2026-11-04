@@ -100,7 +100,7 @@ class MediaGateway:
             params={"width": w, "height": h, "seed": seed},
         )
         job = ImageJob(prompt.keyframe_prompt, prompt.negative_prompt, w, h, seed, label)
-        return PreparedJob(request, job, self.image.usd_per_image)
+        return PreparedJob(request, job, self.image.estimate_usd(w, h))
 
     def _prepare_video(
         self, scene: Scene, prompt: ScenePrompt, aspect: str, label: MediaLabel

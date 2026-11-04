@@ -83,7 +83,8 @@ class MediaOutput:
 class ImageProvider(Protocol):
     name: str
     model: str
-    usd_per_image: float
+
+    def estimate_usd(self, width: int, height: int) -> float: ...
 
     async def generate_image(self, job: ImageJob, out_dir: Path) -> MediaOutput: ...
 

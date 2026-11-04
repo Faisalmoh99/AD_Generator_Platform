@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.structured import StructuredCaller
-from adsmith.config import FalVideoEndpoint, Settings
+from adsmith.config import FalImageEndpoint, FalVideoEndpoint, Settings
 from adsmith.domain.run import RunState
 from adsmith.providers.llm.base import LLMProvider
 from adsmith.providers.llm.scripted import ScriptedLLMProvider
@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from adsmith.agent.media import MediaGateway
     from adsmith.agent.scenes import SceneStageRunner
     from adsmith.providers.media.base import VideoCapabilities
+    from adsmith.providers.media.chaos import ChaosPolicy
+    from adsmith.providers.media.fal import FalQueue
+    from adsmith.storage.account import SpendAccount
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +47,8 @@ class AgentRuntime:
     _provider_override: LLMProvider | None = None
     _gateways: dict[str, MediaGateway] = field(default_factory=dict)
     media_factory: Callable[[RunState], MediaGateway] | None = None  # tests / demos
+    _account: SpendAccount | None = None
+    _fal_queue: FalQueue | None = None
 
     @classmethod
     def from_settings(
@@ -79,12 +84,18 @@ class AgentRuntime:
             parse_fail_plan,
         )
 
-        if run.config.media_provider == "fal":
-            raise RuntimeError("the fal media provider is implemented in M11; use mock")
         s = self.settings
         fal = s.catalog.fal
-        img_ep = fal.image.endpoints[s.fal_image_model or fal.image.default]
-        vid_ep = fal.video.endpoints[s.fal_video_model or fal.video.default]
+        img_ep = fal.image.endpoints[
+            run.config.image_model or s.fal_image_model or fal.image.default
+        ]
+        vid_ep = fal.video.endpoints[
+            run.config.video_model or s.fal_video_model or fal.video.default
+        ]
+        long_side = run.config.media_long_side or s.media_long_side
+        chaos = ChaosPolicy(s.chaos_config, enabled=run.config.chaos)
+        if run.config.media_provider == "fal":
+            return self._fal_media(img_ep, vid_ep, chaos, long_side)
         plan = FailPlan(parse_fail_plan(s.mock_fail_plan))
         # Mock media is priced at the real endpoints' rates and obeys their duration rules, so
         # the budget guard and duration snapping behave exactly as they will with fal.
@@ -104,8 +115,60 @@ class AgentRuntime:
             ),
             adapter=ADAPTERS["mock"],
             storage=self.storage,
-            chaos=ChaosPolicy(s.chaos_config, enabled=run.config.chaos),
-            long_side=s.media_long_side,
+            chaos=chaos,
+            long_side=long_side,
+        )
+
+    def fal_account(self) -> SpendAccount:
+        """The cross-run wallet ledger (one per process). Refuses to exist without a ceiling."""
+        if self._account is None:
+            from adsmith.storage.account import SpendAccount  # noqa: PLC0415
+
+            if self.settings.fal_balance_usd is None:
+                raise RuntimeError(
+                    "set ADSMITH_FAL_BALANCE_USD (the prepaid fal balance) before real media spend"
+                )
+            self._account = SpendAccount(
+                self.settings.account_db, balance_usd=self.settings.fal_balance_usd
+            )
+        return self._account
+
+    def _fal_media(
+        self,
+        img_ep: FalImageEndpoint,
+        vid_ep: FalVideoEndpoint,
+        chaos: ChaosPolicy,
+        long_side: int,
+    ) -> MediaGateway:
+        from adsmith.agent.media import MediaGateway  # noqa: PLC0415
+        from adsmith.media.frames import probe_video  # noqa: PLC0415
+        from adsmith.providers.adapters.base import ADAPTERS  # noqa: PLC0415
+        from adsmith.providers.media.fal import (  # noqa: PLC0415
+            FalImageProvider,
+            FalQueue,
+            FalVideoProvider,
+        )
+
+        s = self.settings
+        if s.fal_key is None:
+            raise RuntimeError("FAL_KEY is required for the fal media provider")
+        if self._fal_queue is None:
+            self._fal_queue = FalQueue(
+                s.fal_key.get_secret_value(),
+                account=self.fal_account(),
+                poll_interval_s=s.fal_poll_interval_s,
+                timeout_s=s.fal_timeout_s,
+                sleep=self.sleep,
+            )
+        return MediaGateway(
+            image=FalImageProvider(self._fal_queue, img_ep),
+            video=FalVideoProvider(
+                self._fal_queue, vid_ep, video_capabilities(vid_ep), probe_video
+            ),
+            adapter=ADAPTERS[vid_ep.adapter],
+            storage=self.storage,
+            chaos=chaos,
+            long_side=long_side,
         )
 
     def scene_runner(self, run: RunState) -> SceneStageRunner:
@@ -171,5 +234,5 @@ def video_capabilities(endpoint: FalVideoEndpoint) -> VideoCapabilities:
         min_duration_s=endpoint.min_duration_s or min(allowed or (1.0,)),
         max_duration_s=endpoint.max_duration_s or max(allowed or (60.0,)),
         allowed_durations_s=allowed,
-        supports_negative=endpoint.adapter != "seedance",
+        supports_negative=endpoint.adapter not in {"seedance", "ltx"},
     )

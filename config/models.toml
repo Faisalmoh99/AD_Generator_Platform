@@ -81,36 +81,62 @@ cache_read = 0.01
 server_fallback = false
 
 # ---------------------------------------------------------------- fal.ai
+# Verified 2026-11-04 (M11), nothing from memory:
+#   request/response schemas: https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=<endpoint>
+#   prices: fal Platform API GET https://api.fal.ai/v1/models/pricing?endpoint_id=<endpoint>
+#           (authenticated with this account's key). Where a model page disagrees with the
+#           pricing API we budget with the HIGHER figure, so the ledger overestimates spend:
+#     LTX-2.3 Fast: API $0.06/s (page header $0.06/s 1080p; page table says $0.04/s).
+#     Kling v3 Pro: API $0.14/s (page: $0.112/s audio off, $0.168/s audio on).
+#     FLUX.1 dev:   API $0.025/megapixel; page: "billed by rounding up to the nearest megapixel".
 [fal.image]
 default = "flux_dev"
 
 [fal.image.endpoints.flux_dev]
 endpoint = "fal-ai/flux/dev"
-usd_per_image = 0.025          # estimate; verify on the model page (M11)
+usd_per_megapixel = 0.025
+round_up_megapixels = true
 
 [fal.image.endpoints.flux_2_flex]
 endpoint = "fal-ai/flux-2-flex"
-usd_per_image = 0.05           # estimate; verify on the model page (M11)
+usd_per_megapixel = 0.05       # API unit: "processed megapixels"
+round_up_megapixels = true
 
 [fal.video]
 default = "kling_v3_pro"
 
 [fal.video.endpoints.kling_v3_pro]
+# Schema: start_image_url (required), prompt (<=2500 chars), negative_prompt, cfg_scale 0..1,
+# duration "3".."15" (string enum), generate_audio (default true: we send false). Aspect ratio
+# comes from the start image.
 endpoint = "fal-ai/kling-video/v3/pro/image-to-video"
 adapter = "kling"
-usd_per_second = 0.112         # audio off
+image_field = "start_image_url"
+usd_per_second = 0.14
 min_duration_s = 3
 max_duration_s = 15
 
+[fal.video.endpoints.ltx_23_fast]
+# Cheap "dev" model. Schema: image_url + prompt (required), duration int enum 6..20 step 2
+# (>10 s only at 25 fps/1080p; we stay <=10), fps 24|25|48|50, resolution 1080p|1440p|2160p,
+# aspect_ratio auto|16:9|9:16, generate_audio (default true: we send false). No negative prompt.
+# Minimum 6 s: shorter scenes are rendered at 6 s and trimmed at assembly.
+endpoint = "fal-ai/ltx-2.3/image-to-video/fast"
+adapter = "ltx"
+image_field = "image_url"
+usd_per_second = 0.06
+allowed_durations_s = [6, 8, 10]
+
+# Not verified in M11 (not used); re-verify before enabling.
 [fal.video.endpoints.seedance_2]
 endpoint = "bytedance/seedance-2.0/image-to-video"
 adapter = "seedance"
-usd_per_second = 0.3034        # 720p
+usd_per_second = 0.3034
 min_duration_s = 4
 max_duration_s = 15
 
 [fal.video.endpoints.veo31_fast]
 endpoint = "fal-ai/veo3.1/fast/image-to-video"
 adapter = "veo"
-usd_per_second = 0.10          # audio off
+usd_per_second = 0.10
 allowed_durations_s = [4, 6, 8]

@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import io
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -115,3 +116,27 @@ async def sample_frames(
     for fraction, t in sample_times(played_s, fractions):
         frames.append(SampledFrame(t, fraction, await _frame_at(video, t, long_side)))
     return frames
+
+
+async def probe_video(path: Path) -> tuple[int, int, float]:
+    """(width, height, duration_s) of a video file, via ffprobe."""
+    proc = await asyncio.create_subprocess_exec(
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height:format=duration",
+        "-of",
+        "json",
+        str(path),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    out, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"ffprobe {path.name}: {err.decode(errors='replace')[-300:]}")
+    info = json.loads(out)
+    stream = info["streams"][0]
+    return int(stream["width"]), int(stream["height"]), float(info["format"]["duration"])

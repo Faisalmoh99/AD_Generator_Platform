@@ -199,6 +199,9 @@ class MockImageProvider:
         self._latency, self._sleep, self._plan = latency_s, sleep, fail_plan
         self.calls = 0
 
+    def estimate_usd(self, width: int, height: int) -> float:
+        return self.usd_per_image
+
     async def generate_image(self, job: ImageJob, out_dir: Path) -> MediaOutput:
         self.calls += 1
         await self._sleep(self._latency)
