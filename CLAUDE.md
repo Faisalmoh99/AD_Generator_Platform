@@ -4,6 +4,8 @@
 concepts → a storyboard with shot specs → video-generation prompts → keyframes → clips → a stitched
 ad. It recovers from failures and applies targeted scene edits without redoing the job.
 
+- **Start here: `docs/HANDOFF.md`** (current state, real-run lessons, money, open items)
+- **Current work: `docs/PLAN_V2.md`** (format library, shot vocabulary, automatic identity; build order and stops)
 - Plan and architecture: `docs/PLAN.md`
 - Decisions (why things are the way they are): `docs/adr/`
 - What has been built so far: `docs/PROGRESS.md`

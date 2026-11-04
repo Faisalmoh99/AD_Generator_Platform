@@ -70,3 +70,10 @@ evidence prompted it. M12 folds this list into the README.
     - **Why:** every real failure in this project came from asking video models to *act* (a man
       spraying at his neck, a bottle flying); the clips that worked were physical events around a
       still product.
+15. **Escalation ladder (moved from PLAN_V2 item 7).** Same failure signature (check + category)
+    twice on a shot → step up automatically instead of re-rolling: (1) rewrite with the critic's fixes
+    (exists today), (2) simplify the spec (drop the secondary action, tighter framing), (3) swap to
+    the shot vocabulary entry's `fallback` ("spray at the neck" → "mist burst, no person";
+    "full figure" → "hand + cuff"). New `agent/recovery/escalation.py`, one typed event per step,
+    budget-respecting; the brain is unchanged. This automates what was done by hand in hero v2
+    (S2 re-specced three times, S1 re-specced to a detail shot).

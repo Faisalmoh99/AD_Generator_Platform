@@ -1,13 +1,29 @@
 # PLAN V2: from hand-fixed shots to a system that makes strong ads
 
-Status: **plan for review, nothing built.** The brain (explicit state machine, typed deltas,
+Status: **approved with changes (2026-11-05); build in a fresh session.** The brain (explicit state machine, typed deltas,
 snapshots), recovery, edits, budget/wallet and the UI stay as they are. V2 adds *creative
 capabilities* so that a short request produces a strong ad with zero manual intervention.
 
-> Missing input: `docs/HANDOFF.md` (with the two montage references) is not in the repo. The plan
-> uses the montage grammar from the brief (8–10 beat-cut shots of 1–1.5 s, product/physics-led).
-> Once the references are added, their measured grammar (shot count, cut rhythm, shot types) goes
-> into `config/formats.toml` as data; no code changes needed.
+## The two montage references (described, not copied)
+
+Their measurements go into `config/formats.toml` (format `montage`) as **data**; the code only
+reads the grammar.
+
+| | (a) Dark, moody fragrance ad | (b) Product video "made from one product photo" |
+|---|---|---|
+| Length / shots | ~16 s, ~14 shots (≈1.1 s per shot) | ~22 s, ~12 shots (≈1.8 s per shot) |
+| Shot types | extreme macros of the bottle and cap (brushed-metal texture, an engraved logo, glass edges); light sweeping across surfaces; rim light in darkness | a water drop hitting a leaf; droplets on glass; the bottle falling into water with splashes and rising bubbles; a ribbon of water swirling around the bottle; one spray burst; the bottle on dark rock; macro of the cap |
+| People | a man's silhouette only at the very end | none |
+| Look | dark, low-key, rim-lit, metallic textures | dark backgrounds, water physics, crisp product |
+| Identity | product details carry the ad | **same bottle everywhere because everything comes from one reference image** (exactly item 3) |
+
+Derived montage grammar (initial values, tunable in config): 10–14 shots; kept duration
+1.0–1.8 s per shot (render 3 s, keep the peak window, item 5); ≥ 70% product/physics shots;
+≤ 1 person shot, silhouette or detail framing, placed last or second to last; hero product last;
+light sweeps, rim light and macro textures preferred; liquids (drop, splash, swirl, bubbles) and
+one spray burst allowed as the physical events. Note for (a): an *engraved logo* is not possible
+for us (wordless products, no invented text), so "engraved" becomes texture only (brushed metal,
+facets).
 
 ## Why: every manual fix in the hero rounds, mapped to the capability that replaces it
 
@@ -24,12 +40,21 @@ capabilities* so that a short request produces a strong ad with zero manual inte
 | Re-rolled the same failing shot by hand, then simplified it | 7 escalation ladder |
 | (not done yet) music and cutting | 8 beat-cut assembly |
 
-## Items, ordered by impact on ad quality
+## Build order and stops (approved)
 
-Minimum viable cut-offs:
-- **Cut A (needed for the proof run, which stops at keyframes): items 1–3 + 4.**
-- **Cut B (needed for a finished, watchable montage): + items 5 and 8.**
-- Items 6–7 make it robust; they matter once clips are paid for.
+1 → 2 → 3 → 4 → **STOP 1** → 5 → 6 → **STOP 2**. Item 8 is small wiring (best-of-N already exists)
+and is done alongside item 6. Item 7 (escalation ladder) moves to `docs/MORE_TIME.md`.
+
+- **STOP 1, after item 4:** the proof run (below): `--auto`, no human fixes, keyframes only,
+  hard cap **$0.60**. Report the contact sheet **and what the system decided at each stage**
+  (format, concept, shot vocabulary per shot, identity mode per shot, gate verdicts, escalations
+  or fallbacks), all read from the trace.
+- **STOP 2, after item 6:** a mock end-to-end montage with beat cutting, plus test results.
+- **No clip money** until the user tops up after seeing the STOP 1 keyframes.
+- **Time estimates have run 2–3× too high on past milestones** (the work went faster than
+  planned). Treat the hours below as upper bounds, not a schedule.
+
+## Items, in build order
 
 ### 1. Ad format library, montage by default (≈2.5 h)
 - **Exists:** single-take format (ADR-0017: ideate v4 / select v4 / storyboard v4, one-scene
@@ -50,9 +75,10 @@ Minimum viable cut-offs:
   ideate/select/storyboard; spray-is-mist rule; particle ban; key-action checks.
 - **New:** `config/shot_vocabulary.toml`: ~14 entries, each with `framing`, `needs_product`,
   `shows_person`, `identity_mode` (none | direct | composite), typical motion, `fit` per video
-  endpoint, `key_shot`, and a `fallback` entry for item 7. Physics-led: macro facet sweep, light
-  sweep across glass, amber drop into water, splash, mist burst past a backlight (no bottle),
-  sand/silk past the cap, turntable glint, cap lift macro, hero push-in. People in detail framing
+  endpoint, `key_shot`, and a `fallback` entry for item 7. Physics-led, from references (a) and (b): extreme macro of cap and glass edges (brushed metal,
+  facets), light sweep across surfaces, rim light in darkness, water drop hitting a leaf, droplets
+  on glass, bottle falling into water (splash, rising bubbles), a water ribbon swirling around the
+  bottle, one spray burst, bottle on dark rock, cap macro, hero push-in. People in detail framing
   only: hand + cuff, jawline to chest, back silhouette. No full-figure person or regional garment
   in full view unless the request asks for it (code check on `shot_type` + `shows_person`).
   Storyboard picks `shot.vocab` per shot; flags come from the vocabulary, not from text
@@ -103,28 +129,20 @@ Minimum viable cut-offs:
   are used.
 - **Tests:** synthetic click track at 120 bpm → cuts within 20 ms of beats; total duration kept.
 
-### 7. Escalation ladder (≈1.5 h)
-- **Exists:** classified recovery (policy rewrite, QA regeneration with critic fixes, keyframe
-  gate retries), failure signatures in attempts, MORE_TIME item 6.
-- **New:** `agent/recovery/escalation.py`: the same failure signature (check + category) twice on
-  a shot → step up automatically: (1) rewrite with fixes (today), (2) simplify the spec (drop the
-  secondary action; tighter framing), (3) swap to the vocabulary entry's `fallback` (e.g. "spray at
-  the neck" → "mist burst, no person"; "full figure" → "hand + cuff"). Each step is a typed event;
-  the brain is unchanged (it is a recovery strategy inside the scene runner).
-- **Tests:** two identical rejections → simplify; a third → fallback entry; budget respected.
+### 7. Escalation ladder → moved to `docs/MORE_TIME.md` (item 15)
 
-### 8. Best-of-N on key shots (≈30 min)
+### 8. Best-of-N on key shots: wiring only (≈30 min, done with item 6)
 - **Exists:** best-of-N clips (`clip_candidates`, reserved up front, code picks the best with no
   hard failure; ADR-0003 add. 2).
 - **New:** N = 2 only for vocabulary `key_shot` entries (hero push-in, the money shot), and only
   if the budget covers both takes after all other shots are reserved; otherwise 1.
 - **Tests:** key shot gets 2 candidates, others 1; tight budget falls back to 1.
 
-**Total:** Cut A ≈ 5.75 h; Cut B + ≈ 3 h; items 7–8 + ≈ 2 h. Every item lands with tests and
+**Total (upper bound):** items 1–4 ≈ 5.75 h; items 5–6 + 8 ≈ 3.5 h. Every item lands with tests and
 `make check` green, conventional commits, and ADRs: 0018 formats and vocabulary, 0019 identity
 routing and the wardrobe lexicon, 0020 peak window and beat cutting.
 
-## Proof run (after Cut A): fully automatic, no human fixes
+## Proof run (STOP 1, after item 4): fully automatic, no human fixes
 
 ```bash
 ADSMITH_LLM_PROVIDER=anthropic ADSMITH_MEDIA_PROVIDER=fal ADSMITH_FAL_VIDEO_MODEL=kling_v3_standard \
@@ -133,10 +151,11 @@ uv run python scripts/contact_sheet.py <run>      # new: reference + every keyfr
 ```
 
 No concept picking, no spec edits, no flag fixes, no overrides. It stops before any video.
-The output is the contact sheet with the reference packshot, every keyframe and its gate verdict
-(and any automatic escalations), judged by eye against the montage references.
+The output is the contact sheet with the reference packshot, every keyframe and its gate verdict,
+plus a decisions report from the trace (format, concept and why, vocabulary and identity mode per
+shot, gate verdicts), judged by eye against references (a) and (b).
 
-**Estimated fal cost (stills only).** 12 s − 2 s end card ≈ 10 s, so about 8 shots at 1.25 s:
+**Estimated fal cost (stills only).** 12 s − 2 s end card ≈ 10 s, so about 8 shots at 1.25 s (the montage grammar may plan up to 10–14 shots; the cap bounds it):
 1 packshot ($0.025) + 3 direct ($0.04) + 2 composite ($0.065) + 3 plain ($0.025):
 - **first pass ≈ $0.35**
 - **with typical gate retries (~1.4 tries per shot) ≈ $0.50**
