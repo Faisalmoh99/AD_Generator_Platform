@@ -281,12 +281,12 @@ class MockVideoProvider:
         stem = f"clip_s{lbl.scene_order}_v{lbl.scene_version}_a{lbl.attempt_no}"
         badge, out = out_dir / f"{stem}_badge.png", out_dir / f"{stem}.mp4"
         frames = max(1, round(job.duration_s * FPS))
-        # A different prompt must give a different clip (as with a real model), even without the
-        # debug badge: a tiny, invisible grade shift derived from the prompt.
-        shift = (hashlib.sha256(job.prompt.encode()).digest()[0] - 128) / 128 * 0.02
+        # A different prompt (or best-of-N candidate) must give a different clip file, as with a
+        # real model, even without the debug badge: tag it with an invisible metadata comment.
+        tag = hashlib.sha256(f"{job.prompt}|{job.variant}".encode()).hexdigest()[:16]
         move = (
             f"[0:v]scale={job.width * 2}:{job.height * 2},"
-            f"{_zoompan(lbl.camera, frames, job.width, job.height)},eq=brightness={shift:.4f}"
+            f"{_zoompan(lbl.camera, frames, job.width, job.height)}"
         )
         inputs = ["-i", str(job.image_path)]
         if self.debug_badge:
@@ -312,6 +312,8 @@ class MockVideoProvider:
             "libx264",
             "-preset",
             "ultrafast",
+            "-metadata",
+            f"comment=adsmith-mock {tag}",
             str(out),
         )
         badge.unlink(missing_ok=True)

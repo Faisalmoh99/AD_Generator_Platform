@@ -24,7 +24,10 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
         except RunNotFoundError:
             continue
         videos: list[dict[str, Any]] = []
-        if item.get("kind") == "final" and state.final is not None:
+        # kind "final": the assembled ad; "attempts": chosen clip attempts of one scene;
+        # "hero": the assembled ad followed by the best-of-N candidate clips (labels/posters).
+        kind = item.get("kind")
+        if kind in {"final", "hero"} and state.final is not None:
             videos.append(
                 {
                     "url": media_url(state.final.path),
@@ -32,7 +35,7 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
                     "poster": item.get("poster"),
                 }
             )
-        elif item.get("kind") == "attempts" and state.storyboard is not None:
+        if kind in {"attempts", "hero"} and state.storyboard is not None:
             scene = state.storyboard.scenes[int(item["scene"]) - 1]
             labels = item.get("labels", [])
             for n, attempt_no in enumerate(item.get("attempts", [])):

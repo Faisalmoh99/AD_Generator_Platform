@@ -54,6 +54,8 @@ CHECK_CATEGORIES: dict[str, frozenset[str]] = {
     "artifacts_free": frozenset({"artifact", "motion", "character", "product"}),
     "brand_safe": frozenset({"safety"}),
     "text_free": frozenset({"artifact", "product", "safety"}),
+    "alcohol_free": frozenset({"safety", "product"}),
+    "key_action_happens": frozenset({"motion"}),
 }
 
 
@@ -68,7 +70,11 @@ class MockCritic:
         return verdict, []
 
     async def review(self, state: RunState, scene: Scene) -> tuple[QAVerdict, list[LLMCallRecord]]:
-        clip = scene.last_attempt(ScenePhase.CLIP)
+        # The attempt that produced the clip under review (best-of-N reviews several candidates).
+        clip = next(
+            (a for a in reversed(scene.attempts) if scene.clip and a.artifact == scene.clip),
+            scene.last_attempt(ScenePhase.CLIP),
+        )
         threshold = state.config.qa_threshold
         faulty = clip is not None and clip.injected_fault is FailureKind.QUALITY_REJECTED
         if not faulty:
@@ -153,6 +159,7 @@ class LLMCritic:
             played_s=f"{played:g}",
         )
         threshold = state.config.qa_threshold
+        single_take = state.storyboard is not None and len(state.storyboard.scenes) == 1
 
         def convert(d: QAVerdictDraft) -> QAVerdict:
             problems = check_verdict(d, n_images=n_images)
@@ -160,7 +167,10 @@ class LLMCritic:
                 raise ValueError("; ".join(problems))
             fixed = d.model_copy(update={"frames_inspected": n_images})
             return QAVerdict.from_draft(
-                fixed, threshold=threshold, keyframe_approved=scene.keyframe_approved
+                fixed,
+                threshold=threshold,
+                keyframe_approved=scene.keyframe_approved,
+                single_take=single_take,
             )
 
         res = await self.ctx.llm.call_and_convert(

@@ -78,8 +78,10 @@ def data_uri(path: Path) -> str:
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
 
 
-def _idempotency_key(endpoint: str, payload: dict[str, Any]) -> str:
-    blob = json.dumps({"endpoint": endpoint, "payload": payload}, sort_keys=True)
+def _idempotency_key(endpoint: str, payload: dict[str, Any], variant: int = 0) -> str:
+    blob = json.dumps(
+        {"endpoint": endpoint, "payload": payload, "variant": variant}, sort_keys=True
+    )
     return hashlib.sha256(blob.encode()).hexdigest()
 
 
@@ -119,6 +121,7 @@ class FalQueue:
         est_usd: float,
         ref: str,
         remote: RemoteControl | None = None,
+        variant: int = 0,
     ) -> tuple[dict[str, Any], FalHandle]:
         """Submit (or resume) → wait → result. Returns the output JSON and the handle; the caller
         settles the reservation once the output is safely stored (``settle``).
@@ -128,7 +131,7 @@ class FalQueue:
         wallet reservation); else a new submit, reported through ``remote.on_submitted`` BEFORE
         polling so it is on disk if this process dies next. A resumed request that fal reports
         gone or failed is resubmitted once."""
-        key = _idempotency_key(endpoint, payload)
+        key = _idempotency_key(endpoint, payload, variant)
         handle = self._inflight.get(key)
         if handle is None and remote is not None and remote.resume is not None:
             r = remote.resume
@@ -156,7 +159,9 @@ class FalQueue:
             self.release(handle)
             if handle.resumed and remote is not None:  # gone or failed at fal: submit again
                 fresh = RemoteControl(resume=None, on_submitted=remote.on_submitted)
-                return await self.run(endpoint, payload, est_usd=est_usd, ref=ref, remote=fresh)
+                return await self.run(
+                    endpoint, payload, est_usd=est_usd, ref=ref, remote=fresh, variant=variant
+                )
             raise
         except AgentError:
             self.release(handle)
@@ -351,8 +356,9 @@ class FalVideoProvider:
             self.model,
             payload,
             est_usd=est,
-            ref=f"s{lbl.scene_order}v{lbl.scene_version} clip a{lbl.attempt_no}",
+            ref=f"s{lbl.scene_order}v{lbl.scene_version} clip a{lbl.attempt_no} c{job.variant}",
             remote=job.remote,
+            variant=job.variant,
         )
         video = result.get("video") or {}
         url = video.get("url")

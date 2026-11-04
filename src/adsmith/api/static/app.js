@@ -295,7 +295,7 @@ async function loadGallery() {
   const items = await api("/api/gallery");
   $("#gallery-grid").innerHTML = items.length ? items.map((it) => `
     <article class="g-card">
-      <div class="g-videos">${it.videos.map((v) => `<div class="g-video"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" controls muted loop playsinline preload="auto"></video><div class="vlabel ${/rejected|before/i.test(v.label) ? "bad" : /after/i.test(v.label) ? "good" : ""}">${esc(v.label)}</div></div>`).join("")}</div>
+      <div class="g-videos">${it.videos.map((v) => `<div class="g-video"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" controls muted loop playsinline preload="auto"></video><div class="vlabel ${/rejected|before/i.test(v.label) ? "bad" : /after|winner/i.test(v.label) ? "good" : ""}">${esc(v.label)}</div></div>`).join("")}</div>
       <div class="g-text">
         <div class="subtitle">${esc(it.subtitle)}</div>
         <h3>${esc(it.title)}</h3>

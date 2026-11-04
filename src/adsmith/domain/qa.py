@@ -9,7 +9,16 @@ from pydantic import Field
 from adsmith.domain.base import DomainModel
 
 IssueCategory = Literal[
-    "product", "character", "lighting", "composition", "motion", "continuity", "artifact", "safety"
+    "product",
+    "character",
+    "lighting",
+    "composition",
+    "motion",
+    "continuity",
+    "artifact",
+    "safety",
+    "geometry",  # objects/architecture appearing or disappearing between keyframe and clip
+    "anatomy",  # implausible hands, faces, bodies or wardrobe (e.g. a ghutra drape)
 ]
 # Issues in these categories mean the *look* is wrong, so the keyframe must be regenerated too.
 KEYFRAME_ISSUE_CATEGORIES: frozenset[str] = frozenset({"product", "character", "composition"})
@@ -18,7 +27,13 @@ KEYFRAME_IMAGE_INDEX = 0
 # Severity calibration (ADR-0016 addendum 3). HARD checks can fail a shot on their own; SOFT
 # issue categories (light side, background objects, placement, exact composition, negative-space
 # precision) only lower the score: code caps their severity at "minor", whatever the LLM said.
-HARD_CHECKS: tuple[str, ...] = ("product_visible", "continuity_ok", "text_free", "brand_safe")
+HARD_CHECKS: tuple[str, ...] = (
+    "product_visible",
+    "continuity_ok",
+    "text_free",
+    "brand_safe",
+    "alcohol_free",
+)
 SOFT_CATEGORIES: frozenset[str] = frozenset({"lighting", "composition"})
 
 
@@ -32,6 +47,12 @@ class QAChecks(DomainModel):
     # No letters, words, logos or garbled text anywhere in frame (beyond the bible's branding
     # text). Defaults to True so verdicts stored before this check existed still load.
     text_free: bool = True
+    # HARD (brand safety for the Saudi/Gulf market): the product must not look like an alcohol or
+    # liquor bottle (whisky decanter silhouette, spirits label style, glass of liquor).
+    alcohol_free: bool = True
+    # The shot's key action actually happens in the played frames. HARD for single-take ads,
+    # where that one action is the whole ad (code knows the format; see QAVerdict.single_take).
+    key_action_happens: bool = True
 
 
 class QAIssue(DomainModel):
@@ -59,17 +80,29 @@ class QAVerdict(QAVerdictDraft):
     # True when the clip was animated from a keyframe the gate already approved: clip problems
     # then regenerate the keyframe only if the critic located them in the keyframe itself.
     keyframe_approved: bool = False
+    # Set by code for single-take ads: then a missing key action is a hard failure.
+    single_take: bool = False
 
     @classmethod
     def from_draft(
-        cls, draft: QAVerdictDraft, *, threshold: float, keyframe_approved: bool = False
+        cls,
+        draft: QAVerdictDraft,
+        *,
+        threshold: float,
+        keyframe_approved: bool = False,
+        single_take: bool = False,
     ) -> QAVerdict:
         """Applies the severity calibration: soft-category issues are capped at minor."""
         data = draft.model_dump()
         for issue in data["issues"]:
             if issue["category"] in SOFT_CATEGORIES and issue["severity"] != "minor":
                 issue["severity"] = "minor"
-        return cls(**data, threshold=threshold, keyframe_approved=keyframe_approved)
+        return cls(
+            **data,
+            threshold=threshold,
+            keyframe_approved=keyframe_approved,
+            single_take=single_take,
+        )
 
     @property
     def fail_reasons(self) -> list[str]:
@@ -83,8 +116,11 @@ class QAVerdict(QAVerdictDraft):
             "continuity_ok": "product or character identity differs from the bible",
             "text_free": "text, logo or garbled letters in frame",
             "brand_safe": "not brand-safe",
+            "alcohol_free": "the product resembles an alcohol bottle",
         }
         reasons += [msg for check, msg in hard.items() if not getattr(self.checks, check)]
+        if self.single_take and not self.checks.key_action_happens:
+            reasons.append("single take: the key action does not happen in the played frames")
         if any(i.severity == "blocker" for i in self.issues):  # soft issues are never blockers
             reasons.append("blocker issue")
         return reasons

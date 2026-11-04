@@ -50,3 +50,25 @@ if the critic locates it in the keyframe itself.
 **Consequences.** + A bad still costs one critic call (~$0.01–0.02) instead of a clip. + Fewer
 post-clip rejections, which are more often truly about motion. − One extra LLM call per keyframe
 attempt. − The gate inherits the critic's limits (non-determinism, fine product detail; ADR-0016).
+
+## Addendum 2 (hero round): best-of-N clips from one approved keyframe
+
+**Context.** Video models are not deterministic: from the same approved keyframe and prompt, one
+take can nail the action and the next can miss it. For the hero ad the costliest failure is a clip
+that passes but is the weaker take, or one that fails when a sibling take would have passed.
+
+**Decision.** `clip_candidates` (config, default 1; `--hero` sets 2). After the keyframe passes the
+gate, the scene runner submits N clip jobs from the *same* keyframe and prompt in parallel, each a
+distinct paid job (`variant` in the fal idempotency key; `candidate` in the request params, so the
+cache key differs). All N are **reserved up front** in one write (run budget + wallet), so a hero
+scene never starts a take it cannot finish paying for. The critic scores every candidate; the
+winner is the highest score among candidates **with no hard failure** (code decides, as always).
+Losers stay in the CAS and are recorded as attempts with their verdicts; the trace event carries
+`candidates` (score, pass, reasons, clip) and `winner`. If no candidate passes, the scene fails as
+usual; there is no extra rescue round (the spend was already 2×).
+
+**Alternatives.** Sequential retry on rejection (cheaper on average, but it only triggers on a
+*fail*, never picks the better of two passes, and doubles wall time on Kling's 4–8 min); N = 3
+(diminishing returns for +50% cost); asking the LLM to pick (no: code picks from typed verdicts).
+
+**Consequences.** 2× video cost for hero scenes, same wall time. Normal runs are unchanged.

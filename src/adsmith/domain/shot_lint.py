@@ -119,10 +119,21 @@ def _people_required(raw: set[str]) -> int:
     return len(roles)
 
 
+# Actions that physically produce something the negative prompt must not ban: a perfume spray IS
+# mist. (Decorative smoke, haze and dust stay bannable; only the action's own output is implied.)
+_IMPLIED_BY_ACTION: dict[str, frozenset[str]] = {
+    trigger: frozenset({"mist", "spray", "droplet", "spritz", "atomize"})
+    for trigger in ("spray", "spritz", "mist", "atomize", "atomise")
+}
+
+
 def negative_contradictions(subject_action: str, composition: str, negative: str) -> list[str]:
     """Negative-prompt terms that exclude something this shot requires."""
     raw_required = _required_raw(subject_action, composition)
     required = {_stem(w) for w in raw_required}
+    for trigger, implied in _IMPLIED_BY_ACTION.items():
+        if _stem(trigger) in required:
+            required |= {_stem(w) for w in implied}
     people = _people_required(raw_required)
     problems = []
     for raw in negative.split(","):

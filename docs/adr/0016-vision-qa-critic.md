@@ -109,3 +109,13 @@ rejected 9 of the 14.
 right trade for a single bounded attempt, but a continuity-sensitive storyboard may want "screen
 direction" promoted to hard. − Fine product identity still depends on perception (product reference
 image: MORE_TIME.md).
+
+## Addendum 4 (hero round): checks from defects caught by eye
+
+New HARD check `alcohol_free` (the product must not resemble an alcohol/liquor bottle; brand
+safety for the Saudi market). New check `key_action_happens`, HARD only when the storyboard has a
+single scene (code sets `QAVerdict.single_take`; the one action *is* the ad). New issue categories
+`geometry` (objects/architecture appearing or disappearing between keyframe and clip frames) and
+`anatomy` (hands, face, wardrobe such as a ghutra drape): the critic reports them as major; they are
+not soft, so code never caps them. `qa_keyframe` v3, `qa_critic` v6. Both new checks default to
+true, so stored verdicts still load.

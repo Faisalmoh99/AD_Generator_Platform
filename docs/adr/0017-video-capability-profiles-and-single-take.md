@@ -50,3 +50,12 @@ generation. − Profiles need upkeep per model, and *[expected]* items are unver
 
 Open follow-ups (not built): a hard "key action delivered" check for single takes; rebalancing
 the judge so a high-insight concept is not discarded for a moderate producibility risk.
+
+## Addendum (hero round)
+
+Kling's profile now records, as observed, that a single person in natural motion (walking, turning,
+a simple gesture such as spraying) renders convincingly (the majlis man); only fine finger-level
+manipulation in close-up stays weak. `select` v5 no longer lowers producibility just because a
+concept features a person. `prompt_writer`/`prompt_rewrite` v6: a spray or mist that IS the key
+action is required and described precisely, never banned in the negative prompt (the shot lint
+enforces it); decorative smoke, haze and dust stay banned.

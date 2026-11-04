@@ -49,6 +49,7 @@ class RunConfig(DomainModel):
     endcard: bool = True
     endcard_s: float = Field(default=2.0, ge=0, le=6)
     partial_mode: Literal["skip", "slate"] = "skip"  # failed scenes in done_partial
+    clip_candidates: int = Field(default=1, ge=1, le=4)  # best-of-N clips per scene
     scripted_scenario: str | None = None  # which canned fixtures the scripted LLM replays
     # Catalog keys (config/models.toml) of the media models: resume never switches model.
     image_model: str | None = None

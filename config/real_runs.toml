@@ -42,3 +42,20 @@ veiled the product. The critic rejected it (score 0.50); the QA loop rewrote the
 its fixes (light described as light, nothing between camera and product) and kept the keyframe. \
 The second clip shows a clean, readable bottle."""
 defects = ""
+
+[[items]]
+key = "hero_spray"
+title = "Hero attempt: the spray (best-of-2, both rejected)"
+subtitle = "Single take, 8 s · Kling v3 Pro · best-of-2 from one gated keyframe · fal $2.32"
+run = "run_01M6KJYGMWF7RHQY8B86T5G7JK"
+kind = "attempts"
+scene = 1
+attempts = [4, 5]
+labels = ["Candidate 1: rejected 0.35", "Candidate 2: rejected 0.40"]
+posters = [7.6, 7.6]  # the close-up where the video model invented label text
+caption = """The agent picked 'يسبقك' (his scent arrives before him): a pull-back walk through a \
+sandstone arcade, one spray, the bottle pushed to the lens. The keyframe gate rejected two stills \
+for the wrong bottle before passing the third ($0.075 in stills, no video wasted). Both Kling takes \
+were then rejected: in the final close-up the model invented label text on the blank label plate, \
+and the cap is black, not brushed gold. No ad was assembled: no extra rescue by design."""
+defects = "Critic error the other way: it said the spray never happens, but both takes show a short burst at about 2–3 s. The real miss is the gate, which passed the black cap as a 'minor' issue."

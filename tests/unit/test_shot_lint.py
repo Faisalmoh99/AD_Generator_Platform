@@ -156,3 +156,18 @@ def test_final_scene_must_be_product_hero() -> None:
 def test_negated_mentions_do_not_count() -> None:
     scenes = [("hook", True, "no bottle in frame, only smoke"), ("product", True, "bottle")]
     assert product_presence_problem(scenes, "fragrance") is not None
+
+
+def test_spray_action_requires_mist_in_the_negative_prompt() -> None:
+    action = "A young man sprays the perfume once; the mist hangs in slow motion"
+    problems = negative_contradictions(action, "bottle centered", "text, mist, smoke, haze")
+    assert problems == ["'mist' excludes 'mist', which this shot requires"]
+
+
+def test_decorative_smoke_stays_bannable_even_on_a_spray_shot() -> None:
+    action = "He sprays the perfume; a fine burst of droplets catches the light"
+    assert negative_contradictions(action, "close-up", "smoke, haze, dust, text") == []
+
+
+def test_mist_is_bannable_when_nothing_is_sprayed() -> None:
+    assert negative_contradictions("the camera orbits the bottle", "centered", "mist") == []

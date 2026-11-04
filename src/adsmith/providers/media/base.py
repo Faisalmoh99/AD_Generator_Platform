@@ -79,6 +79,7 @@ class VideoJob:
     params: dict[str, Any]
     label: MediaLabel
     remote: RemoteControl | None = None
+    variant: int = 0  # best-of-N candidate index: a distinct paid job for the same request
 
 
 @dataclass(frozen=True, slots=True)

@@ -166,10 +166,13 @@ def run(
     chaos: Annotated[
         bool | None, typer.Option("--chaos/--no-chaos", help="Inject faults to demo recovery.")
     ] = None,
+    hero: Annotated[
+        bool, typer.Option("--hero", help="Best-of-2 clips per scene from the approved keyframe.")
+    ] = False,
 ) -> None:
     """Start a new run."""
     orch = _orchestrator()
-    state = orch.create_run(request, interactive=not auto, chaos=chaos)
+    state = orch.create_run(request, interactive=not auto, chaos=chaos, hero=hero)
     console.print(f"Run [bold]{state.id}[/] created.")
     print_state(orch, follow(orch, state.id, orch.run_until_blocked(state.id, stop_before=until)))
 

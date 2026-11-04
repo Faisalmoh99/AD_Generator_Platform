@@ -641,3 +641,24 @@ red lint (`;` instead of `&&`); amended locally before anything else.
 **README** rewritten for a 3–5 minute skim (pitch + hero screenshot, two quickstarts, the brain with
 3 Mermaid diagrams, error matrix, edits table, "what real runs taught me", ADR one-liners,
 limitations, repo map). Real clips committed under `docs/media/` (~9 MB) so the README links work.
+
+## Hero round: critic fixes, spray rule, best-of-N, real run (2026-11-05)
+**Built:** HARD `alcohol_free`; `key_action_happens` (HARD for single takes, set by code); `geometry` and
+`anatomy` issue categories (never soft-capped); `qa_keyframe` v3, `qa_critic` v6. Spray/mist allowed
+when it IS the action (`prompt_writer`/`prompt_rewrite` v6 + shot lint: a spray action makes mist
+required, so a negative prompt banning it gets repaired; smoke, haze and dust stay bannable). Best-of-N clips
+(`clip_candidates`, `--hero` = 2): N parallel jobs from the same gated keyframe, all reserved up front,
+code picks the best score with no hard failure, losers kept in the CAS; none passes → scene fails
+(ADR-0003 add. 2). Kling profile + `select` v5: people in natural motion are not a producibility
+penalty (ADR-0017 add.). Gallery `kind = "hero"`. 468 tests.
+**Real run** `run_01M6KJYGMWF7RHQY8B86T5G7JK` (cap $3.00 via wallet ceiling 10.05 = ledger 7.05 + 3.00):
+concepts يسبقك 7.95 (picked), حرير الرذاذ 6.35, وش عطرك؟ 6.10. Gate: 0.45 ✗, 0.50 ✗ (wrong bottle),
+0.78 ✓. Best-of-2 Kling 8 s: 0.35 ✗ / 0.40 ✗ (identity, invented label text, "no key action") →
+scene failed, nothing assembled. **fal $2.315** (stills $0.075 + 2 × $1.12), Anthropic $0.33.
+**By eye:** text and cap-colour rejections are correct (the blank "label plate" became invented
+lettering in the close-up); "key action missing" is WRONG (a short spray burst is visible at ~2–3 s
+in both takes); the gate let the black cap through as a "minor" product issue, which is the real
+miss. Energy: a calm walk, not the slow-motion spray moment the request asked for.
+**Next (not built):** product checklist mismatch at the gate → hard (no "minor product" issues); no
+label plates in product bibles (wordless glass, nothing to fill with text); a slow-motion wording
+lever for Kling; store full candidate verdicts in the event (only reasons are stored today).

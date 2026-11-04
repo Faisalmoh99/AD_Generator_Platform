@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import random
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
@@ -47,7 +48,7 @@ from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt
 from adsmith.logging import get_logger
-from adsmith.providers.media.base import RemoteControl
+from adsmith.providers.media.base import RemoteControl, VideoJob
 from adsmith.storage import StaleWriteError, Storage
 from adsmith.storage.repo import Mutation
 
@@ -87,6 +88,9 @@ def _ev(
             "payload": payload,
         }
     )
+
+
+_Review = tuple[GenerationAttempt, GatewayResult, QAVerdict | None, list[LLMCallRecord], str]
 
 
 @dataclass
@@ -162,7 +166,182 @@ class SceneStageRunner:
             if outcome == "approved":
                 break
         if stage is Stage.GENERATE:
-            await self._phase(run_id, scene_id, ScenePhase.CLIP, stage)
+            n = self.storage.runs.load(run_id).config.clip_candidates
+            if n > 1:
+                await self._best_of_n(run_id, scene_id, stage, n)
+            else:
+                await self._phase(run_id, scene_id, ScenePhase.CLIP, stage)
+
+    # ------------------------------------------------------------------------ best-of-N clips
+    async def _best_of_n(self, run_id: str, scene_id: str, stage: Stage, n: int) -> None:  # noqa: PLR0915
+        """Hero mode (ADR-0003 addendum 2): N clips from the same approved keyframe, reserved up
+        front and generated in parallel; the critic scores each and the best candidate with no hard
+        failure is approved. The others stay in the CAS as recorded candidates. If none passes,
+        the scene fails (no extra rescue)."""
+        state = self.storage.runs.load(run_id)
+        scene = self._find(state, scene_id)
+        if scene.status is not SceneStatus.PENDING or scene.phase is not ScenePhase.CLIP:
+            return
+        base = self._prepare(state, scene, ScenePhase.CLIP)
+        first_no = scene.attempts_for_current_version() + 1
+        cands: list[tuple[GenerationAttempt, PreparedJob]] = []
+        for k in range(n):
+            req = base.request.model_copy(
+                update={"params": {**base.request.params, "candidate": k}}
+            )
+            att = GenerationAttempt(
+                scene_id=scene.id, scene_version=scene.version, phase=ScenePhase.CLIP,
+                attempt_no=first_no + k, provider=req.provider, model=req.model,
+                request_hash=req.cache_key(), prompt_used=req.prompt, params=req.params,
+            )  # fmt: skip
+            assert isinstance(base.job, VideoJob)
+            label = replace(base.job.label, attempt_no=first_no + k)
+            job = replace(base.job, variant=k, label=label)
+            prepared = replace(base, request=req, job=job)
+            cands.append((att, self._with_remote(run_id, scene, att, prepared)))
+
+        def reserve(s: RunState) -> list[AgentEvent]:
+            sc = self._same_version(s, scene)
+            for att, p in cands:
+                s.budget.reserve(att.id, "video", p.est_usd, sc.id)
+            sc.start()
+            sc.attempts.extend(att for att, _ in cands)
+            total = sum(p.est_usd for _, p in cands)
+            return [
+                _ev(
+                    run_id, stage, sc, EventType.ATTEMPT_STARTED,
+                    f"Scene {sc.order}: best-of-{n} clips from the approved keyframe "
+                    f"(reserved ${total:.3f} up front)",
+                    candidates=[a.id for a, _ in cands], est_usd=total,
+                )
+            ]  # fmt: skip
+
+        try:
+            self.storage.runs.update(run_id, reserve, reason=f"scene {scene.order} best-of-{n}")
+        except BudgetRefusedError as exc:
+            self._fail_scene(run_id, stage, scene_id, FailureKind.BUDGET_EXCEEDED, str(exc))
+            return
+        except StaleWriteError:
+            return
+
+        async def one(
+            att: GenerationAttempt, p: PreparedJob
+        ) -> tuple[GenerationAttempt, GatewayResult | None, AgentError | None]:
+            try:
+                res = await retry_transient(
+                    functools.partial(self.gateway.run, p, self._scratch(run_id)),
+                    sleep=self.sleep, rng=self.rng,
+                )  # fmt: skip
+            except AccountLockedError:
+                raise
+            except AgentError as exc:
+                return att, None, exc
+            return att, res, None
+
+        try:
+            results = await asyncio.gather(*(one(a, p) for a, p in cands))
+        except AccountLockedError as exc:
+            for att, _ in cands:
+                self._attempt_paused(run_id, stage, scene, att, exc)
+            raise
+
+        def record(s: RunState) -> list[AgentEvent]:
+            sc = self._same_version(s, scene)
+            for att, res, err in results:
+                a = self._attempt(sc, att.id)
+                a.finished_at = utcnow()
+                if res is not None:
+                    a.outcome = "cache_hit" if res.cache_hit else "success"
+                    a.artifact, a.cost_usd = res.artifact, res.cost_usd
+                    a.injected_fault = res.injected_fault
+                    s.budget.settle(att.id, res.cost_usd)
+                else:
+                    assert err is not None
+                    a.outcome, a.failure_kind, a.error_message = (
+                        "failed",
+                        err.kind,
+                        err.message[:2000],
+                    )
+                    s.budget.release(att.id)
+            return []
+
+        if not self._update(run_id, record, f"scene {scene.order} candidates ready"):
+            return
+        made = [(att, res) for att, res, _ in results if res is not None]
+        if not made:
+            err = next(e for _, _, e in results if e is not None)
+            self._fail_scene(
+                run_id, stage, scene_id, err.kind, f"all {n} candidates failed: {err.message}"
+            )
+            return
+
+        state = self.storage.runs.load(run_id)
+        current = self._find(state, scene_id)
+        reviews: list[_Review] = []
+        for att, res in made:
+            subject = current.model_copy(update={"clip": res.artifact})
+            try:
+                verdict, calls = await self.critic.review(state, subject)
+                reviews.append((att, res, verdict, calls, ""))
+            except AgentError as exc:
+                reviews.append((att, res, None, exc.llm_calls, exc.message))
+        passing = [r for r in reviews if r[2] is not None and r[2].passed]
+        winner = max(passing, key=lambda r: r[2].score if r[2] else 0.0) if passing else None
+
+        def decide(s: RunState) -> list[AgentEvent]:
+            sc = self._same_version(s, scene)
+            events: list[AgentEvent] = []
+            lines = []
+            for k, (att, _res, v, calls, err) in enumerate(reviews, start=1):
+                events += self._book(s, calls, Stage.QA, sc)
+                a = self._attempt(sc, att.id)
+                if v is not None:
+                    a.qa_score, a.qa_passed = v.score, v.passed
+                    why = "pass" if v.passed else "; ".join(v.fail_reasons)
+                    lines.append(f"candidate {k}: {v.score:.2f} ({why})")
+                else:
+                    lines.append(f"candidate {k}: critic error ({err[:80]})")
+            payload = [
+                {
+                    "attempt_id": att.id,
+                    "candidate": k,
+                    "score": v.score if v else None,
+                    "passed": bool(v and v.passed),
+                    "fail_reasons": v.fail_reasons if v else [err],
+                    "clip": res.artifact.path,
+                }
+                for k, (att, res, v, _c, err) in enumerate(reviews, start=1)
+            ]
+            if winner is not None and winner[2] is not None:
+                k = reviews.index(winner) + 1
+                sc.complete_clip(winner[1].artifact)
+                sc.approve(winner[2])
+                events.append(
+                    _ev(
+                        run_id, Stage.QA, sc, EventType.SCENE_STATUS,
+                        f"Scene {sc.order} best-of-{n}: " + " · ".join(lines)
+                        + f" → candidate {k} wins (score {winner[2].score:.2f})",
+                        candidates=payload, winner=k, score=winner[2].score,
+                    )
+                )  # fmt: skip
+            else:
+                sc.fail(
+                    self._failure(
+                        s, FailureKind.QUALITY_REJECTED, Stage.QA,
+                        f"none of {n} candidates passed QA: " + " · ".join(lines),
+                    )
+                )  # fmt: skip
+                events.append(
+                    _ev(
+                        run_id, Stage.QA, sc, EventType.SCENE_STATUS, level="error",
+                        summary=f"Scene {sc.order} best-of-{n}: " + " · ".join(lines)
+                        + " → no candidate passed; scene failed (no extra rescue)",
+                        candidates=payload,
+                    )
+                )  # fmt: skip
+            return events
+
+        self._update(run_id, decide, f"scene {scene.order} best-of-{n} decided")
 
     # ------------------------------------------------------------------------ keyframe gate
     async def _keyframe_gate(

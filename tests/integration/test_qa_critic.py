@@ -433,3 +433,28 @@ def test_composite_bible_fields_become_atomic_checks() -> None:
         "about hand-sized",
     ]
     assert atomic_parts("matte") == ["matte"]
+
+
+def test_alcohol_resemblance_is_a_hard_failure_at_any_score() -> None:
+    v = _verdict(0.9, issues=[issue("safety", "major", 1)], failed=("alcohol_free",))
+    assert not v.passed and "alcohol" in " ".join(v.fail_reasons)
+
+
+def test_missing_key_action_fails_only_single_takes() -> None:
+    raw = verdict(0.85, issues=[issue("motion", "minor", 2)], failed=("key_action_happens",))
+    draft = QAVerdictDraft.model_validate(raw["output"])
+    assert QAVerdict.from_draft(draft, threshold=0.7).passed  # multi-scene: soft
+    single = QAVerdict.from_draft(draft, threshold=0.7, single_take=True)
+    assert not single.passed and "key action" in " ".join(single.fail_reasons)
+
+
+@pytest.mark.parametrize("category", ["geometry", "anatomy"])
+def test_geometry_and_anatomy_majors_are_not_capped_as_soft(category: str) -> None:
+    v = _verdict(0.85, issues=[issue(category, "major", 1)])
+    assert v.issues[0].severity == "major"  # not capped to minor like soft categories
+
+
+def test_new_hard_checks_need_a_matching_issue() -> None:
+    raw = verdict(0.9, failed=("alcohol_free",))
+    problems = check_verdict(QAVerdictDraft.model_validate(raw["output"]), n_images=4)
+    assert any("alcohol_free" in p for p in problems)

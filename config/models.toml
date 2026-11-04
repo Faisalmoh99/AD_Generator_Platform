@@ -132,6 +132,7 @@ max_duration_s = 15
 max_single_shot_s = 15
 strengths = [
   "keeps a product crisp, stable and true to the start frame through the whole clip [observed]",
+  "a single person in natural motion (walking, turning, a simple gesture like spraying) renders convincingly: the majlis man [observed]",
   "smooth continuous camera moves with real parallax: push-in, dolly, orbit [observed]",
   "one continuous take up to 15 s, no cuts needed [expected]",
   "physical motion: liquids splashing and pouring, fabric, objects tumbling or flying toward or past the lens [expected]",
@@ -143,7 +144,7 @@ weaknesses = [
   "renders 4-8 min per clip and costs ~$0.14/s: few retries affordable [observed]",
   "identity across separate scenes: each scene is a new generation, so the same man or bottle drifts between scenes [observed]",
   "small background objects and precise prop or doorway placement [observed in keyframes]",
-  "readable text, logos, signage; crowds; lip-sync; precise hand-object manipulation [expected]",
+  "readable text, logos, signage; crowds; lip-sync; fine finger-level hand-object manipulation in close-up [expected]",
 ]
 
 [fal.video.endpoints.ltx_23_fast]
