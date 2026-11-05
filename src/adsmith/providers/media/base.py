@@ -89,7 +89,7 @@ class VideoJob:
 @dataclass(frozen=True, slots=True)
 class MediaOutput:
     path: Path
-    kind: Literal["image", "video"]
+    kind: Literal["image", "video", "audio"]
     cost_usd: float
     width: int | None = None
     height: int | None = None
@@ -105,6 +105,19 @@ class ImageProvider(Protocol):
     def estimate_usd(self, width: int, height: int) -> float: ...
 
     async def generate_image(self, job: ImageJob, out_dir: Path) -> MediaOutput: ...
+
+
+class MusicProvider(Protocol):
+    """Text → one instrumental track (STOP 2). ``track_s`` is what the model renders."""
+
+    name: str
+    model: str
+    usd_per_track: float
+    track_s: float
+
+    async def generate_music(
+        self, prompt: str, seed: int, out_dir: Path, *, ref: str
+    ) -> MediaOutput: ...
 
 
 class VideoProvider(Protocol):

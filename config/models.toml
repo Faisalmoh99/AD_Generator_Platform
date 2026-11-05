@@ -139,6 +139,24 @@ usd_per_image_flat = 0.04
 image_field = "image_urls"
 params = { guidance_scale = 3.5, num_images = 1, safety_tolerance = "2" }
 
+[fal.audio]
+default = "lyria2"
+
+[fal.audio.endpoints.lyria2]
+# Verified 2026-11-05 (model page, /api tab, queue OpenAPI schema, and the pricing API with this
+# account's key): Google Lyria 2 on fal. Input: prompt (required, <= 2000 chars), negative_prompt
+# (default "low quality"), seed (optional int), enable_safety_checker (default true). No duration
+# field: every track is 30 s, 48 kHz WAV. Output: audio.url. Price: pricing API "unit_price 0.1,
+# unit 30 seconds" = $0.10 per track (page: "$0.1 per 30 second"). Licence: the page marks it
+# "Commercial use" (fal partner model); no separate licence text is linked from the page.
+# Chosen over Stable Audio 2.5 ($0.20/track, above the $0.15 music cap), ElevenLabs music ($0.60:
+# billed per started minute), MiniMax v2 (lyrics required: no instrumental), CassetteAI and
+# ACE-Step (cheaper, no partner/commercial terms beyond the badge, weaker for cinematic scores).
+endpoint = "fal-ai/lyria2"
+usd_per_track = 0.10
+track_s = 30
+params = { negative_prompt = "vocals, singing, voice, choir, lyrics, spoken words, low quality" }
+
 [fal.video]
 default = "kling_v3_pro"
 

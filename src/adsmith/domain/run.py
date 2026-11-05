@@ -47,6 +47,7 @@ class RunConfig(DomainModel):
     aspect_ratio: AspectRatio = "9:16"
     target_duration_s: float = Field(default=15.0, gt=0, le=60)
     music_path: str | None = None
+    generate_music: bool = False  # montage without music_path: generate a track at assembly
     endcard: bool = True
     endcard_s: float = Field(default=2.0, ge=0, le=6)
     partial_mode: Literal["skip", "slate"] = "skip"  # failed scenes in done_partial
@@ -121,6 +122,7 @@ class RunState(DomainModel):
     bible_history: list[ContinuityBible] = Field(default_factory=list)
     patches: list[ScenePatch] = Field(default_factory=list)
     final: Artifact | None = None
+    music: Artifact | None = None  # generated track (fal.audio), kept for re-assembly
     endcard: EndCardCopy | None = None
     product_reference: ProductReference | None = None
     budget: BudgetLedger

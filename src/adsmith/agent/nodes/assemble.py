@@ -9,8 +9,8 @@
    ``endcard_copy`` LLM proposes a FICTIONAL brand and tagline, flagged as a placeholder in the
    trace and the Production Pack (never a real brand: deterministic denylist + repair). Once
    chosen, the copy is kept in run state, so re-assembly after an edit shows the same brand.
-3. Concat; optional user-supplied music (looped, trimmed, faded out); then the duration is checked
-   with ffprobe against the expected total.
+3. Concat; music (a user-supplied track, else the run's generated one: agent/music.py) looped,
+   trimmed and faded out; then the duration is checked with ffprobe against the expected total.
 """
 
 from __future__ import annotations
@@ -97,7 +97,11 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     await asyncio.to_thread(work.mkdir, parents=True, exist_ok=True)
     lang = "ar" if state.brief.language is Language.AR else "en"
 
-    windows, beat_events = await _beat_cut(state, cfg.music_path, cfg.partial_mode, ctx.run_id)
+    # A user track wins; else the generated one (agent/music.py, in run state).
+    music_path = cfg.music_path or (
+        str(ctx.artifacts.resolve(state.music)) if state.music is not None else None
+    )
+    windows, beat_events = await _beat_cut(state, music_path, cfg.partial_mode, ctx.run_id)
     parts: list[Path] = []
     expected = 0.0
     slated: list[int] = []
@@ -169,9 +173,9 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
 
     out = ctx.artifacts.run_dir(ctx.run_id) / "final.mp4"
     video_only = work / "video_only.mp4"
-    await ffmpeg.concat(parts, video_only if cfg.music_path else out, work)
-    if cfg.music_path:
-        music = Path(cfg.music_path)
+    await ffmpeg.concat(parts, video_only if music_path else out, work)
+    if music_path:
+        music = Path(music_path)
         if await asyncio.to_thread(music.is_file):
             await ffmpeg.add_music(video_only, music, out, seconds=expected)
         else:

@@ -120,6 +120,20 @@ class FalVideoEndpoint(_Frozen):
         return self
 
 
+class FalAudioEndpoint(_Frozen):
+    """Text-to-music endpoint (STOP 2: a generated track for beat-cut montage assembly)."""
+
+    endpoint: str
+    usd_per_track: float = Field(ge=0)
+    track_s: float = Field(gt=0, le=600)
+    params: dict[str, int | float | str | bool] = Field(default_factory=dict)
+
+
+class FalAudioCatalog(_Frozen):
+    default: str
+    endpoints: dict[str, FalAudioEndpoint]
+
+
 class FalImageCatalog(_Frozen):
     default: str
     # Image + prompt → image endpoint for keyframes that show the product (locked reference).
@@ -138,6 +152,7 @@ class FalVideoCatalog(_Frozen):
 class FalCatalog(_Frozen):
     image: FalImageCatalog
     video: FalVideoCatalog
+    audio: FalAudioCatalog | None = None
 
 
 class ModelCatalog(_Frozen):
@@ -239,7 +254,11 @@ class Settings(BaseSettings):
     # assembly (M8)
     endcard_s: float = Field(default=2.0, ge=0, le=6)
     partial_mode: Literal["skip", "slate"] = "skip"
-    music_path: Path | None = None  # user-supplied only; nothing is bundled
+    music_path: Path | None = None  # user-supplied track (wins over a generated one)
+    # Montage runs without a user track get one generated at assembly (fal.audio, cached like
+    # any media). Hard cap per run on the music call; above it the ad is assembled without music.
+    generate_music: bool = True
+    music_max_usd: float = Field(default=0.15, ge=0)
     # Hard ceiling for ALL real fal spend on this machine (prepaid balance, no auto top-up).
     # Every paid call reserves against it in the account ledger before it is submitted.
     fal_balance_usd: float | None = Field(default=None, ge=0)

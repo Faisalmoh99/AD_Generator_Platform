@@ -19,9 +19,10 @@ from adsmith.storage import ArtifactStore, Storage
 if TYPE_CHECKING:
     from adsmith.agent.media import MediaGateway
     from adsmith.agent.scenes import SceneStageRunner
-    from adsmith.providers.media.base import VideoCapabilities
+    from adsmith.providers.media.base import MusicProvider, VideoCapabilities
     from adsmith.providers.media.chaos import ChaosPolicy
     from adsmith.providers.media.fal import FalQueue
+    from adsmith.providers.media.mock import MockMusicProvider
     from adsmith.storage.account import SpendAccount
 
 
@@ -49,6 +50,7 @@ class AgentRuntime:
     media_factory: Callable[[RunState], MediaGateway] | None = None  # tests / demos
     _account: SpendAccount | None = None
     _fal_queue: FalQueue | None = None
+    _mock_music: MockMusicProvider | None = None
 
     @classmethod
     def from_settings(
@@ -194,9 +196,26 @@ class AgentRuntime:
         from adsmith.providers.adapters.base import ADAPTERS  # noqa: PLC0415
         from adsmith.providers.media.fal import (  # noqa: PLC0415
             FalImageProvider,
-            FalQueue,
             FalVideoProvider,
         )
+
+        queue = self._queue()
+        return MediaGateway(
+            image=FalImageProvider(queue, img_ep),
+            video=FalVideoProvider(queue, vid_ep, video_capabilities(vid_ep), probe_video),
+            adapter=ADAPTERS[vid_ep.adapter],
+            reference=None if ref_ep is None else FalImageProvider(queue, ref_ep),
+            reference_prompt=self._reference_prompt,
+            composite=None if comp_ep is None else FalImageProvider(queue, comp_ep),
+            composite_prompt=self._composite_prompt,
+            relight_prompt=self._relight_prompt,
+            storage=self.storage,
+            chaos=chaos,
+            long_side=long_side,
+        )
+
+    def _queue(self) -> FalQueue:
+        from adsmith.providers.media.fal import FalQueue  # noqa: PLC0415
 
         s = self.settings
         if s.fal_key is None:
@@ -209,21 +228,26 @@ class AgentRuntime:
                 timeout_s=s.fal_timeout_s,
                 sleep=self.sleep,
             )
-        return MediaGateway(
-            image=FalImageProvider(self._fal_queue, img_ep),
-            video=FalVideoProvider(
-                self._fal_queue, vid_ep, video_capabilities(vid_ep), probe_video
-            ),
-            adapter=ADAPTERS[vid_ep.adapter],
-            reference=None if ref_ep is None else FalImageProvider(self._fal_queue, ref_ep),
-            reference_prompt=self._reference_prompt,
-            composite=None if comp_ep is None else FalImageProvider(self._fal_queue, comp_ep),
-            composite_prompt=self._composite_prompt,
-            relight_prompt=self._relight_prompt,
-            storage=self.storage,
-            chaos=chaos,
-            long_side=long_side,
-        )
+        return self._fal_queue
+
+    def music_provider(self, run: RunState) -> MusicProvider | None:
+        """The run's text-to-music provider (STOP 2), or None if the catalog has none. Mock media
+        (and tests with an injected media factory) get the deterministic mock track."""
+        audio = self.settings.catalog.fal.audio
+        if audio is None:
+            return None
+        ep = audio.endpoints[audio.default]
+        if run.config.media_provider == "fal" and self.media_factory is None:
+            from adsmith.providers.media.fal import FalMusicProvider  # noqa: PLC0415
+
+            return FalMusicProvider(self._queue(), ep)
+        from adsmith.providers.media.mock import MockMusicProvider  # noqa: PLC0415
+
+        if self._mock_music is None:
+            self._mock_music = MockMusicProvider(
+                usd_per_track=ep.usd_per_track, track_s=ep.track_s, sleep=self.sleep
+            )
+        return self._mock_music
 
     def scene_runner(self, run: RunState) -> SceneStageRunner:
         from adsmith.agent.qa import LLMCritic, MockCritic  # noqa: PLC0415

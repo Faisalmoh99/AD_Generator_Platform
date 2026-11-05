@@ -48,7 +48,7 @@ from adsmith.agent.recovery.errors import (
     PermanentProviderError,
     TransientProviderError,
 )
-from adsmith.config import FalImageEndpoint, FalVideoEndpoint
+from adsmith.config import FalAudioEndpoint, FalImageEndpoint, FalVideoEndpoint
 from adsmith.domain.generation import RemoteRequest
 from adsmith.providers.media.base import (
     ImageJob,
@@ -410,6 +410,39 @@ class FalVideoProvider:
             width=w,
             height=h,
             duration_s=dur,
+            remote_url=str(url),
+            meta={"request_id": handle.request_id},
+        )
+
+
+class FalMusicProvider:
+    """Text-to-music on fal (Lyria 2: no duration field, a fixed-length WAV per request)."""
+
+    name = "fal"
+
+    def __init__(self, queue: FalQueue, endpoint: FalAudioEndpoint) -> None:
+        self.queue, self.endpoint, self.model = queue, endpoint, endpoint.endpoint
+        self.usd_per_track, self.track_s = endpoint.usd_per_track, endpoint.track_s
+
+    async def generate_music(
+        self, prompt: str, seed: int, out_dir: Path, *, ref: str
+    ) -> MediaOutput:
+        payload: dict[str, Any] = {**self.endpoint.params, "prompt": prompt, "seed": seed}
+        est = self.usd_per_track
+        result, handle = await self.queue.run(self.model, payload, est_usd=est, ref=ref)
+        audio = result.get("audio")
+        url = audio.get("url") if isinstance(audio, dict) else audio
+        if not url:
+            self.queue.release(handle)
+            raise PermanentProviderError(f"fal {self.model}: no audio in result")
+        path = out_dir / f"music{_ext(str(url), '.wav')}"
+        await self.queue.download(str(url), path)
+        self.queue.settle(handle, est)
+        return MediaOutput(
+            path=path,
+            kind="audio",
+            cost_usd=est,
+            duration_s=self.track_s,
             remote_url=str(url),
             meta={"request_id": handle.request_id},
         )

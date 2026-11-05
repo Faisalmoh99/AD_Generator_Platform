@@ -89,6 +89,7 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         clip_candidates=settings.clip_candidates,
         product_reference=settings.product_reference,
         music_path=str(settings.music_path.resolve()) if settings.music_path else None,
+        generate_music=settings.generate_music and settings.music_path is None,
     )
 
 
@@ -228,6 +229,12 @@ class Orchestrator:
         stage = state.stage
         if stage in SCENE_STAGES:
             return await self._scene_step(state)
+        if stage is Stage.ASSEMBLE:
+            # Generated music (STOP 2): a provider step before the node, never a failure.
+            from adsmith.agent.music import ensure_music  # noqa: PLC0415
+
+            await ensure_music(self.rt, run_id)
+            state = self.rt.storage.runs.load(run_id)
         node = NODES[stage]
         lang = state.language
         self.rt.storage.events.append(

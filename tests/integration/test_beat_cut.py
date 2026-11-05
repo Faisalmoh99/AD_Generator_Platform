@@ -36,7 +36,7 @@ async def test_montage_cuts_land_on_the_beats(tmp_path: Path) -> None:
 
 
 async def test_without_music_the_planned_durations_are_used(tmp_path: Path) -> None:
-    h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    h = make_harness(fast_settings(tmp_path, generate_music=False), scenario="montage_en")
     run = h.orch.create_run(REQUEST, interactive=False)
     state = await h.orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE

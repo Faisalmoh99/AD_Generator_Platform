@@ -9,7 +9,7 @@ from pydantic import Field
 
 from adsmith.domain.base import DomainModel, utcnow
 
-CostCategory = Literal["llm", "image", "video"]
+CostCategory = Literal["llm", "image", "video", "audio"]
 USD_DECIMALS = 8  # same precision as LLMCallRecord.cost_usd, so ledger and trace always agree
 
 

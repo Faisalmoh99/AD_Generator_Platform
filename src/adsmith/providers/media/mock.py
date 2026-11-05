@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import wave
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from adsmith.agent.recovery.errors import (
@@ -324,4 +326,53 @@ class MockVideoProvider:
             width=job.width,
             height=job.height,
             duration_s=frames / FPS,
+        )
+
+
+MOCK_MUSIC_BPM = 120.0
+
+
+def write_click_track(path: Path, *, seconds: float, bpm: float = MOCK_MUSIC_BPM) -> Path:
+    """A steady kick-like pulse (decaying 60 Hz bursts on every beat, accented downbeats) under a
+    low pad: a deterministic stand-in for a generated track that beat detection can lock onto."""
+    sr = 22_050
+    t = np.arange(int(seconds * sr)) / sr
+    out = 0.05 * np.sin(2 * np.pi * 55.0 * t)
+    period = 60.0 / bpm
+    for k, start in enumerate(np.arange(0.0, seconds, period)):
+        i = int(start * sr)
+        n = min(int(0.12 * sr), out.size - i)
+        env = np.exp(-np.arange(n) / (0.025 * sr))
+        amp = 0.9 if k % 4 == 0 else 0.6
+        out[i : i + n] += amp * env * np.sin(2 * np.pi * 60.0 * np.arange(n) / sr)
+    pcm = (np.clip(out, -1, 1) * 32767).astype(np.int16)
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(sr)
+        w.writeframes(pcm.tobytes())
+    return path
+
+
+class MockMusicProvider:
+    name = "mock"
+    model = "mock-music"
+
+    def __init__(self, *, usd_per_track: float, track_s: float, sleep: Sleep) -> None:
+        self.usd_per_track, self.track_s, self._sleep = usd_per_track, track_s, sleep
+        self.calls = 0
+        self.fail_with: AgentError | None = None  # tests: make the next call fail
+
+    async def generate_music(
+        self, prompt: str, seed: int, out_dir: Path, *, ref: str
+    ) -> MediaOutput:
+        self.calls += 1
+        await self._sleep(0)
+        if self.fail_with is not None:
+            raise self.fail_with
+        path = await asyncio.to_thread(
+            write_click_track, out_dir / f"music_{seed}.wav", seconds=self.track_s
+        )
+        return MediaOutput(
+            path=path, kind="audio", cost_usd=self.usd_per_track, duration_s=self.track_s
         )
