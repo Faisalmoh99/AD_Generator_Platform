@@ -26,13 +26,16 @@ from adsmith.config import LLMNode
 from adsmith.domain.endcard import EndCardCopy, EndCardCopyDraft, real_brand_in
 from adsmith.domain.enums import Language, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.run import RunState
 from adsmith.media import ffmpeg
+from adsmith.media.beats import detect_beats, snap_cuts
 from adsmith.media.endcard import render_endcard, render_slate, style_from_palette
 from adsmith.providers.media.base import frame_size
 
 DURATION_TOLERANCE_S = 0.15
+BEAT_SLACK_S = 0.2
 _SLATE_TEXT = {"ar": "المشهد {n} غير متوفر", "en": "Scene {n} unavailable"}
 
 
@@ -94,13 +97,14 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     await asyncio.to_thread(work.mkdir, parents=True, exist_ok=True)
     lang = "ar" if state.brief.language is Language.AR else "en"
 
+    windows, beat_events = await _beat_cut(state, cfg.music_path, cfg.partial_mode, ctx.run_id)
     parts: list[Path] = []
     expected = 0.0
     slated: list[int] = []
     for s in scenes:
         if s.status is SceneStatus.APPROVED and s.clip is not None:
             seg = work / f"seg_{s.order}.mp4"
-            start, kept = s.kept_window
+            start, kept = windows.get(s.id, s.kept_window)
             await ffmpeg.normalise_clip(
                 ctx.artifacts.resolve(s.clip), seg, seconds=kept, width=w, height=h, start_s=start
             )
@@ -116,10 +120,10 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         else:
             continue
         parts.append(seg)
-        expected += s.duration_s
+        expected += windows.get(s.id, (0.0, s.duration_s))[1]
 
     deltas: list[Delta] = []
-    events: list[AgentEvent] = []
+    events: list[AgentEvent] = list(beat_events)
     calls: list[LLMCallRecord] = []
     copy: EndCardCopy | None = None
     if cfg.endcard and cfg.endcard_s > 0:
@@ -200,3 +204,47 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     events.insert(0, decision(ctx.run_id, Stage.ASSEMBLE, summary))
     deltas.append(SetFinal(final=final))
     return NodeResult(deltas=deltas, events=events, llm_calls=calls)
+
+
+async def _beat_cut(
+    state: RunState, music_path: str | None, partial_mode: str, run_id: str
+) -> tuple[dict[str, tuple[float, float]], list[AgentEvent]]:
+    """Montage + user music (PLAN_V2 item 6): shot boundaries snap to the nearest beat within
+    ±0.2 s, the hero shot starts on a downbeat where one is in reach, and the end card starts on a
+    beat. A shot's window may grow up to its rendered length (its start moves earlier if needed).
+    Without music, or for other formats, the planned windows are used unchanged."""
+    sb = state.storyboard
+    if music_path is None or sb is None or sb.format is not AdFormat.MONTAGE:
+        return {}, []
+    music = Path(music_path)
+    if not await asyncio.to_thread(music.is_file):
+        return {}, []
+    shots = [
+        s
+        for s in sb.scenes
+        if (s.status is SceneStatus.APPROVED and s.clip is not None)
+        or (s.status is SceneStatus.FAILED and partial_mode == "slate")
+    ]
+    if not shots:
+        return {}, []
+    grid = await detect_beats(music)
+    planned = [s.kept_window[1] for s in shots]
+    lo = [min(0.6, d) if s.clip else d for s, d in zip(shots, planned, strict=True)]
+    hi = [
+        (s.clip.duration_s or d) if s.clip is not None and s.use_window is not None else d
+        for s, d in zip(shots, planned, strict=True)
+    ]
+    hero = len(shots) - 1 if shots[-1].shows_product else None
+    new = snap_cuts(planned, grid, slack=BEAT_SLACK_S, hero_index=hero, min_s=lo, max_s=hi)
+    windows: dict[str, tuple[float, float]] = {}
+    for s, d in zip(shots, new, strict=True):
+        start, _ = s.kept_window
+        clip_s = s.clip.duration_s if s.clip is not None and s.clip.duration_s else d
+        windows[s.id] = (round(max(0.0, min(start, clip_s - d)), 3), d)
+    moved = sum(1 for a, b in zip(planned, new, strict=True) if abs(a - b) > 1e-3)
+    summary = (
+        f"Beat cut: {grid.bpm:g} bpm, {len(grid.beats)} beats; {moved} of {len(shots)} shot "
+        f"lengths adjusted (≤ ±{BEAT_SLACK_S:g}s per cut); footage {sum(planned):.2f}s → "
+        f"{sum(new):.2f}s"
+    )
+    return windows, [decision(run_id, Stage.ASSEMBLE, summary, bpm=grid.bpm, durations=list(new))]

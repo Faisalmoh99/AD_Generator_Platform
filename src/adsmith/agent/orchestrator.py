@@ -88,7 +88,7 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         partial_mode=settings.partial_mode,
         clip_candidates=settings.clip_candidates,
         product_reference=settings.product_reference,
-        music_path=str(settings.music_path) if settings.music_path else None,
+        music_path=str(settings.music_path.resolve()) if settings.music_path else None,
     )
 
 
