@@ -261,6 +261,9 @@ class LLMCritic:
             scene_bible=state.bible.prompt_block(scene.uses_bible_sections()),
             product_checklist=_product_checklist(state, scene),
             keyframe_prompt=scene.prompt.keyframe_prompt,
+            wardrobe_lexicon=self.ctx.settings.culture.prompt_block(state.brief)
+            if scene.shows_character
+            else "(no person in this shot)",
         )
         threshold = state.config.qa_threshold
 

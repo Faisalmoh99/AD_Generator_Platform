@@ -18,6 +18,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from adsmith.domain.culture import CultureLexicon
 from adsmith.domain.formats import FormatLibrary
 from adsmith.domain.vocabulary import VocabLibrary
 
@@ -277,6 +278,12 @@ class Settings(BaseSettings):
         """Shot vocabulary for montage shots (config/shot_vocabulary.toml, ADR-0018)."""
         with (self.config_dir / "shot_vocabulary.toml").open("rb") as fh:
             return VocabLibrary.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def culture(self) -> CultureLexicon:
+        """Cultural wardrobe lexicon (config/culture.toml, ADR-0019)."""
+        with (self.config_dir / "culture.toml").open("rb") as fh:
+            return CultureLexicon.model_validate(tomllib.load(fh))
 
     @cached_property
     def chaos_config(self) -> ChaosConfig:

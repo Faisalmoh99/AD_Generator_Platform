@@ -1,0 +1,30 @@
+# Cultural wardrobe lexicon (PLAN_V2 item 4, ADR-0019). Injected into the continuity bible
+# prompt, the prompt writer (shots with a person) and the keyframe gate; the lint patterns run on
+# the bible's character (→ schema repair). Evidence: the Step A bible's "mandarin collar + button
+# placket" produced a South Asian kurta (HANDOFF lesson 9).
+
+[wardrobe.saudi_male]
+label = "Saudi men's dress"
+# Applies when the brief is in Arabic or any of these appears in the request, audience or notes.
+applies_when = ["saudi", "gulf", "riyadh", "jeddah", "khaleeji", "thobe", "ghutra", "shemagh"]
+describe = [
+  "white Saudi thobe: stiff stand collar or classic shirt collar, concealed front placket with no visible buttons, long sleeves with plain cuffs (cufflinks optional), ankle length, clean pressed cotton",
+  "white ghutra or red-and-white shemagh laid flat over the head and held by a black agal; the cloth falls evenly over the shoulders or is folded back",
+]
+avoid = [
+  "kurta or kameez (mandarin collar with a visible button placket, hip or knee length): South Asian, not Saudi",
+  "Emirati kandura (collarless, with a long tassel at the chest)",
+  "Omani dishdasha (tassel and embroidered collar)",
+]
+
+[[wardrobe.saudi_male.lint]]
+pattern = "button placket|visible buttons|row of buttons|buttoned placket"
+message = "a Saudi thobe has a concealed placket with no visible buttons"
+
+[[wardrobe.saudi_male.lint]]
+pattern = "kurta|kameez|sherwani|mandarin collar|nehru collar"
+message = "that is South Asian; write 'white Saudi thobe with a stiff stand collar and a concealed placket'"
+
+[[wardrobe.saudi_male.lint]]
+pattern = "kandura|dishdasha|tassel"
+message = "that is an Emirati or Omani garment; the character wears a Saudi thobe"

@@ -34,11 +34,14 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
         brief=brief_block(state.brief),
         concept=concept_block(concept),
         storyboard=storyboard_block(state.storyboard),
+        wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief),
     )
+    culture, brief = ctx.settings.culture, state.brief
 
     def convert(d: ContinuityBibleDraft) -> ContinuityBible:
         # → schema repair with the exact problems
         problems = wordless_label_problems(d.product) + effect_feature_problems(d.product)
+        problems += culture.wardrobe_problems(brief, d.character)
         if problems:
             raise ValueError("; ".join(problems))
         return ContinuityBible(**d.model_dump(), version=version)

@@ -68,6 +68,9 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
             render_s=f"{render_s:g}",
             visible_s=f"{visible_s:g}",
             shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
+            wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief)
+            if scene.shows_character
+            else "(no person in this shot)",
         )
         return await ctx.llm.call_and_convert(
             LLMNode.PROMPT_WRITER,
