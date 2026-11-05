@@ -34,7 +34,8 @@
         "لم يُذكر اسم علامة تجارية"
       ],
       "normalized_request_en": "A 15-second cinematic ad for a luxury men's fragrance targeting young men aged 18–28.",
-      "requested_format": "narrative"
+      "requested_format": "narrative",
+      "physical_product": true
     }
   }
 ]

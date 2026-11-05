@@ -32,7 +32,8 @@
         "Aspect ratio not specified; using the configured default."
       ],
       "normalized_request_en": "A 15-second cinematic ad for a luxury men's perfume aimed at young men.",
-      "requested_format": "narrative"
+      "requested_format": "narrative",
+      "physical_product": true
     }
   }
 ]

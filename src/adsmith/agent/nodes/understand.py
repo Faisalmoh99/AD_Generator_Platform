@@ -65,7 +65,7 @@ async def understand(state: RunState, ctx: NodeContext) -> NodeResult:
 
     fmt, why = resolve_format(
         ctx.settings.formats,
-        requested=brief.requested_format,
+        requested=brief.requested_ad_format,
         requested_shots=brief.requested_shots,
         physical_product=brief.physical_product,
     )

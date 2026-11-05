@@ -11,6 +11,7 @@ from adsmith.domain.enums import Dialect, Language
 from adsmith.domain.formats import AdFormat
 
 AspectRatio = Literal["16:9", "9:16", "1:1"]
+RequestedFormat = Literal["none", "montage", "single_take", "narrative"]
 ShortText = Annotated[str, Field(min_length=1, max_length=200)]
 MediumText = Annotated[str, Field(min_length=1, max_length=600)]
 
@@ -38,13 +39,14 @@ class BriefDraft(DomainModel):
         default=None, ge=1, le=12,
         description="Only if the user explicitly asked for a number of shots/scenes; else null.",
     )  # fmt: skip
-    requested_format: AdFormat | None = Field(
-        default=None,
-        description="Only if the client named a format: one continuous shot → single_take; a "
-        "story with a character or scenes → narrative; fast cuts / montage → montage. Else null.",
+    # Required and non-nullable on purpose: Anthropic's structured output rejects the brief schema
+    # as "too complex" with two more optional/nullable fields (STOP 1, 400 on the first call).
+    requested_format: RequestedFormat = Field(
+        description="'none' unless the client named a format: one continuous shot → "
+        "single_take; a story with a character or scenes → narrative; fast cuts / montage → "
+        "montage.",
     )
     physical_product: bool = Field(
-        default=True,
         description="True for a physical product the camera can show (a bottle, a dish, a "
         "device); false for an app, a service, a place or an event.",
     )
@@ -75,9 +77,15 @@ class Brief(BriefDraft):
     id: str = Field(default_factory=lambda: new_id("brf"))
     raw_request: Annotated[str, Field(min_length=1, max_length=4000)]
     aspect_ratio: AspectRatio = "9:16"  # resolved: request value or configured default
-    # Resolved by code (domain/formats.py: resolve_format). Briefs stored before V2 load as
-    # narrative, which is exactly how they were planned.
+    # Defaults so briefs stored before V2 load (as narrative, which is how they were planned).
+    requested_format: RequestedFormat = "none"
+    physical_product: bool = True
+    # Resolved by code (domain/formats.py: resolve_format).
     format: AdFormat = AdFormat.NARRATIVE
+
+    @property
+    def requested_ad_format(self) -> AdFormat | None:
+        return None if self.requested_format == "none" else AdFormat(self.requested_format)
 
     @classmethod
     def from_draft(

@@ -703,3 +703,37 @@ played window for single takes and brief events like a spray). Re-judged S1 with
 S1 was accepted with the new human override (`adsmith accept`, logged as `HUMAN OVERRIDE` with the
 failing verdict kept, shown in the UI) and the ad reassembled with ffmpeg only.
 **Final:** `data/runs/run_01M6MAK00158YYA7JN2YBD0VSR/final.mp4`, 11 s, three shots + end card. 486 tests.
+
+## Step A: composite mode, bible patch, flag correction (2026-11-05)
+**Built:** composite product-reference mode (plain keyframe at scene scale, then Kontext multi swaps
+the reference in; ADR-0003 addendum 4); `patch_bible` for a run mid-edit; `correct_scene_flags`
+(human correction of false-positive flags without regeneration). **Run:** fork
+`run_01M6MCGVC2YFM2RHRCEWJFZZMP`, S1 as a hand/jawline close-up in composite mode, keyframe only
+(`docs/screenshots/stepA_s1_composite.png`), $0.17 fal. Parked at the approval gate and superseded
+by PLAN_V2: no clip generated for it.
+
+## PLAN_V2 items 1-4 + STOP 1 tooling (2026-11-05)
+**Built:**
+- Item 1, formats as data (`config/formats.toml`, ADR-0018): montage / single_take / narrative
+  grammars; one format per run resolved by code (`resolve_format`); `Brief.format`,
+  `Storyboard.format`; montage shots keep 1.0-1.5 s of a ≥ 3 s render; understand v4, ideate v5,
+  storyboard v6; `montage_en` scripted scenario; `max_total_attempts` 80.
+- Item 2, shot vocabulary (`config/shot_vocabulary.toml`, 16 entries): `Scene.vocab` in the spec;
+  flags set from the entry (no text-match upgrade for vocab scenes); person text in a person-free
+  entry is repaired; storyboard v7, prompt_writer v7, prompt_rewrite v7.
+- Item 3, identity routing (ADR-0019): per-shot none / direct / composite from the vocabulary;
+  the locked reference turns on by itself for montage; keyframe_reference v2 (macro re-frame),
+  keyframe_composite v2; identity + vocab in the keyframe attempt events.
+- Item 4, wardrobe lexicon (`config/culture.toml`): bible lint (→ repair), continuity v4,
+  prompt_writer v8, qa_keyframe v6. The Arabic fixture's own bible said "mandarin collar"; fixed.
+- STOP 1 tooling: `scripts/contact_sheet.py`, `scripts/decisions_report.py`,
+  `run_report.py --decisions`.
+- Fix found before spending: the run budget counted Anthropic calls against the fal wallet
+  headroom, so a $0.60 fal cap would have refused the stills. `BudgetLedger.media_limit_usd` now
+  holds the wallet cap (image + video only); `ADSMITH_BUDGET_USD` stays the total cap.
+
+**Deviations from PLAN_V2 (agreed at review):** one format per run instead of "≥ 2 montage
+concepts, the judge picks"; footage = requested length (end card on top); `fit` per endpoint →
+`avoid_on`; `prompt_rewrite` does not carry the wardrobe lexicon yet.
+
+**Tests:** 539 passed, 2 skipped (live). `make check` green at every commit.
