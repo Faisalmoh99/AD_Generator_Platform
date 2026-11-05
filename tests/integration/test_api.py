@@ -93,3 +93,35 @@ def test_events_stream_and_files_are_path_checked(tmp_path: Path) -> None:
         assert c.get(first_clip).headers["content-type"] == "video/mp4"
         assert c.get("/docs-media/..%2F..%2FREADME.md").status_code == 404
         assert c.get("/docs-media/nope.mp4").status_code == 404
+
+
+def test_pipeline_view_data_decisions_and_sse_resume(tmp_path: Path) -> None:
+    """The live pipeline view: who decides in each stage, per-event data for the swimlanes, the
+    plain-language decision log, and SSE resume after the last id the browser saw."""
+    with client(tmp_path) as c:
+        run_id = c.post("/api/runs", json={"request": AR, "auto": True, "chaos": True}).json()["id"]
+        v = wait(c, run_id, lambda v: v["stage"] in {"done", "done_partial"} and not v["busy"])
+        kinds = {p["stage"]: p["kind"] for p in v["pipeline"]}
+        assert kinds["select"] == "mixed" and kinds["assemble"] == "code"
+        assert kinds["ideate"] == "llm"
+        assert all(p["who"] for p in v["pipeline"])
+
+        def events(headers: dict[str, str] | None = None) -> list[dict[str, Any]]:
+            out = []
+            with c.stream("GET", f"/api/runs/{run_id}/events", headers=headers or {}) as resp:
+                for line in resp.iter_lines():
+                    if line.startswith("data: "):
+                        out.append(json.loads(line[len("data: ") :]))
+                    if out and out[-1]["type"] == "run_completed":
+                        break
+            return out
+
+        evs = events()
+        phases = {e["data"].get("phase") for e in evs if e["type"] == "attempt_started"}
+        assert {"keyframe", "clip"} <= phases
+        assert any(e["data"].get("gate") == "keyframe" for e in evs)
+        picks = [e["plain"] for e in evs if e["actor"] == "code" and e["stage"] == "select"]
+        assert picks and picks[0].startswith("Code picked concept")
+        assert any(e["actor"] == "llm" for e in evs)
+        resumed = events({"Last-Event-ID": str(evs[9]["seq"])})
+        assert resumed[0]["seq"] == evs[10]["seq"]  # no event lost or repeated

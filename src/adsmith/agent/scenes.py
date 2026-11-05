@@ -374,7 +374,7 @@ class SceneStageRunner:
                     run_id, stage, sc, EventType.ATTEMPT_STARTED,
                     f"Scene {sc.order}: best-of-{n} clips from the approved keyframe "
                     f"(reserved ${total:.3f} up front)",
-                    candidates=[a.id for a, _ in cands], est_usd=total,
+                    candidates=[a.id for a, _ in cands], est_usd=total, phase="clip",
                 )
             ]  # fmt: skip
 
@@ -887,6 +887,7 @@ class SceneStageRunner:
                 f"{how} (reserved ${prepared.est_usd:.3f})",
                 attempt_id=attempt.id,
                 est_usd=prepared.est_usd,
+                phase=attempt.phase.value,
             )
             ev.payload.update(keyframe_info)
             return [ev]
@@ -950,6 +951,7 @@ class SceneStageRunner:
                     f"Scene {sc.order} {attempt.phase} ready (${result.cost_usd:.3f}){note}",
                     attempt_id=attempt.id,
                     cost_usd=result.cost_usd,
+                    phase=attempt.phase.value,
                     injected_fault=result.injected_fault.value if result.injected_fault else None,
                 )
             ]

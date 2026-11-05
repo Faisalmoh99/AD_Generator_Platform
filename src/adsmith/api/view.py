@@ -23,6 +23,25 @@ PIPELINE: list[tuple[str, str, str]] = [
     ("qa", "QA", "الجودة"),
     ("assemble", "Assembly", "التجميع"),
 ]
+# Who decides inside each stage (the run-level graph's LLM-vs-code marker). The transition between
+# stages is always code (agent/transitions.py).
+STAGE_KIND: dict[str, tuple[str, str]] = {
+    "understand": ("llm", "LLM reads the request · code resolves the format"),
+    "ideate": ("llm", "LLM writes 3 concepts · code checks they differ"),
+    "select": ("mixed", "LLM scores · code weights and picks"),
+    "storyboard": ("llm", "LLM picks shots · code validates the grammar"),
+    "continuity": ("llm", "LLM writes the bible · code lints wardrobe"),
+    "prompt": ("llm", "LLM writes prompts · code lints them"),
+    "keyframe": ("mixed", "image model · LLM vision gate · code decides pass"),
+    "generate": ("code", "video model · code picks takes and windows"),
+    "qa": ("mixed", "LLM vision critic · code decides pass"),
+    "assemble": ("code", "ffmpeg · code cuts to the beat"),
+}
+# Payload keys the UI's pipeline view reads (everything else stays server-side).
+_DATA_KEYS = (
+    "phase", "gate", "score", "strategy", "from_vocab", "to_vocab", "winner", "cost_usd",
+    "est_usd", "identity", "vocab", "bpm", "kind", "node", "format", "saved_usd",
+)  # fmt: skip
 _GATE_POSITION = {
     Stage.AWAITING_CONCEPT_CHOICE: "select",
     Stage.AWAITING_STORYBOARD_APPROVAL: "keyframe",
@@ -57,6 +76,13 @@ def event_json(e: AgentEvent) -> dict[str, Any]:
             f"llm {p.get('node')} · {str(p.get('requested_model', '')).replace('claude-', '')} · "
             f"${float(str(p.get('cost_usd', 0))):.4f}"
         )
+    data: dict[str, Any] = {k: p[k] for k in _DATA_KEYS if k in p and p[k] is not None}
+    cands = p.get("candidates")
+    if isinstance(cands, int):
+        data["candidates"] = cands
+    elif isinstance(cands, list):
+        data["candidates"] = len(cands)
+    actor, plain = decision_line(e)
     return {
         "seq": e.seq,
         "ts": e.ts.isoformat() if hasattr(e, "ts") and e.ts else None,
@@ -66,7 +92,50 @@ def event_json(e: AgentEvent) -> dict[str, Any]:
         "scene_id": e.scene_id,
         "summary": summary,
         "tags": tags,
+        "data": data,
+        "actor": actor,
+        "plain": plain,
     }
+
+
+def decision_line(e: AgentEvent) -> tuple[str | None, str | None]:  # noqa: PLR0911
+    """(who decided, the decision in plain language) for the UI's decision log, or (None, None)
+    for events that are not decisions."""
+    p, summary = e.payload, _ABS_PATH.sub(r"\1", e.summary)
+    if e.type is EventType.DECISION and e.stage is Stage.SELECT and "scores" in p:
+        scores = p["scores"] if isinstance(p["scores"], list) else []
+        rec = p.get("recommended")
+        best = next(
+            (s for s in scores if isinstance(s, dict) and s.get("concept_number") == rec), None
+        )
+        score = f"{float(str(best['weighted'])):.2f}" if best and "weighted" in best else "?"
+        verb = "picked" if summary.startswith("Selected") else "recommends"
+        return "code", (
+            f"Code {verb} concept {rec}: highest weighted score {score} "
+            "(the LLM scored six criteria, code weighted them)"
+        )
+    if e.type is EventType.DECISION and "format" in p:
+        return "code", f"Code chose the {p['format']} format: {p.get('format_why', '')}"
+    if p.get("strategy") == "vocab_fallback":
+        return "code", (
+            f"Code swapped a failing shot from {p.get('from_vocab')} to its vocabulary fallback "
+            f"{p.get('to_vocab')} (gate rejected it on every try)"
+        )
+    if e.type is EventType.DECISION and "headroom_usd" in p:
+        return "code", summary.replace(" is a key shot:", ": key shot,")
+    if e.type is EventType.SCENE_STATUS and "winner" in p:
+        return "code", f"Code kept take {p['winner']} of the best-of-N (score {p.get('score')})"
+    if e.type is EventType.DECISION and "bpm" in p:
+        return "code", summary
+    if e.type is EventType.DECISION and summary.startswith("Music"):
+        return "code", summary
+    if e.type is EventType.DECISION and e.stage in {Stage.IDEATE, Stage.STORYBOARD}:
+        return "llm", summary
+    if e.type is EventType.DECISION and summary.startswith(("End card", "Duration check")):
+        return "code", summary
+    if e.type is EventType.DECISION and "Scene" in summary and "edited" in summary:
+        return "human", summary
+    return None, None
 
 
 def _scores(events: list[AgentEvent]) -> tuple[dict[int, dict[str, Any]], int | None]:
@@ -181,6 +250,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
                     "qa": sc.qa.score if sc.qa else None,
                     "failure": sc.failure.reason_user if sc.failure else None,
                     "camera": sc.shot.camera_movement.value,
+                    "vocab": sc.vocab,
                     "shot": sc.shot.shot_type.value,
                     "time_of_day": sc.shot.time_of_day.value,
                     "shows_character": sc.shows_character,
@@ -199,6 +269,8 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
                 "stage": key,
                 "en": en,
                 "ar": ar,
+                "kind": STAGE_KIND[key][0],
+                "who": STAGE_KIND[key][1],
                 "state": "done" if i < current else "active" if i == current else "todo",
             }
             for i, (key, en, ar) in enumerate(PIPELINE)
@@ -235,6 +307,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
             "by_category": {k: round(v, 4) for k, v in b.by_category.items()},
             "simulated": state.config.media_provider == "mock",
         },
+        "gates": {"concept": state.config.interactive, "storyboard": state.config.interactive},
         "busy": stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}
         and stage not in _GATE_POSITION,
     }

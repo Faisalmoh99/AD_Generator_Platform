@@ -243,9 +243,9 @@
 | `providers/adapters/base.py` | محوّلات prompt | ScenePrompt إلى payload كل نموذج (مدة، negative…) | باقي الكود لا يعرف الفروقات بين النماذج |
 | `src/adsmith/media/` | معالجة وسائط حتمية | ffmpeg، إطارات + peak window، beats، crop، endcard | بلا نماذج، كلها قابلة للاختبار |
 | `src/adsmith/storage/` | التخزين | `db.py` (SQLite WAL)، `repo.py` (snapshots + update ذري)، `events.py` (seq)، `artifacts.py` (CAS)، `cache.py`، `account.py` (المحفظة) | durability + resume + SSE |
-| `src/adsmith/api/` | الواجهة | FastAPI + SSE + صفحة static (vanilla JS) | نفس الأوامر بواجهة ويب |
+| `src/adsmith/api/` | الواجهة | FastAPI + SSE + صفحة static (vanilla JS + SVG): رسم الـ state machine حياً (LLM مقابل code لكل مرحلة)، swimlane لكل مشهد بالحلقات (retry، rewrite، fallback)، خط حرق الميزانية، وسجل قرارات بلغة بسيطة | نفس الأوامر بواجهة ويب، وتُظهر "العقل" وهو يعمل |
 | `src/adsmith/cli/` | سطر الأوامر | Typer + Rich؛ `demo.py` (عرض بلا مفاتيح، فيه SIGKILL + resume) | الواجهة الأساسية |
-| `tests/` | الاختبارات | 46 ملفاً: `unit/` و `integration/`، helpers، fixtures | 579 ناجحة، و2 live متخطاة |
+| `tests/` | الاختبارات | 46 ملفاً: `unit/` و `integration/`، helpers، fixtures | 584 ناجحة، و2 live متخطاة |
 | `scripts/` | أدوات المطور | contact_sheet، decisions_report، run_report، fal_scene، qa_calibrate، gate_recalibrate، keyframe_ab، ui_screenshots… | تشغيل جزئي، معايرة بلا صرف، تقارير |
 | `docs/adr/` | سجل القرارات | 21 ADR (Context/Decision/Alternatives/Consequences) | لماذا الأشياء كما هي |
 | `docs/PLAN.md`، `PLAN_V2.md` | الخطة | المعمارية، ثم صيغة المونتاج | |
@@ -663,7 +663,7 @@ ADR-0007، قياسات حقيقية:
 commit، و ADR لكل قرار. وأستطيع شرح وتعديل كل جزء، وهذا الدليل دليلي على ذلك.
 
 **39. كيف تتأكد أن الكود الذي كتبه AI صحيح؟**
-- 579 اختباراً.
+- 584 اختباراً.
 - mypy strict و ruff.
 - كل مسار تعافٍ له اختبار.
 - كل run حقيقي يُراجع بعين بشرية مع contact sheet وتقرير قرارات.
@@ -698,7 +698,7 @@ validation error. في v1 كان أقصى تشابه 20%. والحكم يعاق�
 ## (ح) أرقام للحفظ
 
 **الجودة والكود**
-- **الاختبارات:** 579 ناجحة و2 متخطاة (live)، في 46 ملفاً. `make check` = ruff + ruff format + mypy
+- **الاختبارات:** 584 ناجحة و2 متخطاة (live)، في 46 ملفاً. `make check` = ruff + ruff format + mypy
   --strict + pytest، حوالي 90 ث.
 - **قرارات موثقة:** 21 ADR. وفي `prompts/` 19 قالباً.
 - **الحدود الافتراضية:**

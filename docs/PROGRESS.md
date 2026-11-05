@@ -847,3 +847,27 @@ audio artifact already in the CAS; `scripts/reassemble_v2_with_music.py` re-asse
 montage v1's Lyria track (wallet ceiling = settled total, so no paid call was possible; ledger
 unchanged at $18.158). Same clips and peak windows; beat cut 130 bpm, 7 of 7 cuts snapped; 12.54 s.
 `docs/media/montage_v2.mp4` (the silent one is `montage_v2_silent.mp4`).
+
+## Interview guide + studio redesign (2026-11-05)
+**Interview guide:** `docs/INTERVIEW_GUIDE.md` (Arabic, technical terms in English): the system in
+1 and 5 minutes, one request end to end with files and functions (LLM vs code at each step), every
+folder, every tool choice with alternatives, recovery examples from real runs, honest weaknesses,
+44 Q&A, key numbers.
+**Studio redesign** (`api/static/`): a restrained production tool. Neutral greys, one amber accent,
+IBM Plex Sans + Plex Sans Arabic + Plex Mono, a 4 px grid, no gradients, glow or blur. New live
+pipeline view from the SSE stream:
+- the run state machine as an SVG graph: the current stage lights up, completed stages fill, each
+  node is marked LLM / LLM · CODE / CODE (`view.STAGE_KIND`), the human gates and the qa → generate
+  loop are drawn;
+- a swimlane per scene: keyframe → gate → clip → QA → approved/failed, with retries, policy
+  rewrites, QA regenerations and vocabulary fallbacks drawn as loops in real time, cache hits
+  dashed, reasons on hover;
+- a budget burn line and a decision log in plain language (`view.decision_line`: "Code picked
+  concept 1: highest weighted score 8.40 …").
+Backend: events carry `phase` and a whitelisted `data` payload plus `actor`/`plain`; SSE resumes
+from the `Last-Event-ID` header. The montage scenario gained edit fixtures (`edit_parser`,
+`conflict_check`). Every existing feature kept (composer, gates, concepts, product reference,
+board with hover clips, edits + blast radius, retry, final + pack, trace filters, gallery).
+Verified with `scripts/ui_studio_review.py` (Playwright, installed Chrome, no console errors):
+`docs/screenshots/ui/01_landing … 11_laptop.png`.
+**Tests:** 584 passed, 2 skipped.

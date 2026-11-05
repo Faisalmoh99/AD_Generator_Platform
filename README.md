@@ -22,7 +22,7 @@ Pro on fal.ai for media).
 ```bash
 make setup        # uv sync, Python 3.12
 make demo         # ~20 s: chaos run with recoveries → Arabic end card → an edit → kill + resume
-uv run adsmith serve   # web studio at http://127.0.0.1:8000
+uv run adsmith serve   # web studio at http://127.0.0.1:8000 (live pipeline view: docs/screenshots/ui/)
 ```
 
 `make demo` runs the Arabic perfume request with **Chaos Mode** on: injected transient errors,

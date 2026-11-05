@@ -4,19 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Adsmith Studio</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23e2b059'/%3E%3Ctext x='32' y='45' font-family='Georgia' font-size='38' text-anchor='middle' fill='%231b140a'%3EA%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23161719'/%3E%3Crect x='4' y='4' width='8' height='8' rx='1' fill='%23e3a33f'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <div class="grain" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="brand">
-      <span class="mark">A</span>
-      <div>
-        <div class="wordmark">Adsmith</div>
-        <div class="tag">AI ad studio · Arabic &amp; English</div>
-      </div>
-    </div>
+    <div class="brand"><span class="mark" aria-hidden="true"></span><span class="wordmark">Adsmith</span><span class="sep">/</span><span class="tag">ad production agent</span></div>
     <nav class="tabs">
       <button class="tab active" data-view="studio">Studio</button>
       <button class="tab" data-view="gallery">Real runs</button>
@@ -29,14 +25,13 @@
 
   <div class="layout">
     <main id="studio" class="view">
-      <section class="composer card">
-        <h1 class="hero">Describe your ad.</h1>
-        <p class="sub">The agent writes three concepts, storyboards the winner, generates keyframes and clips, checks them, recovers from failures and assembles the ad.</p>
-        <textarea id="request" dir="auto" rows="2" placeholder="سوّ لي إعلان ١٥ ثانية لعطر رجالي فاخر…"></textarea>
+      <section class="composer">
+        <div class="section-label">New run</div>
+        <textarea id="request" dir="auto" rows="2" placeholder="سوّ لي إعلان ١٢ ثانية لعطر رجالي فاخر…"></textarea>
         <div class="examples" id="examples"></div>
         <div class="composer-row">
-          <label class="switch"><input type="checkbox" id="auto" checked><span></span>Agent picks the concept</label>
-          <label class="switch chaos"><input type="checkbox" id="chaos"><span></span>Chaos mode <em>inject faults</em></label>
+          <label class="check"><input type="checkbox" id="auto" checked><span class="box"></span>Agent picks the concept</label>
+          <label class="check"><input type="checkbox" id="chaos"><span class="box"></span>Chaos mode <em>inject faults</em></label>
           <button id="go" class="btn primary">Generate ad</button>
         </div>
       </section>
@@ -45,13 +40,27 @@
 
       <section id="run" class="run hidden">
         <div class="run-head">
-          <div>
-            <div class="eyebrow">Run</div>
+          <div class="run-title">
+            <div class="section-label">Run <span class="mono" id="run-id"></span></div>
             <div class="run-request" id="run-request" dir="auto"></div>
           </div>
           <div class="run-meta" id="run-meta"></div>
         </div>
-        <ol class="pipeline" id="pipeline"></ol>
+
+        <div class="block">
+          <div class="block-head">
+            <h2>Pipeline</h2>
+            <div class="legend">
+              <span><i class="k llm"></i>LLM reasons</span><span><i class="k mixed"></i>LLM + code decides</span><span><i class="k code"></i>code / media</span>
+            </div>
+          </div>
+          <div class="graph-wrap"><svg id="graph" class="graph" viewBox="0 0 1000 112" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Run state machine"></svg></div>
+          <div class="lanes-head">
+            <span class="section-label">Scenes</span>
+            <span class="lane-legend"><span><i class="g lg-kf"></i>keyframe</span><span><i class="g lg-dia"></i>gate</span><span><i class="g lg-clip"></i>clip</span><span><i class="g lg-dia lg-fill"></i>QA</span><span><i class="g lg-loop"></i>retry · rewrite · fallback</span></span>
+          </div>
+          <div class="lanes-wrap" id="lanes-wrap"><svg id="lanes" class="lanes" role="img" aria-label="Scene swimlanes"></svg><div class="lanes-empty" id="lanes-empty">Scenes appear after the storyboard.</div></div>
+        </div>
 
         <div id="concepts-wrap" class="block hidden">
           <div class="block-head"><h2>Concepts</h2><span class="hint" id="concepts-hint"></span></div>
@@ -62,7 +71,7 @@
         <div id="board-wrap" class="block hidden">
           <div class="block-head">
             <h2>Storyboard</h2>
-            <div class="legend">
+            <div class="legend status-legend">
               <span class="chip s-pending">pending</span><span class="chip s-generating">generating</span>
               <span class="chip s-qa_review">QA</span><span class="chip s-approved">approved</span>
               <span class="chip s-failed">failed</span><span class="chip s-stale">stale</span>
@@ -99,8 +108,9 @@
 
     <main id="gallery" class="view hidden">
       <section class="gallery-head">
-        <h1 class="hero">Real runs</h1>
-        <p class="sub">Generated with real models on fal.ai (FLUX keyframes, LTX-2.3 and Kling v3 Pro clips), judged by the vision critic. What worked, what failed, and what the critic missed.</p>
+        <div class="section-label">Real runs</div>
+        <h1>Made with real models</h1>
+        <p class="sub">Generated on fal.ai (FLUX and Kontext keyframes, LTX-2.3 and Kling v3 clips, Lyria music), judged by the vision critic. What worked, what failed, and what the critic missed.</p>
       </section>
       <div class="gallery" id="gallery-grid"></div>
     </main>
@@ -108,10 +118,15 @@
     <aside class="panel">
       <div class="panel-section">
         <div class="panel-title">Budget</div>
-        <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
         <div class="meter-text" id="meter-text">—</div>
-        <div class="meter-note" id="meter-note"></div>
+        <svg id="burn" class="burn" viewBox="0 0 300 84" preserveAspectRatio="none" role="img" aria-label="Budget burn"></svg>
+        <div class="meter"><div class="meter-fill" id="meter-fill"></div></div>
         <div class="meter-cats" id="meter-cats"></div>
+        <div class="meter-note" id="meter-note"></div>
+      </div>
+      <div class="panel-section decisions-section">
+        <div class="panel-title">Decisions</div>
+        <ol class="decisions" id="decisions"><li class="empty">Who decided what, in plain words.</li></ol>
       </div>
       <div class="panel-section trace-section">
         <div class="panel-title"><span class="live-dot" id="live-dot"></span>Agent trace</div>
@@ -126,6 +141,7 @@
       </div>
     </aside>
   </div>
+  <div class="tip hidden" id="tip" role="tooltip"></div>
   <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,53 @@
+[
+  {
+    "when": "خل المشهد الثاني أبطأ",
+    "output": {
+      "language": "ar",
+      "targets": [
+        {
+          "kind": "ordinal",
+          "value": "الثاني"
+        }
+      ],
+      "shot": {},
+      "motion_change": "slower, gentler motion: the water drop falls and bursts into its crown in deeper slow motion",
+      "confidence": 0.92
+    }
+  },
+  {
+    "when": "make scene 3 at night",
+    "output": {
+      "language": "en",
+      "targets": [
+        {
+          "kind": "ordinal",
+          "value": "3"
+        }
+      ],
+      "shot": {
+        "time_of_day": "night",
+        "lighting": "Cool moonlight from camera-right as a thin rim on the glass, deep blue-black shadows, everything else in darkness"
+      },
+      "confidence": 0.9
+    }
+  },
+  {
+    "when": "غيّر لبسه لثوب أسود",
+    "output": {
+      "language": "ar",
+      "targets": [],
+      "bible_changes": {
+        "character.wardrobe": "Crisp black full-length Saudi thobe with a mandarin collar and plain buttoned cuffs; White ghutra folded neatly on the head, held by a black agal; Brown leather sandals or closed formal slip-on shoes; Slim dark-brown leather watch strap on the left wrist"
+      },
+      "confidence": 0.9
+    }
+  },
+  {
+    "output": {
+      "language": "ar",
+      "targets": [],
+      "confidence": 0.3,
+      "clarification_needed": "أي مشهد تقصد، وش التعديل اللي تبيه بالضبط؟"
+    }
+  }
+]

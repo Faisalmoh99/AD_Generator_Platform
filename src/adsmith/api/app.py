@@ -28,7 +28,7 @@ from collections.abc import AsyncIterator, Coroutine
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -181,11 +181,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
         return {"ok": "retrying"}
 
     @app.get("/api/runs/{run_id}/events")
-    async def events(run_id: str, after: int = 0) -> StreamingResponse:
+    async def events(
+        run_id: str,
+        after: int = 0,
+        last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+    ) -> StreamingResponse:
         load(run_id)
+        # A reconnecting EventSource sends the last ``id:`` it saw; seq is gap-free, so resuming
+        # after it loses and repeats nothing.
+        resume = int(last_event_id) if last_event_id and last_event_id.isdigit() else 0
 
         async def stream() -> AsyncIterator[str]:
-            seq = after
+            seq = max(after, resume)
             idle = 0
             while True:
                 batch = rt.storage.events.tail(run_id, after_seq=seq, limit=500)
