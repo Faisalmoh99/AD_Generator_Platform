@@ -37,6 +37,7 @@ from pydantic import JsonValue
 from adsmith.agent.context import NodeContext, reference_enabled, render_window
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.media import GatewayResult, MediaGateway, PreparedJob
+from adsmith.agent.nodes.prompt import write_scene_prompt
 from adsmith.agent.nodes.rewrite import ReasonKind, rewrite_prompt
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AccountLockedError, AgentError, ContentPolicyError
@@ -506,7 +507,7 @@ class SceneStageRunner:
         self._update(run_id, decide, f"scene {scene.order} best-of-{n} decided")
 
     # ------------------------------------------------------------------------ keyframe gate
-    async def _keyframe_gate(
+    async def _keyframe_gate(  # noqa: PLR0911
         self, run_id: str, scene_id: str, stage: Stage
     ) -> Literal["approved", "retry", "stop"]:
         state = self.storage.runs.load(run_id)
@@ -570,6 +571,11 @@ class SceneStageRunner:
 
         reasons = "; ".join(verdict.fail_reasons)
         issues = "; ".join(f"{i.category}: {i.observation}" for i in verdict.issues)
+        swap = fallback_for(self.node_ctx.settings, state, scene)
+        if rejected + 1 >= max_tries and swap is not None:
+            return await self._fall_back(
+                run_id, stage, scene, swap, verdict, calls, kf_att, rejected + 1
+            )
         if rejected + 1 >= max_tries:
 
             def give_up(s: RunState) -> list[AgentEvent]:
@@ -636,6 +642,82 @@ class SceneStageRunner:
         ) + (f"\nHint: {verdict.revised_prompt_hint}" if verdict.revised_prompt_hint else "")
         if not await self._revise(run_id, stage, scene_id, "keyframe_feedback", detail):
             return "stop"
+        return "retry"
+
+    async def _fall_back(
+        self,
+        run_id: str,
+        stage: Stage,
+        scene: Scene,
+        target: str,
+        verdict: QAVerdict,
+        calls: Sequence[LLMCallRecord],
+        kf_att: GenerationAttempt | None,
+        rejections: int,
+    ) -> Literal["retry", "stop"]:
+        """Vocabulary fallback (STOP 2 rule): a shot whose keyframe failed the gate on every try
+        is swapped by the storyboard to its entry's ``fallback`` (once per shot), instead of
+        failing or being re-rolled by hand. The scene gets a new version with the fallback's
+        spec and flags and a fresh prompt; its keyframe tries start again. Logged as a decision.
+        """
+        vocab = self.node_ctx.settings.vocabulary
+        old, entry = scene.vocab, vocab.shots[target]
+        shot = scene.shot.model_copy(
+            update={
+                "shot_type": entry.shot_type,
+                "camera_movement": entry.camera,
+                "speed": entry.speed,
+                "lighting": entry.lighting,
+                "subject_action": entry.motion,
+                "composition": entry.keyframe_hint,
+            }
+        )
+        candidate = scene.model_copy(
+            update={
+                "vocab": target,
+                "shot": shot,
+                "description": entry.label,
+                "shows_character": entry.shows_person,
+                "shows_product": entry.needs_product,
+            }
+        )
+        state = self.storage.runs.load(run_id)
+        try:
+            res = await write_scene_prompt(state, self.node_ctx, candidate)
+        except AgentError as exc:
+            self._fail_scene(
+                run_id, stage, scene.id, exc.kind, f"fallback prompt: {exc.message}",
+                [*calls, *exc.llm_calls],
+            )  # fmt: skip
+            return "stop"
+        reasons = "; ".join(verdict.fail_reasons)
+
+        def swap(s: RunState) -> list[AgentEvent]:
+            sc = self._same_version(s, scene)
+            if kf_att is not None:
+                att = self._attempt(sc, kf_att.id)
+                att.qa_score, att.qa_passed = verdict.score, verdict.passed
+            events = self._book(s, [*calls, *res.calls], stage, sc)
+            sc.reject_keyframe(verdict)
+            sc.bump_version(f"fallback: {old} → {target} (keyframe rejected {rejections}×)")
+            sc.vocab, sc.shot, sc.description = target, shot, entry.label
+            sc.shows_character, sc.shows_product = entry.shows_person, entry.needs_product
+            sc.set_prompt(res.value)
+            events.append(
+                _ev(
+                    run_id, stage, sc, EventType.DECISION,
+                    f"Scene {sc.order}: keyframe rejected {rejections}× as {old} ({reasons}); "
+                    f"the storyboard swapped the shot to its vocabulary fallback {target} "
+                    f"(v{sc.version}). Keyframe tries start again.",
+                    strategy="vocab_fallback", from_vocab=old, to_vocab=target,
+                    version=sc.version,
+                )
+            )  # fmt: skip
+            return events
+
+        if not self._update(run_id, swap, f"scene {scene.order} fallback to {target}"):
+            return "stop"
+        self._evict_keyframe(scene)
         return "retry"
 
     def _evict_keyframe(self, scene: Scene) -> None:
@@ -1348,6 +1430,30 @@ class SceneStageRunner:
 
     def _scratch(self, run_id: str) -> Path:
         return self.storage.artifacts.scratch_dir(run_id)
+
+
+def fallback_for(settings: Settings, state: RunState, scene: Scene) -> str | None:
+    """The vocabulary entry a failing shot falls back to, or None. Once per shot (a shot
+    that already fell back fails as before). Follows the fallback chain past entries other shots
+    already use, and past person shots when another shot already shows a person (the montage
+    allows one), so the swap keeps the board varied and within its grammar."""
+    vocab = settings.vocabulary
+    entry = vocab.get(scene.vocab)
+    if entry is None or any(h.reason.startswith("fallback:") for h in scene.history):
+        return None
+    assert state.storyboard is not None
+    others = [s for s in state.storyboard.scenes if s.id != scene.id]
+    used = {s.vocab for s in others}
+    person_taken = any(s.shows_character for s in others)
+    seen = {scene.vocab}
+    name = entry.fallback
+    while name not in seen:
+        cand = vocab.shots[name]
+        if name not in used and not (cand.shows_person and person_taken):
+            return name
+        seen.add(name)
+        name = cand.fallback
+    return None
 
 
 def identity_for(settings: Settings, scene: Scene) -> tuple[IdentityMode, str]:

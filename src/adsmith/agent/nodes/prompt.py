@@ -48,38 +48,12 @@ def _neighbours(sb: Storyboard, scene: Scene) -> str:
 
 
 async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
-    assert state.brief and state.concepts and state.storyboard and state.bible
-    concept = state.concepts.selected
-    assert concept is not None
-    sb, bible = state.storyboard, state.bible
+    assert state.storyboard is not None
+    sb = state.storyboard
     todo = [s for s in sb.scenes if s.prompt is None and s.failure is None]
-    template = ctx.prompts.get("prompt_writer")
 
     async def write(scene: Scene) -> StructuredResult[ScenePrompt]:
-        render_s, visible_s = render_window(ctx.settings, state, scene.duration_s)
-        rendered = template.render(
-            bible=bible.prompt_block(),
-            concept=concept_block(concept),
-            storyboard=storyboard_block(sb),
-            aspect_ratio=state.brief.aspect_ratio if state.brief else "9:16",
-            scene=scene_block(scene),
-            neighbours=_neighbours(sb, scene),
-            sections=", ".join(sorted(s.value for s in scene.uses_bible_sections())),
-            scene_bible=bible.prompt_block(scene.uses_bible_sections()),
-            render_s=f"{render_s:g}",
-            visible_s=f"{visible_s:g}",
-            shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
-            montage=sb.format is AdFormat.MONTAGE,
-            wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief)
-            if scene.shows_character
-            else "(no person in this shot)",
-        )
-        return await ctx.llm.call_and_convert(
-            LLMNode.PROMPT_WRITER,
-            rendered,
-            ScenePromptDraft,
-            _to_prompt(template.template_id, bible, scene),
-        )
+        return await write_scene_prompt(state, ctx, scene)
 
     outcomes: list[StructuredResult[ScenePrompt] | BaseException] = []
     if todo:
@@ -118,6 +92,42 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
         summary += f"; {len(failures)} failed and were isolated"
     return NodeResult(
         deltas=deltas, events=[decision(ctx.run_id, Stage.PROMPT, summary)], llm_calls=calls
+    )
+
+
+async def write_scene_prompt(
+    state: RunState, ctx: NodeContext, scene: Scene
+) -> StructuredResult[ScenePrompt]:
+    """One scene's prompt (also used by the scene runner when a shot falls back to another
+    vocabulary entry mid-generation). ``scene`` may be a candidate copy not yet in ``state``."""
+    assert state.brief and state.concepts and state.storyboard and state.bible
+    concept = state.concepts.selected
+    assert concept is not None
+    sb, bible = state.storyboard, state.bible
+    template = ctx.prompts.get("prompt_writer")
+    render_s, visible_s = render_window(ctx.settings, state, scene.duration_s)
+    rendered = template.render(
+        bible=bible.prompt_block(),
+        concept=concept_block(concept),
+        storyboard=storyboard_block(sb),
+        aspect_ratio=state.brief.aspect_ratio,
+        scene=scene_block(scene),
+        neighbours=_neighbours(sb, scene),
+        sections=", ".join(sorted(s.value for s in scene.uses_bible_sections())),
+        scene_bible=bible.prompt_block(scene.uses_bible_sections()),
+        render_s=f"{render_s:g}",
+        visible_s=f"{visible_s:g}",
+        shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
+        montage=sb.format is AdFormat.MONTAGE,
+        wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief)
+        if scene.shows_character
+        else "(no person in this shot)",
+    )
+    return await ctx.llm.call_and_convert(
+        LLMNode.PROMPT_WRITER,
+        rendered,
+        ScenePromptDraft,
+        _to_prompt(template.template_id, bible, scene),
     )
 
 

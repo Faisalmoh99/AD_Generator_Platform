@@ -111,6 +111,20 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
                 out.append(f"      [{e.level}] {e.summary[:260]}")
             elif e.type is EventType.RECOVERY and "revision" in e.summary.lower():
                 out.append(f"      [rewrite] {e.summary[:160]}")
+        clips = [
+            a for a in sc.attempts if a.phase is ScenePhase.CLIP and a.scene_version == sc.version
+        ]
+        for a in clips:
+            res = {True: "PASS", False: "FAIL", None: "-"}[a.qa_passed]
+            score = f"{a.qa_score:.2f}" if a.qa_score is not None else "-"
+            out.append(f"      clip {a.attempt_no}: {a.outcome} ${a.cost_usd:.3f} QA {score} {res}")
+        if sc.qa is not None and sc.qa.fail_reasons:
+            out.append(f"      clip QA: {'; '.join(sc.qa.fail_reasons)[:200]}")
+        if sc.use_window is not None:
+            out.append(f"      peak window: {sc.use_window[0]:.2f}s + {sc.use_window[1]:.2f}s")
+        for e in by_scene[sc.id]:
+            if e.seq >= since and e.type is EventType.DECISION and "best-of" in e.summary:
+                out.append(f"      [takes] {e.summary[:200]}")
         if sc.failure is not None:
             out.append(f"      FAILED {sc.failure.kind.value}: {sc.failure.reason_debug[:200]}")
 
@@ -122,16 +136,27 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
         if sc.failure is not None and sc.failure.kind is FailureKind.BUDGET_EXCEEDED
     ]
     out.append(f"  scenes refused by the budget: {refused or 'none'}")
+    swaps = [e for e in events if e.payload.get("strategy") == "vocab_fallback"]
+    out.append(f"  vocabulary fallbacks: {len(swaps) or 'none'}")
+    for e in swaps:
+        out.append(f"    {e.summary[:300]}")
     repairs = [e for e in events if e.type is EventType.LLM_REPAIR]
     out.append(f"  schema repairs: {len(repairs)}")
     for e in repairs[:10]:
         out.append(f"    [{e.stage}] {e.summary[:200]}")
 
-    # 6. spend
+    # 6. music and assembly
+    out.append("\n6. MUSIC AND ASSEMBLY")
+    for e in events:
+        if e.stage in {Stage.ASSEMBLE} and e.type is EventType.DECISION:
+            out.append(f"  {e.summary[:300]}")
+
+    # 7. spend
     by = st.budget.by_category
     out.append(
-        f"\n6. SPEND: image ${by.get('image', 0):.3f} · video ${by.get('video', 0):.3f} · "
-        f"LLM ${by.get('llm', 0):.3f} · run cap ${st.budget.limit_usd:.2f}"
+        f"\n7. SPEND: image ${by.get('image', 0):.3f} · video ${by.get('video', 0):.3f} · "
+        f"music ${by.get('audio', 0):.3f} · LLM ${by.get('llm', 0):.3f} · "
+        f"run cap ${st.budget.limit_usd:.2f}"
     )
     return "\n".join(out)
 
