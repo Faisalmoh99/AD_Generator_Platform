@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from demo_media import concat, normalise, profile
 from playwright.sync_api import Browser, Locator, Page, sync_playwright
 from playwright.sync_api import Error as PlaywrightError
 
@@ -346,18 +347,19 @@ def fit(path: Path, target: float) -> None:
 
 
 def hook(landing: Path, out: Path) -> None:
-    """montage_v2.mp4 centred on black (12.5 s), then the recorded landing page, 30 s in all."""
+    """montage_v2.mp4 centred on black (12.5 s), then the recorded landing page, 30 s in all.
+    Both pieces are normalised and joined with a re-encode (a stream-copy join froze QuickTime
+    at 12.5 s: one avcC for two differently encoded clips). The segment stays silent: the music
+    bed is added by merge_voiceover.py."""
     v2 = ROOT / "docs" / "media" / "montage_v2.mp4"
-    tmp = out.with_suffix(".v2.mp4")
-    vf = "scale=-2:1080,pad=1920:1080:(ow-iw)/2:0:color=0x0e0f10,fps=30,format=yuv420p"
-    ffmpeg("-i", str(v2), "-vf", vf, "-c:v", "libx264", "-crf", "18", "-an", str(tmp))
-    v2_s = duration(tmp)
-    rest = out.with_suffix(".rest.mp4")
-    ffmpeg("-i", str(landing), "-t", f"{TARGETS['01_hook'] - v2_s:.3f}", "-c", "copy", str(rest))
-    lst = out.with_suffix(".txt")
-    lst.write_text(f"file '{tmp.name}'\nfile '{rest.name}'\n")
-    ffmpeg("-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(out))
-    for p in (tmp, rest, lst):
+    pad = out.with_suffix(".pad.mp4")
+    vf = "scale=-2:1080,pad=1920:1080:(ow-iw)/2:0:color=0x0e0f10"
+    ffmpeg("-i", str(v2), "-vf", vf, "-an", "-c:v", "libx264", "-crf", "16", str(pad))
+    a, b = out.with_suffix(".a.mp4"), out.with_suffix(".b.mp4")
+    normalise(pad, a, keep_audio=False)
+    normalise(landing, b, seconds=TARGETS["01_hook"] - duration(a), keep_audio=False)
+    concat([a, b], out)
+    for p in (pad, a, b):
         p.unlink()
 
 
@@ -401,25 +403,18 @@ def main() -> None:
                 cut(src, start, end, TARGETS[name], SEG / f"{name}.mp4")
     shutil.rmtree(tmp, ignore_errors=True)
     for name, target in TARGETS.items():
-        if (SEG / f"{name}.mp4").exists():
-            fit(SEG / f"{name}.mp4", target)
-    files = sorted(SEG.glob("0*.mp4"))
-    if len(files) == len(TARGETS):
-        lst = DEMO / "segments.txt"
-        lst.write_text("".join(f"file 'segments/{f.name}'\n" for f in files))
-        ffmpeg(
-            "-f",
-            "concat",
-            "-safe",
-            "0",
-            "-i",
-            str(lst),
-            "-c",
-            "copy",
-            str(DEMO / "draft_silent.mp4"),
-        )
-        lst.unlink()
-        print(DEMO / "draft_silent.mp4")
+        seg = SEG / f"{name}.mp4"
+        if seg.exists():
+            fit(seg, target)
+            tmp_n = seg.with_suffix(".norm.mp4")
+            normalise(seg, tmp_n, seconds=target, keep_audio=False)  # + a silent stereo track
+            tmp_n.replace(seg)
+    files = [SEG / f"{n}.mp4" for n in TARGETS]
+    if all(f.exists() for f in files):
+        draft = DEMO / "draft_silent.mp4"
+        concat(files, draft)  # one re-encode, never stream copy
+        print(draft, f"{duration(draft):.2f}s")
+        print(profile(draft))
 
 
 if __name__ == "__main__":

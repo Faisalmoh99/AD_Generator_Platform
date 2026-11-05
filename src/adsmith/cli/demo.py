@@ -121,6 +121,25 @@ def _chaos_off(orch: object, run_id: str) -> None:
     orch.rt._gateways.pop(run_id, None)
 
 
+def _spawn_child(
+    crash_dir: Path, child_env: dict[str, str]
+) -> tuple[subprocess.Popen[bytes], Path]:
+    """The run to be killed. Its stderr goes to a file, so a child that dies at start-up is
+    reported instead of the demo silently waiting out its deadline (which looks like a hang);
+    stdin is closed, so the child never competes with this process for the terminal."""
+    err_log = crash_dir / "child_stderr.log"
+    err_log.parent.mkdir(parents=True, exist_ok=True)
+    with err_log.open("wb") as err:
+        child = subprocess.Popen(
+            [sys.executable, "-m", "adsmith.cli.main", "run", REQUEST, "--auto", "--no-chaos"],
+            env=child_env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=err,
+        )
+    return child, err_log
+
+
 def _crash_resume(console: Console, orch: object, env: dict[str, str]) -> None:
     from adsmith.agent.orchestrator import Orchestrator  # noqa: PLC0415
     from adsmith.cli.main import _orchestrator, print_state  # noqa: PLC0415
@@ -138,15 +157,17 @@ def _crash_resume(console: Console, orch: object, env: dict[str, str]) -> None:
     orch = _orchestrator(Settings())
     store = orch.rt.storage
     known = {r.id for r in store.runs.list_runs()}
-    child = subprocess.Popen(
-        [sys.executable, "-m", "adsmith.cli.main", "run", REQUEST, "--auto", "--no-chaos"],
-        env=child_env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    child, err_log = _spawn_child(crash_dir, child_env)
     run_id, deadline = None, time.monotonic() + 90
     while time.monotonic() < deadline:
         time.sleep(0.1)
+        if child.poll() is not None and run_id is None:
+            tail = err_log.read_text(errors="replace").strip().splitlines()[-8:]
+            console.print(
+                f"[red]the child run exited early (code {child.returncode}); skipping the crash "
+                "demo[/]\n" + "\n".join(tail)
+            )
+            return
         new = [r for r in store.runs.list_runs() if r.id not in known]
         if not new:
             continue

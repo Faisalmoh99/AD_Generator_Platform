@@ -12,7 +12,9 @@ For each segment in docs/demo/segments/NN_name.mp4 the matching docs/demo/voice/
 Voices are loudness-normalised (EBU R128, -16 LUFS). Under the hook only, the montage v2 music
 (docs/demo/assets/v2_music.m4a) plays as a very low bed (--bed-db, default -18 dB, about 25 dB
 under the voice) and fades out at the end of the segment. A missing recording leaves its segment
-silent (warned). Output: H.264 + AAC, docs/demo/final.mp4.
+silent (warned). Every part is encoded to the shared demo profile (H.264 High, 1920x1080,
+SAR 1:1, 30 fps, AAC stereo 48 kHz) and joined with a re-encode (scripts/demo_media.py), so
+docs/demo/final.mp4 plays everywhere (QuickTime included).
 """
 
 from __future__ import annotations
@@ -22,6 +24,8 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from demo_media import AUDIO_FILTER, ENCODE, VIDEO_FILTER, concat, profile
 
 ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / "docs" / "demo"
@@ -107,11 +111,13 @@ def merge_segment(video: Path, voice: Path | None, out: Path, args: argparse.Nam
         if len(mix) > 1
         else f"{mix[0]}anull[a]"
     )
-    vf = f"[0:v]tpad=stop_mode=clone:stop_duration={hold:.3f}[v]" if hold else "[0:v]null[v]"
+    hold_f = f"tpad=stop_mode=clone:stop_duration={hold:.3f}," if hold else ""
+    vf = f"[0:v]{hold_f}{VIDEO_FILTER}[v]"
+    audio = audio.replace("[a]", f",{AUDIO_FILTER}[a]") if audio.endswith("[a]") else audio
     graph = ";".join([*chains, audio, vf])
+    # the shared demo profile (demo_media.py): identical parameters in every part
     run(*inputs, "-filter_complex", graph, "-map", "[v]", "-map", "[a]", "-t", f"{total:.3f}",
-        "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k", "-ar", "48000", str(out))  # fmt: skip
+        *ENCODE, str(out))  # fmt: skip
 
 
 def main() -> None:
@@ -134,12 +140,10 @@ def main() -> None:
         part = work / v.name
         merge_segment(v, find_voice(args.voice_dir, v.stem), part, args, work)
         parts.append(part)
-    lst = work / "list.txt"
-    lst.write_text("".join(f"file '{p.name}'\n" for p in parts))
-    run("-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", "-movflags", "+faststart",
-        str(args.out))  # fmt: skip
+    concat(parts, args.out)  # one re-encode, never stream copy (QuickTime-safe)
     shutil.rmtree(work)
     print(f"{args.out} · {duration(args.out):.2f}s")
+    print(profile(args.out))
 
 
 if __name__ == "__main__":
