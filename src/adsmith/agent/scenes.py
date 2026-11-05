@@ -1300,6 +1300,8 @@ class SceneStageRunner:
             identity_mode=mode,
             framing=framing,
             note=entry.reference_note if entry is not None else "",
+            crop=entry.crop if entry is not None else None,
+            lighting=entry.lighting if entry is not None else "",
         )
 
     def _update(self, run_id: str, mutate: Mutation, reason: str) -> bool:

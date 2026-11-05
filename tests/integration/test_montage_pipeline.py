@@ -48,32 +48,36 @@ async def test_editing_one_montage_shot_regenerates_only_that_shot(tmp_path: Pat
     assert after.storyboard is not None
     versions = [s.version for s in after.storyboard.scenes]
     assert versions == [1, 1, 2, 1, 1, 1, 1, 1, 1]
-    assert all_calls() - calls_before == 3  # composite keyframe (plain + swap) + one clip
+    # A crop keyframe depends only on the packshot, the region and the entry's lighting: the lens
+    # edit reuses it from the cache, and only the clip is generated again.
+    assert all_calls() - calls_before == 1
 
 
 async def test_identity_mode_is_routed_per_shot_from_the_vocabulary(tmp_path: Path) -> None:
     """PLAN_V2 item 3: montage turns the locked reference on by itself; each keyframe uses the
-    mode its vocabulary entry declares (5 direct, 3 composite, 1 plain in the fixture)."""
+    mode its vocabulary entry declares (5 direct, 2 crop, 1 composite, 1 plain in the fixture)."""
     h = make_harness(fast_settings(tmp_path), scenario="montage_en")
     run = h.orch.create_run(REQUEST, interactive=False)
     assert run.config.product_reference is False  # not asked for: the format implies it
     state = await h.orch.run_until_blocked(run.id)
     assert state.product_reference is not None and state.product_reference.approved
     assert h.reference is not None and h.composite is not None
-    assert (h.reference.calls, h.composite.calls) == (5, 3)
-    assert h.image.calls == 1 + 1 + 3  # packshot + 1 product-free shot + 3 composite bases
+    assert (h.reference.calls, h.composite.calls) == (5 + 2, 1)  # direct + crop relights
+    assert h.image.calls == 1 + 1 + 1  # packshot + 1 product-free shot + 1 composite base
     events = [
         e
         for e in h.rt.storage.events.tail(run.id, limit=10_000)
         if e.type.value == "attempt_started" and "identity" in e.payload
     ]
     modes = {str(e.payload["vocab"]): e.payload["identity"] for e in events}
-    assert modes["cap_macro"] == "composite" and modes["hand_cuff"] == "composite"
+    assert modes["cap_macro"] == "crop" and modes["glass_edge_macro"] == "crop"
+    assert modes["hand_cuff"] == "composite"
     assert modes["spray_from_nozzle"] == "direct" and modes["water_drop_leaf"] == "none"
     assert state.storyboard is not None
     cap = state.storyboard.scenes[0]
     kf = next(a for a in cap.attempts if a.phase.value == "keyframe")
-    assert "do not zoom out" in kf.prompt_used  # macro: plain close-up, then the swap
+    assert "Do not zoom, re-frame" in kf.prompt_used  # macro: cut from the packshot, relit
+    assert kf.model.startswith("crop:cap+")
     spray = state.storyboard.scenes[4]
     kf = next(a for a in spray.attempts if a.phase.value == "keyframe")
     assert "the cap is off" in kf.prompt_used

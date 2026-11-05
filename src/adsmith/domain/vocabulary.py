@@ -16,7 +16,10 @@ from adsmith.domain.base import DomainModel
 from adsmith.domain.enums import CameraMove, ShotType, Speed
 from adsmith.domain.formats import Framing
 
-IdentityMode = Literal["none", "direct", "composite"]
+# crop: a macro cut from the locked packshot in code, then relit onto black by the reference model
+# (the product pixels are the packshot's own: identity exact by construction).
+IdentityMode = Literal["none", "direct", "composite", "crop"]
+CropRegion = Literal["cap", "edge"]
 
 
 class ShotVocab(DomainModel):
@@ -39,6 +42,8 @@ class ShotVocab(DomainModel):
     # Shot-specific change to the locked product, told to the reference model and the gate
     # (e.g. "the cap is off": otherwise a missing cap is a hard identity mismatch).
     reference_note: str = Field(default="", max_length=300)
+    # identity_mode = "crop": which part of the packshot the macro is cut from.
+    crop: CropRegion | None = None
     fallback: str
     avoid_on: list[str] = Field(default_factory=list)
 
@@ -50,6 +55,8 @@ class ShotVocab(DomainModel):
     def _identity_matches_product(self) -> Self:
         if (self.identity_mode == "none") == self.needs_product:
             raise ValueError("identity_mode is 'none' exactly when the shot has no product")
+        if (self.identity_mode == "crop") != (self.crop is not None):
+            raise ValueError("crop (cap|edge) is set exactly when identity_mode is 'crop'")
         return self
 
 

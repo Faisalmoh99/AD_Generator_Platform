@@ -47,8 +47,10 @@ def test_which_entries_have_their_composition_as_spec(settings: Settings) -> Non
     v = settings.vocabulary
     hard = sorted(n for n, e in v.shots.items() if e.composition_is_spec)
     assert hard == ["bottle_into_water", "hero_push_in", "spray_from_nozzle", "water_ribbon"]
-    for macro in ("cap_macro", "glass_edge_macro", "cap_lift"):
-        assert v.shots[macro].identity_mode == "composite", macro
+    # Macros are cut from the packshot (STOP 2); the cap lift is a product shot from the packshot.
+    assert (v.shots["cap_macro"].identity_mode, v.shots["cap_macro"].crop) == ("crop", "cap")
+    assert v.shots["glass_edge_macro"].crop == "edge"
+    assert v.shots["cap_lift"].identity_mode == "direct" and v.shots["cap_lift"].reference_note
 
 
 def test_rule_and_checklist_reach_the_gate(tmp_path: Path) -> None:

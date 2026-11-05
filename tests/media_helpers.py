@@ -103,6 +103,7 @@ def make_harness(
             reference_prompt=rt._reference_prompt,
             composite=composite if ref_on else None,
             composite_prompt=rt._composite_prompt,
+            relight_prompt=rt._relight_prompt,
         )
 
     rt.media_factory = factory

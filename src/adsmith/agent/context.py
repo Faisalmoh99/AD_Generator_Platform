@@ -147,7 +147,12 @@ class AgentRuntime:
                 fail_plan=plan,
             ),
             composite_prompt=self._composite_prompt,
+            relight_prompt=self._relight_prompt,
         )
+
+    def _relight_prompt(self, product_name: str, lighting: str, note: str) -> str:
+        tpl = self.prompts.get("keyframe_relight")
+        return tpl.render(name=product_name, lighting=lighting, note=note).user
 
     def _composite_prompt(self, product_name: str, framing: str, note: str) -> str:
         tpl = self.prompts.get("keyframe_composite")
@@ -214,6 +219,7 @@ class AgentRuntime:
             reference_prompt=self._reference_prompt,
             composite=None if comp_ep is None else FalImageProvider(self._fal_queue, comp_ep),
             composite_prompt=self._composite_prompt,
+            relight_prompt=self._relight_prompt,
             storage=self.storage,
             chaos=chaos,
             long_side=long_side,

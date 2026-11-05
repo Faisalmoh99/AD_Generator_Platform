@@ -324,6 +324,11 @@ def _product_checklist(state: RunState, scene: Scene, ctx: NodeContext | None = 
             f"\n- BY DESIGN FOR THIS SHOT: {entry.reference_note}. Do not report this "
             "deliberate change as a mismatch."
         )
+    if entry is not None and entry.framing == "macro":
+        items += (
+            "\n- BY DESIGN FOR THIS SHOT: an extreme close-up, so only part of the product is in "
+            "frame. Parts outside the frame are not missing; judge only the visible part."
+        )
     return items
 
 

@@ -19,7 +19,8 @@ from adsmith.agent.recovery.errors import ContentPolicyError, TransientProviderE
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.generation import Artifact, GenerationRequest
 from adsmith.domain.scene import Scene, ScenePrompt
-from adsmith.domain.vocabulary import IdentityMode
+from adsmith.domain.vocabulary import CropRegion, IdentityMode
+from adsmith.media.crop import macro_crop
 from adsmith.providers.adapters.base import PromptAdapter
 from adsmith.providers.media.base import (
     ImageJob,
@@ -67,6 +68,7 @@ class MediaGateway:
         reference_prompt: Callable[[str, str, str, str], str] | None = None,
         composite: ImageProvider | None = None,
         composite_prompt: Callable[[str, str, str], str] | None = None,
+        relight_prompt: Callable[[str, str, str], str] | None = None,
     ) -> None:
         self.image, self.video, self.adapter = image, video, adapter
         self.storage, self.chaos, self.long_side = storage, chaos, long_side
@@ -76,6 +78,8 @@ class MediaGateway:
         # Composite mode (ADR-0003 addendum 4): plain keyframe first, then a multi-image model
         # swaps the reference product in at the scene's own scale.
         self.composite, self.composite_prompt = composite, composite_prompt
+        # Crop mode (STOP 2): a macro cut from the packshot in code, relit by the reference model.
+        self.relight_prompt = relight_prompt
 
     # ------------------------------------------------------------------------ preparation
     def prepare(
@@ -91,12 +95,16 @@ class MediaGateway:
         identity_mode: IdentityMode = "direct",
         framing: str = "product",
         note: str = "",
+        crop: CropRegion | None = None,
+        lighting: str = "",
     ) -> PreparedJob:
         """``identity_mode`` (PLAN_V2 item 3) is decided per shot by the caller from the shot
         vocabulary: none → plain text-to-image; direct → Kontext from the locked packshot (the
         packshot's scale: product, macro and hero shots); composite → a plain keyframe at the
-        scene's scale, then Kontext multi swaps the packshot product in (hands, small in scene).
-        Without an approved reference, or for a shot without the product, the keyframe is plain."""
+        scene's scale, then Kontext multi swaps the packshot product in (hands, small in scene);
+        crop → the ``crop`` region cut from the packshot in code, then Kontext relights it onto
+        black (macro shots: the product pixels are the packshot's own). Without an approved
+        reference, or for a shot without the product, the keyframe is plain."""
         assert scene.prompt is not None
         label = MediaLabel(
             scene_order=scene.order,
@@ -113,6 +121,8 @@ class MediaGateway:
                 return plain
             if identity_mode == "composite" and self.composite and self.composite_prompt:
                 return self._composite(plain, product_reference, product_name, framing, note)
+            if identity_mode == "crop" and crop is not None and self.relight_prompt is not None:
+                return self._crop(plain, product_reference, product_name, crop, lighting, note)
             return self._direct(plain, product_reference, product_name, framing, note)
         assert scene.keyframe is not None
         return self._prepare_video(scene, scene.prompt, aspect_ratio, label)
@@ -169,6 +179,41 @@ class MediaGateway:
         )
         est = self.reference.estimate_usd(job.width, job.height)
         return PreparedJob(request, job, est, identity="direct")
+
+    def _crop(
+        self,
+        plain: PreparedJob,
+        reference: Artifact,
+        product_name: str,
+        region: CropRegion,
+        lighting: str,
+        note: str,
+    ) -> PreparedJob:
+        """The macro is cut from the locked packshot (deterministic: same packshot, same crop,
+        same CAS hash), and only relit by the reference model. The crop's sha256 is the request's
+        input image, so a new packshot is a new cache key."""
+        if self.reference is None or self.relight_prompt is None:
+            return plain
+        assert isinstance(plain.job, ImageJob)
+        src = self.storage.artifacts.resolve(reference)
+        out = self.storage.artifacts.cas_dir / "crops" / f"{reference.sha256[:16]}_{region}.png"
+        w, h = plain.job.width, plain.job.height
+        macro_crop(src, out, region=region, width=w, height=h)
+        crop = self.storage.artifacts.ingest(
+            out, kind="image", provider="crop", width=w, height=h, move=True
+        )
+        prompt = self.relight_prompt(product_name, lighting, note)
+        request = plain.request.model_copy(
+            update={
+                "provider": self.reference.name,
+                "model": f"crop:{region}+{self.reference.model}",
+                "prompt": prompt,
+                "input_image_sha256": crop.sha256,
+            }
+        )
+        job = replace(plain.job, prompt=prompt, reference_path=self.storage.artifacts.resolve(crop))
+        est = self.reference.estimate_usd(w, h)
+        return PreparedJob(request, job, est, identity="crop")
 
     def _composite(
         self, plain: PreparedJob, reference: Artifact, name: str, framing: str, note: str

@@ -35,6 +35,6 @@ async def test_contact_sheet_and_decisions_report(tmp_path: Path) -> None:
     assert "1. FORMAT: montage" in text and "physical product" in text
     assert "* 1. Obsidian" in text
     assert "3. PRODUCT REFERENCE" in text and "APPROVED" in text
-    assert "S1 hook" in text and "cap_macro · composite" in text
+    assert "S1 hook" in text and "cap_macro · crop" in text
     assert "S8 reveal" in text and "hand_cuff · composite" in text
     assert "spray_from_nozzle · direct" in text and "water_drop_leaf · none" in text

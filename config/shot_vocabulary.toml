@@ -2,7 +2,8 @@
 # Physics-led, from the two montage references in docs/PLAN_V2.md. Each entry declares what the
 # shot shows (needs_product / shows_person: the scene flags come from here, not from text
 # matching), how the product identity is made (identity_mode, item 3: none = plain text-to-image,
-# direct = Kontext from the locked packshot, composite = plain keyframe then Kontext multi swap)
+# direct = Kontext from the locked packshot, composite = plain keyframe then Kontext multi swap,
+# crop = a macro cut from the packshot in code (`crop` = cap | edge) then relit onto black)
 # and the defaults the prompt writer starts from. `fallback` is for the escalation ladder
 # (MORE_TIME 15, not built). `avoid_on` lists video endpoints that render the entry badly.
 # framing: macro | product | event | detail | silhouette | full
@@ -12,14 +13,15 @@ label = "Extreme macro of the cap"
 framing = "macro"
 needs_product = true
 shows_person = false
-identity_mode = "composite"
+identity_mode = "crop"
+crop = "cap"
 key_shot = false
 shot_type = "extreme_close_up"
 camera = "push_in"
 speed = "slow_motion"
-lighting = "one hard rim light raking across brushed metal, everything else in darkness"
-motion = "a very slow push-in while a thin band of light slides over the metal facets"
-keyframe_hint = "the cap fills the frame edge to edge; brushed-metal grain and facet edges razor sharp; black background"
+lighting = "one hard rim light raking across the cap's facets, everything else in darkness"
+motion = "a very slow push-in while a thin band of light slides over the cap's facets"
+keyframe_hint = "the cap and the neck below it fill the frame, the top of the shoulders at the bottom edge; facet edges razor sharp; black background"
 fallback = "light_sweep"
 avoid_on = []
 
@@ -28,14 +30,15 @@ label = "Macro of the glass edge and facets"
 framing = "macro"
 needs_product = true
 shows_person = false
-identity_mode = "composite"
+identity_mode = "crop"
+crop = "edge"
 key_shot = false
 shot_type = "extreme_close_up"
 camera = "push_in"
 speed = "slow_motion"
 lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
-motion = "a slow push-in along one faceted glass edge as the rim light glints"
-keyframe_hint = "one faceted glass edge of the bottle runs diagonally across the frame; the liquid glows behind it; black background"
+motion = "a slow push-in on the glass shoulder as the rim light glints along its edge"
+keyframe_hint = "the bottle's upper shoulder and one vertical glass edge fill the frame, the dark liquid glowing behind the glass; black background"
 fallback = "light_sweep"
 avoid_on = []
 
@@ -171,17 +174,18 @@ avoid_on = []
 
 [shots.cap_lift]
 label = "The cap lifting off"
-framing = "macro"
+framing = "product"
 needs_product = true
 shows_person = false
-identity_mode = "composite"
+identity_mode = "direct"
 key_shot = false
-shot_type = "extreme_close_up"
+shot_type = "close_up"
 camera = "static"
 speed = "slow_motion"
 lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
 motion = "the cap lifts slowly straight up off the bottle, revealing the neck"
-keyframe_hint = "the cap hovering a finger's width above the bottle's neck, both razor sharp; black background"
+keyframe_hint = "the upper half of the bottle, the cap hovering a finger's width above the neck, both razor sharp; black background"
+reference_note = "the cap is lifted a finger's width straight up off the neck, showing the bare neck and collar; everything else stays exactly as in the input image"
 fallback = "cap_macro"
 avoid_on = []
 
