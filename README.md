@@ -162,8 +162,10 @@ I spent about $18 of real fal credit; these lessons changed the design.
    fail a shot; light side, props and composition only lower the score (capped by code). Re-judging
    14 stored keyframes: **12 of 14 verdicts right**; the 2 misses were a round cap the critic can't see.
 3. **Keyframe gate.** Most rejections were really about the *still*, found only after paying for a
-   clip. Reviewing the still alone first stopped 21 keyframes before animation (≈ $0.56 of Kling
-   each; ≈ $5.60 in the first full run alone).
+   clip. Reviewing the still alone first stopped 21 stills before animation across the M11 runs
+   (≈ $0.56 of Kling each). The 10 in the first full run were mostly *false* rejections by the gate
+   before it was calibrated; after calibration it rejected 1 of 5, correctly. Its one costly miss
+   is lesson 7 ($2.24, a black cap passed as "minor"), which made any product mismatch a hard fail.
 4. **LTX-2.3 Fast vs Kling v3 Pro.** LTX: ~35 s and $0.36 per clip, but it veils passing shadows
    and its push-ins are faint. Kling: 4–8 min and $0.56 per clip, keeps the product crisp with real
    parallax, but ignores light-only actions and adds smoke when particles are mentioned.

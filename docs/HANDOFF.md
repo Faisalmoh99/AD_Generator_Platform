@@ -77,8 +77,10 @@ Run reports: `uv run python scripts/run_report.py <run>`; `uv run adsmith show <
 7. **The critic still misreads.** It saw the S1 spray burst and called it "faint haze", and read a
    tilted bottle as "slimmer". The human override exists for this; the long-term fix is better
    framing (items 2 and 5), not more critic tuning.
-8. **The keyframe gate pays for itself** (21 bad stills stopped before animation in the first
-   full run, ≈ $5.60). Composition is soft there, so a money shot's composition can pass when it's
+8. **The keyframe gate pays for itself.** It stopped 21 stills before animation across the M11
+   runs (≈ $0.56 of Kling each). The 10 in the first full run were mostly false rejections before
+   calibration; after it, 1 of 5 was rejected, correctly. Its $2.24 miss (a black cap passed as
+   "minor") made any product mismatch a hard fail. Composition is soft there, so a money shot's composition can pass when it's
    wrong (MORE_TIME 13).
 9. **Regional wardrobe drifts.** "Mandarin collar + button placket" in the bible produced a South
    Asian kurta; a full-figure man invites garment errors. Detail framing (hand, cuff, jawline) plus

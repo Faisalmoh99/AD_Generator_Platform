@@ -128,8 +128,10 @@ ripple. Mock latencies above make the chaos run take ~48 s and the edit ~14 s.
    - **The kurta lesson:** the real hero v2 keyframe (mandarin collar, scarf at the neck) and the
      wardrobe lint that now rejects it: "mandarin collar · button placket → white Saudi thobe,
      concealed placket".
-   - **Keyframe gate savings:** 21 keyframes stopped before animation, ≈ $5.60 of Kling in the
-     first full run; the v2 contact sheet with its rejected stills.
+   - **Keyframe gate savings:** 21 stills stopped before animation across the M11 runs, ≈ $0.56 of
+     Kling each (the 10 in the first full run were mostly false rejections before calibration;
+     after it, 1 of 5, correctly); the $2.24 black-cap miss that made a product mismatch a hard
+     fail; the v2 contact sheet with its rejected stills.
 
 **Say**
 > هذي نتايج حقيقية على fal.
