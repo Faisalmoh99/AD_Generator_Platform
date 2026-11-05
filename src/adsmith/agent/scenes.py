@@ -1285,8 +1285,9 @@ class SceneStageRunner:
 
     # ------------------------------------------------------------------------ helpers
     def _key_shot_takes(self, run_id: str, state: RunState, scene_id: str) -> int:
-        """PLAN_V2 item 8: two takes for a vocabulary key shot (the hero), only if the budget still
-        covers both after one clip for every other shot that has none yet; otherwise one."""
+        """PLAN_V2 item 8: two takes for a vocabulary key shot (hero, spray, water events), only if
+        the budget still covers both after the clips of every other shot that has none yet (two
+        for the other key shots, which decide concurrently); otherwise one."""
         scene = self._find(state, scene_id)
         entry = self.node_ctx.settings.vocabulary.get(scene.vocab)
         if entry is None or not entry.key_shot:
@@ -1297,8 +1298,14 @@ class SceneStageRunner:
             render_s, _ = render_window(self.node_ctx.settings, state, sc.duration_s)
             return round(self.gateway.video.usd_per_second * render_s, 6)
 
+        vocab = self.node_ctx.settings.vocabulary
+
+        def takes(sc: Scene) -> int:
+            e = vocab.get(sc.vocab)
+            return 2 if e is not None and e.key_shot else 1
+
         others = sum(
-            clip_usd(sc)
+            clip_usd(sc) * takes(sc)
             for sc in state.storyboard.scenes
             if sc.id != scene_id and sc.status is SceneStatus.PENDING and sc.clip is None
         )

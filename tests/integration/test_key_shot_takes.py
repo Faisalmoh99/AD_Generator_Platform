@@ -21,7 +21,8 @@ async def test_key_shot_gets_two_takes_others_one(tmp_path: Path) -> None:
     state = await h.orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE
     takes = clip_takes(state)
-    assert takes.pop("hero_push_in") == 2
+    for key in ("hero_push_in", "spray_from_nozzle", "bottle_into_water"):  # hero + events
+        assert takes.pop(key) == 2, key
     assert set(takes.values()) == {1}
     summaries = [e.summary for e in h.rt.storage.events.tail(run.id, limit=10_000)]
     assert any("hero_push_in is a key shot: best-of-2" in s for s in summaries)
@@ -31,7 +32,7 @@ async def test_tight_budget_falls_back_to_one_take(tmp_path: Path) -> None:
     probe = make_harness(fast_settings(tmp_path / "probe"), scenario="montage_en")
     full = await probe.orch.run_until_blocked(probe.orch.create_run(REQUEST, interactive=False).id)
     # One mock clip = the default video endpoint (Kling v3 Pro, $0.14/s) x its 3 s minimum render.
-    one_take = full.budget.spent_usd - 0.42  # what the run costs with a single hero take
+    one_take = full.budget.spent_usd - 3 * 0.42  # the run with one take on each of 3 key shots
     h = make_harness(
         fast_settings(tmp_path / "tight", budget_usd=round(one_take + 0.2, 2)),
         scenario="montage_en",

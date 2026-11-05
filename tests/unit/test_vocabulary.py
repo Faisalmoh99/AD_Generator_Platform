@@ -27,7 +27,8 @@ def test_vocabulary_loads_and_is_consistent(settings: Settings) -> None:
         assert v.camera in montage.allowed_camera, name
         if v.shows_person:
             assert v.framing in montage.person_framing, name
-    assert [n for n, v in lib.shots.items() if v.key_shot] == ["hero_push_in"]
+    key = sorted(n for n, v in lib.shots.items() if v.key_shot)
+    assert key == ["bottle_into_water", "hero_push_in", "spray_from_nozzle", "water_ribbon"]
     assert "spray_from_nozzle" in lib.prompt_block() and "spray_burst" not in lib.shots
 
 
