@@ -1,6 +1,6 @@
 # Adsmith
 
-**Video walkthrough (11 min, Arabic):** VIDEO_URL
+**Video walkthrough (11 min, Arabic):** [youtu.be/elmyNQbRDro](https://youtu.be/elmyNQbRDro)
 
 **An ad agent with an explicit, typed, recoverable brain.** Ask for *"a 15-second ad for a luxury
 men's perfume, cinematic"*, in English, Modern Standard Arabic or Saudi dialect. Adsmith writes
