@@ -752,3 +752,29 @@ rim-lit world. Weak: Kontext keeps the packshot framing, so the "macro" entries 
 the full bottle and five shots look alike; only S2 re-framed partly. The water ribbon (S6) is
 missing and S7's bubbles rise above the cap; the gate passed both at 0.72-0.80 (composition is
 soft). Sheet: `docs/screenshots/stop1_contact_sheet.png`; decisions: `docs/screenshots/stop1_decisions.txt`.
+
+## STOP 1 fixes + Phase 2 (items 5, 6, 8): STOP 2 readiness (2026-11-05)
+**Fixes (from the STOP 1 sheet):** macro entries → composite identity (keyframe_composite v3 macro
+branch); composition is HARD for key shots and event shots (`composition_hard`: water_ribbon,
+bottle_into_water, spray_from_nozzle, plus key shots; qa_keyframe v7, qa_critic v8); spray_burst
+replaced by `spray_from_nozzle` (reference-based, cap off via `reference_note`, which the gate is
+told is deliberate; keyframe_reference v3). `edit_scene_spec` can switch a shot's entry;
+`set_budget` moves the wallet cap to the media cap.
+**Re-roll** on `run_01M6MGNPSHZ3GV5TTHN983R022` (`scripts/stop1_reroll.py`, fal cap $0.28, spent
+$0.275, ledger 11.72 → 11.995, nothing reserved). Re-judged under the hard rule (LLM only): water
+ribbon 0.50, bubbles 0.45, hero 0.62 (lower fifth not clear), all FAIL. Wave 1: **spray from the
+nozzle PASS 0.85** (a real horizontal plume, first try). **Macro composite FAILED**: Kontext multi
+returned the studio packshot itself (beige background) for cap_macro and glass_edge_macro; the
+previous direct-mode stills were lost with the re-roll. Wave 2: water ribbon re-rolled once, 0.50
+FAIL; bubbles and hero kept (no room left under the cap). Sheet:
+`docs/screenshots/stop1b_contact_sheet.png`; decisions and re-judge log next to it.
+**Phase 2 built:** item 5 peak window (`motion_profile` + `peak_window`, `Scene.use_window`, the
+critic samples it, assembly seeks to it; prompt_writer v9); item 6 beat cut (`media/beats.py`:
+spectral-flux onsets, on-beat minus off-beat comb tempo, beats within 20 ms on a 120 bpm click
+track; `snap_cuts` ±0.2 s, hero on a downbeat, end card on a beat); item 8 best-of-2 for vocabulary
+key shots when the headroom covers both takes. ADR-0020. numpy added.
+**STOP 2 mock run:** montage_en + a 120 bpm click track: hero best-of-2, 9 shots, "Beat cut: 120
+bpm … 9 of 9 shot lengths adjusted", 13.96 s rendered vs 14.00 s expected.
+**Tests:** 557 passed, 2 skipped.
+**Open:** the macro identity problem (Kontext keeps the packshot framing in direct mode and copies
+the packshot in multi mode); `assets/music.mp3` not yet supplied (gitignored).

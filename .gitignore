@@ -18,3 +18,6 @@ evals/report.md
 
 # local UI review captures (large)
 docs/screenshots/review/
+
+# user-supplied, licensed music (PLAN_V2 item 6): never committed
+assets/music.*
