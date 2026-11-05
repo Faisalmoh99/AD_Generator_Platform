@@ -100,6 +100,10 @@ def set_budget(
             raise CommandRejectedError(f"run already committed ${committed:.3f}")
         old = s.budget.limit_usd
         s.budget.limit_usd = round(new, 6)
+        if wallet_remaining_usd is not None and s.budget.media_limit_usd is not None:
+            s.budget.media_limit_usd = round(
+                min(new, s.budget.media_committed_usd + wallet_remaining_usd), 6
+            )
         return [
             AgentEvent(
                 run_id=s.id,

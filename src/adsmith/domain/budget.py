@@ -28,6 +28,10 @@ class BudgetRefusedError(ValueError):
 
 class BudgetLedger(DomainModel):
     limit_usd: float = Field(gt=0)
+    # Separate cap for paid media (image + video) only, e.g. the prepaid fal wallet's headroom.
+    # LLM spend is billed elsewhere (Anthropic) and must not starve the media budget (STOP 1:
+    # a $0.60 fal cap with ~$0.5 of LLM calls). None = only ``limit_usd`` applies.
+    media_limit_usd: float | None = Field(default=None, ge=0)
     max_attempts_per_scene: int = Field(ge=1)
     max_total_attempts: int = Field(ge=1)
     spent_usd: float = Field(default=0.0, ge=0)
@@ -39,6 +43,24 @@ class BudgetLedger(DomainModel):
     @property
     def remaining_usd(self) -> float:
         return max(0.0, self.limit_usd - self.spent_usd - self.reserved_usd)
+
+    @property
+    def media_committed_usd(self) -> float:
+        """Settled + open reservations for image and video."""
+        return round(
+            sum(
+                e.actual_usd if e.actual_usd is not None else e.est_usd
+                for e in self.entries
+                if e.category != "llm"
+            ),
+            USD_DECIMALS,
+        )
+
+    @property
+    def media_remaining_usd(self) -> float | None:
+        if self.media_limit_usd is None:
+            return None
+        return max(0.0, self.media_limit_usd - self.media_committed_usd)
 
     def record_actual(
         self,
@@ -77,6 +99,12 @@ class BudgetLedger(DomainModel):
             raise BudgetRefusedError(
                 f"estimated ${est_usd:.3f} exceeds the remaining ${self.remaining_usd:.3f} "
                 f"of the ${self.limit_usd:g} budget"
+            )
+        media_left = self.media_remaining_usd
+        if category != "llm" and media_left is not None and est_usd > media_left + 1e-9:
+            raise BudgetRefusedError(
+                f"estimated ${est_usd:.3f} exceeds the remaining ${media_left:.3f} "
+                f"of the ${self.media_limit_usd:g} media cap"
             )
         self.entries.append(
             BudgetEntry(category=category, scene_id=scene_id, est_usd=est_usd, ref=ref)

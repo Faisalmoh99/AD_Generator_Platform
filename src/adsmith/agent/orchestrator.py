@@ -134,16 +134,19 @@ class Orchestrator:
         if hero:  # best-of-2 clips from the same approved keyframe (ADR-0003 addendum 2)
             config = config.model_copy(update={"clip_candidates": max(2, config.clip_candidates)})
         limit = s.budget_usd
+        media_limit: float | None = None
         if config.media_provider == "fal":
-            # Never let one run reserve more than what is left of the prepaid wallet.
-            limit = min(limit, self.rt.fal_account().summary().remaining_usd)
-            if limit <= 0:
+            # Never let one run reserve more media than what is left of the prepaid wallet. LLM
+            # calls are billed by another provider, so only image + video count against it.
+            media_limit = min(limit, self.rt.fal_account().summary().remaining_usd)
+            if media_limit <= 0:
                 raise RuntimeError("the fal account balance is exhausted (see the account ledger)")
         state = RunState(
             config=config,
             request=request,
             budget=BudgetLedger(
                 limit_usd=limit,
+                media_limit_usd=media_limit,
                 max_attempts_per_scene=s.max_attempts_per_scene,
                 max_total_attempts=s.max_total_attempts,
             ),
@@ -154,7 +157,9 @@ class Orchestrator:
             EventType.DECISION,
             f"Run created ({'interactive' if interactive else 'auto'}, "
             f"{state.config.llm_provider}/{state.config.model_profile}, "
-            f"budget ${limit:.2f}).",
+            f"budget ${limit:.2f}"
+            + (f", media cap ${media_limit:.2f}" if media_limit is not None else "")
+            + ").",
             config=state.config.model_dump(mode="json"),
         )
         return self.rt.storage.runs.create(state, events=[created]).state

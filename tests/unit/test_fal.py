@@ -398,11 +398,13 @@ def _fal_runtime(tmp_path: Path, **over: Any) -> AgentRuntime:
 def test_fal_run_budget_is_capped_by_the_remaining_wallet(tmp_path: Path) -> None:
     rt = _fal_runtime(tmp_path)
     orch = Orchestrator(rt)
-    assert orch.create_run("perfume ad").budget.limit_usd == pytest.approx(5.0)
+    assert orch.create_run("perfume ad").budget.media_limit_usd == pytest.approx(5.0)
     sid = rt.fal_account().reserve(endpoint="x", est_usd=7.0, ref="earlier run")
     rt.fal_account().settle(sid, 7.0)
     run = orch.create_run("perfume ad")
-    assert run.budget.limit_usd == pytest.approx(3.0)
+    # The wallet caps media (image + video) only; LLM calls are billed elsewhere.
+    assert run.budget.media_limit_usd == pytest.approx(3.0)
+    assert run.budget.limit_usd == pytest.approx(rt.settings.budget_usd)
     assert run.config.video_model == "kling_v3_pro" and run.config.image_model == "flux_dev"
 
 
