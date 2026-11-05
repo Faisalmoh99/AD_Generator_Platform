@@ -190,6 +190,9 @@ class Scene(SceneDraft):
     stale_from: StaleFrom | None = None
     keyframe: Artifact | None = None
     clip: Artifact | None = None
+    # (start_s, kept_s) inside the rendered clip that the ad keeps (PLAN_V2 item 5: the peak
+    # window of a montage shot). Derived from the clip, so it lives and dies with it; None = head.
+    use_window: tuple[float, float] | None = None
     qa: QAVerdict | None = None
     # Keyframe QA gate (ADR-0003 addendum): the verdict on the keyframe alone, and the sha256 of
     # the keyframe it approved. Video is generated only from an approved keyframe.
@@ -213,6 +216,8 @@ class Scene(SceneDraft):
             raise ValueError("status 'failed' and a failure record must go together")
         if (s is SceneStatus.STALE) != (self.stale_from is not None):
             raise ValueError("status 'stale' and stale_from must go together")
+        if self.use_window is not None and self.clip is None:
+            raise ValueError("use_window requires a clip")
         if s is SceneStatus.QA_REVIEW and self.clip is None:
             raise ValueError("qa_review requires a clip")
         # The pass rule is applied at decision time (approve()), not on every load: a scene approved
@@ -271,11 +276,11 @@ class Scene(SceneDraft):
         self.keyframe, self.phase = artifact, ScenePhase.CLIP
         self.check_invariants()
 
-    def complete_clip(self, artifact: Artifact) -> None:
+    def complete_clip(self, artifact: Artifact, window: tuple[float, float] | None = None) -> None:
         if self.phase is not ScenePhase.CLIP or artifact.kind != "video":
             raise IllegalTransitionError("complete_clip needs clip phase and a video")
         self._move(SceneStatus.QA_REVIEW)
-        self.clip = artifact
+        self.clip, self.use_window = artifact, window
         self.check_invariants()
 
     def approve(self, verdict: QAVerdict) -> None:
@@ -290,7 +295,7 @@ class Scene(SceneDraft):
         if verdict.passed:
             raise IllegalTransitionError("cannot reject with a passing verdict")
         self._move(SceneStatus.PENDING)
-        self.qa, self.clip = verdict, None
+        self.qa, self.clip, self.use_window = verdict, None, None
         if verdict.needs_new_keyframe:
             self.keyframe, self.phase = None, ScenePhase.KEYFRAME
         self.check_invariants()
@@ -322,6 +327,11 @@ class Scene(SceneDraft):
         self._move(SceneStatus.PENDING)
         self.check_invariants()
 
+    @property
+    def kept_window(self) -> tuple[float, float]:
+        """(start_s, seconds) of the clip the ad plays: the peak window, or the head."""
+        return self.use_window if self.use_window is not None else (0.0, self.duration_s)
+
     def accept_by_human(self, clip: Artifact, verdict: QAVerdict, reason: str) -> None:
         """Human override: accept a QA-rejected clip. Only from failed(quality_rejected)."""
         if self.status is not SceneStatus.FAILED or self.failure is None:
@@ -329,6 +339,8 @@ class Scene(SceneDraft):
         if self.failure.kind is not FailureKind.QUALITY_REJECTED or clip.kind != "video":
             raise IllegalTransitionError("only a QA-rejected clip can be accepted by a human")
         self._move(SceneStatus.APPROVED)
+        if clip != self.clip:
+            self.use_window = None
         self.clip, self.qa, self.failure = clip, verdict, None
         self.human_override = HumanOverride(reason=reason, critic_score=verdict.score)
         self.check_invariants()
@@ -342,7 +354,7 @@ class Scene(SceneDraft):
         """Invalidate derived artifacts down to ``depth``. Deeper staleness always wins."""
         self._move(SceneStatus.STALE)
         self.stale_from = StaleFrom.deepest(self.stale_from, depth)
-        self.failure, self.qa, self.clip = None, None, None
+        self.failure, self.qa, self.clip, self.use_window = None, None, None, None
         if self.stale_from.depth >= StaleFrom.KEYFRAME.depth:
             self.keyframe = None
         if self.stale_from is StaleFrom.PROMPT:

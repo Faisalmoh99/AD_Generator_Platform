@@ -159,7 +159,8 @@ class LLMCritic:
             raise PermanentProviderError(f"scene {scene.order} has no clip/keyframe to review")
         assert state.bible is not None
         arts = self.ctx.artifacts
-        played = played_duration(scene.duration_s, scene.clip.duration_s)
+        start, kept = scene.kept_window
+        played = played_duration(kept, None if start else scene.clip.duration_s)
         keyframe_jpeg = await asyncio.to_thread(
             image_to_jpeg, arts.resolve(scene.keyframe), long_side=self.long_side
         )
@@ -167,7 +168,11 @@ class LLMCritic:
         if fractions == DEFAULT_FRACTIONS and needs_dense_sampling(state, scene):
             fractions = DENSE_FRACTIONS  # explicit calibration fractions are left alone
         frames = await sample_frames(
-            arts.resolve(scene.clip), played, fractions=fractions, long_side=self.long_side
+            arts.resolve(scene.clip),
+            played,
+            fractions=fractions,
+            long_side=self.long_side,
+            offset_s=start,
         )
         parts: list[ImagePart | TextPart] = [
             TextPart("Image 0: keyframe (the still the clip was animated from)"),
@@ -175,7 +180,7 @@ class LLMCritic:
         ]
         labels = ["0: keyframe"]
         for n, f in enumerate(frames, start=1):
-            label = f"{n}: clip frame at {f.time_s:.2f}s ({f.fraction:.0%} of the played clip)"
+            label = f"{n}: clip frame at {f.time_s:.2f}s ({f.fraction:.0%} of the played window)"
             parts += [TextPart(f"Image {label}"), ImagePart("image/jpeg", f.b64)]
             labels.append(label)
         n_images = len(frames) + 1

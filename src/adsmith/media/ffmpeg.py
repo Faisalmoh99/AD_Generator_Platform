@@ -34,10 +34,15 @@ def _vf(width: int, height: int) -> str:
     )
 
 
-async def normalise_clip(src: Path, out: Path, *, seconds: float, width: int, height: int) -> Path:
-    """Trim to the scene's duration and normalise size, SAR, fps and pixel format; drop audio."""
+async def normalise_clip(
+    src: Path, out: Path, *, seconds: float, width: int, height: int, start_s: float = 0.0
+) -> Path:
+    """Keep ``seconds`` from ``start_s`` (the head, or a montage shot's peak window) and normalise
+    size, SAR, fps and pixel format; drop audio. The seek is before ``-i`` (fast, frame-exact
+    because the output is re-encoded)."""
+    seek = ["-ss", f"{start_s:.3f}"] if start_s > 0 else []
     await run(
-        "-i", str(src), "-t", f"{seconds:.3f}", "-vf", _vf(width, height), "-an",
+        *seek, "-i", str(src), "-t", f"{seconds:.3f}", "-vf", _vf(width, height), "-an",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(out),
     )  # fmt: skip
     return out

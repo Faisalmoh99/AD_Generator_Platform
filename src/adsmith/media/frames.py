@@ -19,6 +19,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from adsmith.agent.recovery.errors import PermanentProviderError
@@ -44,12 +45,13 @@ class SampledFrame:
 
 
 def sample_times(
-    played_s: float, fractions: Sequence[float] = DEFAULT_FRACTIONS
+    played_s: float, fractions: Sequence[float] = DEFAULT_FRACTIONS, offset_s: float = 0.0
 ) -> list[tuple[float, float]]:
-    """``(fraction, time_s)`` pairs inside ``[0, played_s)``."""
+    """``(fraction, time_s)`` pairs inside ``[offset_s, offset_s + played_s)``: the played window
+    (the clip head, or the peak window a montage shot keeps)."""
     if played_s <= 0:
         raise ValueError("played duration must be positive")
-    return [(f, round(min(max(f, 0.0), 0.999) * played_s, 3)) for f in fractions]
+    return [(f, round(offset_s + min(max(f, 0.0), 0.999) * played_s, 3)) for f in fractions]
 
 
 def played_duration(scene_duration_s: float, clip_duration_s: float | None) -> float:
@@ -115,9 +117,10 @@ async def sample_frames(
     *,
     fractions: Sequence[float] = DEFAULT_FRACTIONS,
     long_side: int = DEFAULT_LONG_SIDE,
+    offset_s: float = 0.0,
 ) -> list[SampledFrame]:
     frames = []
-    for fraction, t in sample_times(played_s, fractions):
+    for fraction, t in sample_times(played_s, fractions, offset_s):
         frames.append(SampledFrame(t, fraction, await _frame_at(video, t, long_side)))
     return frames
 
@@ -144,3 +147,55 @@ async def probe_video(path: Path) -> tuple[int, int, float]:
     info = json.loads(out)
     stream = info["streams"][0]
     return int(stream["width"]), int(stream["height"]), float(info["format"]["duration"])
+
+
+# ------------------------------------------------------------------------------ peak window
+MOTION_FPS = 12
+_MOTION_W, _MOTION_H = 96, 96
+
+
+async def motion_profile(video: Path, *, fps: int = MOTION_FPS) -> list[float]:
+    """Mean absolute luma difference between consecutive frames, sampled at ``fps``
+    (PLAN_V2 item 5). Deterministic: one ffmpeg decode to small grey frames, then numpy.
+    ``profile[i]`` is the motion between frame i and i+1, at time ``(i + 1) / fps``."""
+    proc = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(video),
+        "-vf", f"fps={fps},scale={_MOTION_W}:{_MOTION_H},format=gray",
+        "-f", "rawvideo", "-",
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    out, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"motion profile: {err.decode(errors='replace')[-300:]}")
+    frames = np.frombuffer(out, dtype=np.uint8)
+    n = frames.size // (_MOTION_W * _MOTION_H)
+    if n < 2:
+        return []
+    stack = frames[: n * _MOTION_W * _MOTION_H].reshape(n, -1).astype(np.int16)
+    diffs = np.abs(np.diff(stack, axis=0)).mean(axis=1)
+    return [round(float(d), 4) for d in diffs]
+
+
+def peak_window(
+    profile: Sequence[float], *, fps: int, clip_s: float, kept_s: float
+) -> tuple[float, float]:
+    """``(start_s, kept_s)``: the ``kept_s`` window with the most motion that also contains the
+    single strongest motion frame (the shot's event: a burst, a splash). Ties → earliest. With no
+    usable profile, or a clip no longer than the window, the head is kept (today's behaviour)."""
+    kept = min(kept_s, clip_s)
+    if not profile or clip_s <= kept + 1e-6:
+        return 0.0, round(kept, 3)
+    width = max(1, round(kept * fps))
+    peak = int(np.argmax(profile))
+    last_start = max(0, min(len(profile) - width, int((clip_s - kept) * fps)))
+    best, best_energy = 0, -1.0
+    for start in range(0, last_start + 1):
+        if not start <= peak < start + width:
+            continue
+        energy = float(sum(profile[start : start + width]))
+        if energy > best_energy + 1e-9:
+            best, best_energy = start, energy
+    if best_energy < 0:  # the peak sits beyond the last full window: keep the last one
+        best = last_start
+    start_s = min(best / fps, clip_s - kept)
+    return round(max(0.0, start_s), 3), round(kept, 3)

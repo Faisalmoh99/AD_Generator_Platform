@@ -22,6 +22,7 @@ from adsmith.agent.structured import StructuredResult
 from adsmith.config import LLMNode
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.enums import Stage
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt, ScenePromptDraft
@@ -68,6 +69,7 @@ async def prompt(state: RunState, ctx: NodeContext) -> NodeResult:
             render_s=f"{render_s:g}",
             visible_s=f"{visible_s:g}",
             shot_vocab=entry_block(scene.vocab, ctx.settings.vocabulary.get(scene.vocab)),
+            montage=sb.format is AdFormat.MONTAGE,
             wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief)
             if scene.shows_character
             else "(no person in this shot)",

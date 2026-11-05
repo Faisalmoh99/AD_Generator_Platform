@@ -100,8 +100,9 @@ async def assemble(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     for s in scenes:
         if s.status is SceneStatus.APPROVED and s.clip is not None:
             seg = work / f"seg_{s.order}.mp4"
+            start, kept = s.kept_window
             await ffmpeg.normalise_clip(
-                ctx.artifacts.resolve(s.clip), seg, seconds=s.duration_s, width=w, height=h
+                ctx.artifacts.resolve(s.clip), seg, seconds=kept, width=w, height=h, start_s=start
             )
         elif s.status is SceneStatus.FAILED and cfg.partial_mode == "slate":
             png = await asyncio.to_thread(

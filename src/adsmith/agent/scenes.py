@@ -43,6 +43,7 @@ from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError, CostCategory
 from adsmith.domain.enums import FailureKind, RecoveryAction, ScenePhase, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.generation import Artifact, GenerationAttempt, RemoteRequest
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.qa import QAVerdict
@@ -50,6 +51,7 @@ from adsmith.domain.run import ProductReference, RunState
 from adsmith.domain.scene import Scene, SceneFailure, ScenePrompt
 from adsmith.domain.vocabulary import IdentityMode
 from adsmith.logging import get_logger
+from adsmith.media.frames import MOTION_FPS, motion_profile, peak_window
 from adsmith.providers.media.base import RemoteControl, VideoJob
 from adsmith.storage import StaleWriteError, Storage
 from adsmith.storage.repo import Mutation
@@ -429,8 +431,12 @@ class SceneStageRunner:
         state = self.storage.runs.load(run_id)
         current = self._find(state, scene_id)
         reviews: list[_Review] = []
+        windows: dict[str, tuple[float, float] | None] = {}
         for att, res in made:
-            subject = current.model_copy(update={"clip": res.artifact})
+            windows[att.id] = await self._window(state, current, res.artifact)
+            subject = current.model_copy(
+                update={"clip": res.artifact, "use_window": windows[att.id]}
+            )
             try:
                 verdict, calls = await self.critic.review(state, subject)
                 reviews.append((att, res, verdict, calls, ""))
@@ -465,7 +471,7 @@ class SceneStageRunner:
             ]
             if winner is not None and winner[2] is not None:
                 k = reviews.index(winner) + 1
-                sc.complete_clip(winner[1].artifact)
+                sc.complete_clip(winner[1].artifact, windows.get(winner[0].id))
                 sc.approve(winner[2])
                 events.append(
                     _ev(
@@ -671,7 +677,10 @@ class SceneStageRunner:
             )
             if self.gateway.cached(prepared) is not None:
                 result = await self.gateway.run(prepared, self._scratch(run_id))
-                return self._succeed(run_id, stage, scene, attempt, result, reserved=False)
+                window = await self._window(state, scene, result.artifact)
+                return self._succeed(
+                    run_id, stage, scene, attempt, result, reserved=False, window=window
+                )
 
             if not self._start(run_id, stage, scene, attempt, prepared):
                 return False
@@ -722,7 +731,10 @@ class SceneStageRunner:
             except AgentError as exc:  # transient/429 exhausted, or permanent
                 self._attempt_failed(run_id, stage, scene, attempt, exc, give_up=True)
                 return False
-            return self._succeed(run_id, stage, scene, attempt, result, reserved=True)
+            window = await self._window(state, scene, result.artifact)
+            return self._succeed(
+                run_id, stage, scene, attempt, result, reserved=True, window=window
+            )
 
     def _with_remote(
         self, run_id: str, scene: Scene, attempt: GenerationAttempt, prepared: PreparedJob
@@ -807,6 +819,7 @@ class SceneStageRunner:
         result: GatewayResult,
         *,
         reserved: bool,
+        window: tuple[float, float] | None = None,
     ) -> bool:
         def mutate(s: RunState) -> list[AgentEvent]:
             sc = self._same_version(s, scene)
@@ -823,7 +836,7 @@ class SceneStageRunner:
             if attempt.phase is ScenePhase.KEYFRAME:
                 sc.complete_keyframe(result.artifact)
             else:
-                sc.complete_clip(result.artifact)
+                sc.complete_clip(result.artifact, window)
             if result.cache_hit:
                 return [
                     _ev(
@@ -1184,6 +1197,23 @@ class SceneStageRunner:
         await self._revise(run_id, Stage.QA, scene_id, "qa_feedback", detail, verdict=verdict)
 
     # ------------------------------------------------------------------------ helpers
+    async def _window(
+        self, state: RunState, scene: Scene, clip: Artifact
+    ) -> tuple[float, float] | None:
+        """Montage shots keep their peak-motion window of the rendered clip (PLAN_V2 item 5);
+        other formats keep the head (None). A profile failure falls back to the head."""
+        if clip.kind != "video" or state.storyboard is None:
+            return None
+        if state.storyboard.format is not AdFormat.MONTAGE:
+            return None
+        path = self.storage.artifacts.resolve(clip)
+        clip_s = clip.duration_s or scene.duration_s
+        try:
+            profile = await motion_profile(path)
+        except AgentError:
+            return None
+        return peak_window(profile, fps=MOTION_FPS, clip_s=clip_s, kept_s=scene.duration_s)
+
     def _evict_rejected(self, scene: Scene, verdict: QAVerdict) -> None:
         """Known-bad outputs are never served from cache (ADR-0015): forget the rejected clip,
         and the keyframe too when the look itself was rejected."""
