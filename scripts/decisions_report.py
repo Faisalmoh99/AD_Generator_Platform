@@ -75,10 +75,13 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
     out.append("\n4. SHOTS (vocab · identity · flags · keyframe gate per try)")
     assert st.storyboard is not None
     for sc in st.storyboard.scenes:
+        current = {a.id for a in sc.attempts if a.scene_version == sc.version}
         idents = [
             str(e.payload.get("identity"))
             for e in by_scene[sc.id]
-            if e.type is EventType.ATTEMPT_STARTED and "identity" in e.payload
+            if e.type is EventType.ATTEMPT_STARTED
+            and "identity" in e.payload
+            and e.payload.get("attempt_id") in current
         ]
         flags = ("person " if sc.shows_character else "") + ("product" if sc.shows_product else "")
         out.append(
@@ -87,14 +90,23 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
             f"{sc.status.value}"
         )
         out.append(f"      action: {sc.shot.subject_action[:150]}")
-        tries = [a for a in sc.attempts if a.phase is ScenePhase.KEYFRAME]
+        if sc.version > 1:
+            out.append(f"      v{sc.version}: {sc.history[-1].reason[:120]}")
+        tries = [
+            a
+            for a in sc.attempts
+            if a.phase is ScenePhase.KEYFRAME and a.scene_version == sc.version
+        ]
         for a in tries:
             res = {True: "PASS", False: "FAIL", None: "-"}[a.qa_passed]
             score = f"{a.qa_score:.2f}" if a.qa_score is not None else "-"
             out.append(
                 f"      try {a.attempt_no}: {a.outcome} ${a.cost_usd:.3f} gate {score} {res}"
             )
+        since = next((e.seq for e in by_scene[sc.id] if e.payload.get("attempt_id") in current), 0)
         for e in by_scene[sc.id]:
+            if e.seq < since:
+                continue
             if e.payload.get("gate") == "keyframe" and e.level != "info":
                 out.append(f"      [{e.level}] {e.summary[:260]}")
             elif e.type is EventType.RECOVERY and "revision" in e.summary.lower():

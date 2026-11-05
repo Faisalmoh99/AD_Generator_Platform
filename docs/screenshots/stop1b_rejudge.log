@@ -1,0 +1,15 @@
+re-judge S6 water_ribbon: 0.50 FAIL score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match (LLM $0.020)
+    [major] composition: The water ribbon does not curl around the bottle. It is a thin line running down inside or in front of the glass, ending in a small puddle at the base on the right. There is no ribbon encircling the midsection and no mid-air swirl.
+    [minor] product_detail: The cap is a squared, faceted dark block that reads well, but the neck collar is a short silver ring and the shoulders are only slightly bevelled. These are fine details and do not change the product's identity.
+    [minor] lighting: The rim light on the glass edges is very dim, and the liquid is nearly black with a teal tint. The thin bright edge lines described in the bible are weak.
+re-judge S7 bottle_into_water: 0.45 FAIL score 0.45 < threshold 0.70; composition is the spec for this shot and it does not match (LLM $0.012)
+    [major] composition: The bottle stands upright on a glossy black surface with a visible reflection below, so it does not look submerged just under still black water. There is no water surface line and no splash crown above the cap. Only a thin stream of bubbles falls or rises from the top edge of the frame, above the cap, instead of a column around and behind the bottle.
+    [minor] product_detail: The cap is a squared wedge with a sloped front facet, in matte black. It looks slightly more angular than the specified flush faceted cap. The neck collar is visible as a dark ring between cap and glass.
+re-judge S10 hero_push_in: 0.62 FAIL score 0.62 < threshold 0.70; composition is the spec for this shot and it does not match (LLM $0.014)
+    [major] composition: The bottle and its reflection fill the whole tall frame. The bottle base sits at about 83% of the height and the reflection runs to the bottom edge, so the lower fifth is not dark and empty and no room is left for the tagline and end card. The bottle is also not centred in the upper two thirds.
+    [minor] lighting: The glass body is very dark and the rim highlights are faint. The bevelled facets and diagonal corners barely show as thin bright silver lines, apart from a soft left-edge glow. The liquid reads as near-black navy rather than a smoked tone with a cyan edge tint.
+    [minor] product_detail: The cap reads as a matte black wedge with a sloped, chiselled top rather than a squared, flush, faceted brushed-metal block. The cap facets are only weakly defined, and a slim metallic collar is visible between the cap and the neck.
+fal headroom $0.28
+S7: re-judged FAIL but no room left under the cap; kept as is
+S10: re-judged FAIL but no room left under the cap; kept as is
+done: stage generate, media $0.695

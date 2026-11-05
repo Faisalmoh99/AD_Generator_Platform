@@ -1,0 +1,66 @@
+DECISIONS · run_01M6MGNPSHZ3GV5TTHN983R022 · stage generate
+
+1. FORMAT: montage (why: physical product and no format in the request); requested_format=none, physical_product=True, 12s, ar/saudi_najdi
+
+2. CONCEPTS (judge weighted score; * = picked by agent)
+  * 1. حدّ الزجاج · 5.25 · قارورة العطر تُقدَّم كأنها حجر ثمين: كل وجه من وجوه الزجاج المصقول يحكي لحظة ماء ومعدن ونور، والأناقة هنا دقة وصقل.
+    2. نبض · 4.85 · إيقاع مونتاج يتسارع كنبض القلب قبل الدخول: قطرة تسقط في ماء أسود ثم تتتابع الأحداث أسرع حتى رشّة واحدة تقطع كل شي ثم صمت وقارورة.
+    3. اللي يبقى بعدك · 3.80 · قبل الخروج، يلمع المعدن والحجر الأسود والقارورة، ثم يمشي ظهر رجل في العتمة ويبقى أثره: العطر اللي ما يُنسى.
+    why: أكبر نقطة قوة: فكرة الزجاج كحجر ثمين بإضاءة حادة ومدارات كاميرا تناسب الموديل ونمط الفخامة الهادئة. الخطر: الاعتماد على لمعات نور خفيفة وقطرات صغيرة قد يتجاهلها الموديل، والانتقال بين المشاهد يحتاج قصّات وقد تتغير القارورة. (weighted 5.25/10)
+
+3. PRODUCT REFERENCE
+  APPROVED after 1 tries, 0 rejected, $0.025; last gate 0.84 pass
+
+4. SHOTS (vocab · identity · flags · keyframe gate per try)
+  S1 hook    1.2s · turntable_glint · direct · product · pending
+      action: The camera orbits slowly about 30 degrees around one polished glass corner of the bottle while a thin highlight travels along the edge.
+      try 1: success $0.040 gate 0.72 PASS
+  S2 build   1.2s · cap_macro · composite · product · failed
+      action: A thin band of light slides across the brushed black metal facets of the cap as the camera creeps forward.
+      v2: edit: macro → composite
+      try 1: success $0.065 gate 0.45 FAIL
+      [warn] Scene 2 keyframe rejected by the gate (score 0.45 < threshold 0.70; product or character identity differs from the bible): product: The bottle has a dark teal-blue liquid filling a large rectangular inner block, with a thin curved line (dip tube) running throu
+      [rewrite] Keyframe gate revision for scene 2: prompt revised (new keyframe needed)
+      FAILED budget_exceeded: estimated $0.065 exceeds the remaining $0.045 of the $0.7 media cap
+  S3 build   1.2s · glass_edge_macro · composite · product · failed
+      action: The camera pushes slowly along one faceted glass edge as the rim light glints on it.
+      v2: edit: macro → composite
+      try 1: success $0.065 gate 0.50 FAIL
+      try 2: success $0.065 gate 0.55 FAIL
+      [warn] Scene 3 keyframe rejected by the gate (score 0.50 < threshold 0.70): composition: The frame shows the full bottle straight-on and centered, not an extreme macro of one diagonal glass edge crossing from lower-left to upper-right.; lighting: The background is a 
+      [rewrite] Keyframe gate revision for scene 3: prompt revised (new keyframe needed)
+      [error] Scene 3 keyframe rejected 2×; scene failed without spending on video (saved ~$0.25). Other scenes continue.
+      FAILED quality_rejected: keyframe rejected 2× by the gate (score 0.55 < threshold 0.70; product or character identity differs from the bible)
+  S4 build   1.2s · droplets_on_glass · direct · product · pending
+      action: Cold droplets bead on the glass surface and one droplet runs slowly down.
+      try 1: success $0.040 gate 0.82 PASS
+  S5 build   1.2s · water_drop_leaf · none · no product, no person · pending
+      action: One water drop falls onto the leaf and bursts into a small crown of droplets.
+      try 1: success $0.025 gate 0.72 PASS
+  S6 build   1.2s · water_ribbon · direct · product · failed
+      action: A single clear ribbon of water swirls once around the standing bottle.
+      v2: edit: composition is now hard
+      try 1: success $0.040 gate 0.50 FAIL
+      [warn] Scene 6 keyframe rejected by the gate (score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match): composition: The shot's defining event is missing. No clear water ribbon curls around the bottle's midsection. The only curved lin
+      [rewrite] Keyframe gate revision for scene 6: prompt revised (new keyframe needed)
+      FAILED budget_exceeded: estimated $0.040 exceeds the remaining $0.005 of the $0.7 media cap
+  S7 build   1.2s · bottle_into_water · direct · product · pending
+      action: The bottle sinks into still black water and sends up a column of bubbles.
+      try 1: success $0.040 gate 0.80 PASS
+  S8 build   1.2s · bottle_on_rock · direct · product · pending
+      action: The camera pushes slowly toward the bottle standing on wet dark rock.
+      try 1: success $0.040 gate 0.80 PASS
+  S9 reveal  1.2s · spray_from_nozzle · direct · product · pending
+      action: The bottle, cap off, releases one short, fine horizontal plume of mist from its nozzle to the right.
+      v2: edit: spray_burst → spray_from_nozzle (FLUX dev ignored the free burst 3x)
+      try 1: success $0.040 gate 0.85 PASS
+  S10 product 1.2s · hero_push_in · direct · product · pending
+      action: The camera pushes slowly and steadily toward the standing bottle as the light settles on its edges.
+      try 1: success $0.040 gate 0.85 PASS
+
+5. BUDGET REFUSALS, FALLBACKS, REPAIRS
+  scenes refused by the budget: [2, 6]
+  schema repairs: 1
+    [storyboard] storyboard via claude-sonnet-5-5: ok, 11795 in (4092 cached) / 4287 out, $0.0591, 24766 ms
+
+6. SPEND: image $0.695 · video $0.000 · LLM $0.656 · run cap $2.50
