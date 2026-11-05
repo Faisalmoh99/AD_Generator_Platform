@@ -1,5 +1,8 @@
 # HANDOFF
 
+> **Historical handoff from before PLAN_V2.** The current state is in the [README](../README.md)
+> and [PROGRESS](PROGRESS.md).
+
 State of Adsmith on 2026-11-05, for the next session. This file is a set of pointers to where
 things live; the details are in the linked files. **Next work: build `docs/PLAN_V2.md`, items
 1 → 4, then STOP 1.**

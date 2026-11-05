@@ -1,13 +1,16 @@
 # Adsmith
 
+**Video walkthrough (11 min, Arabic):** VIDEO_URL
+
 **An ad agent with an explicit, typed, recoverable brain.** Ask for *"a 15-second ad for a luxury
 men's perfume, cinematic"*, in English, Modern Standard Arabic or Saudi dialect. Adsmith writes
 3 concepts, judges them, storyboards the winner with DP-level shot specs, writes prompts,
 generates and checks keyframes and then clips, recovers from failures, and assembles the ad with
 an Arabic end card. Change your mind with *"خل المشهد الثاني أبطأ"* ("make the second scene
 slower") and only that scene's clip is regenerated. It runs with **zero API keys** (scripted LLM +
-mock media), and it was tested on **real models** (Claude for reasoning, FLUX + LTX-2.3 + Kling v3
-Pro on fal.ai for media).
+mock media), and it was tested on **real models**: Claude for reasoning, and on fal.ai FLUX dev +
+FLUX Kontext keyframes, **Kling v3 Standard** clips and Lyria 2 music for the final ad (LTX-2.3
+and Kling v3 Pro were tested in earlier rounds).
 
 ![Adsmith Studio: an edit's blast radius](docs/screenshots/4_edit_blast_radius.png)
 
@@ -198,8 +201,9 @@ I spent about $18 of real fal credit; these lessons changed the design.
    the cap macro and a hero ending, **7 of 8 shots, 12.5 s** ([v2](docs/media/montage_v2.mp4),
    $3.09 of fal). It is much closer to the references, but it lost two things v1 had. **Music:**
    the track was reserved last and the clip retakes had used the cap, so music is now made when the
-   clips start (the final v2 was re-assembled at $0 with v1's stored track, beat-cut to it). **Perfect identity:** the droplets shot turned the cap to crystal and the gate passed
-   it, so the gate still misses fine material changes on small parts.
+   clips start (the final v2 was re-assembled at $0 with v1's stored track, beat-cut to it).
+   **Perfect identity:** the droplets shot turned the cap to crystal and the gate passed it, so the
+   gate still misses fine material changes on small parts.
 
 ## Design decisions
 
@@ -214,17 +218,33 @@ I spent about $18 of real fal credit; these lessons changed the design.
 - Creative guardrails (clichés, insight, product presence). [0014](docs/adr/0014-creative-quality-guardrails.md)
 - Vision critic: code decides pass/fail, hard/soft severity. [0016](docs/adr/0016-vision-qa-critic.md)
 - Video-model capability profiles and the single-take format. [0017](docs/adr/0017-video-capability-profiles-and-single-take.md)
+- Ad formats and a closed shot vocabulary (montage). [0018](docs/adr/0018-ad-formats-and-shot-vocabulary.md)
+- Per-shot product identity routing and a cultural wardrobe lexicon. [0019](docs/adr/0019-identity-routing-and-wardrobe-lexicon.md)
+- Peak-motion window, beat-cut assembly, best-of-2 on key shots. [0020](docs/adr/0020-peak-window-beat-cut-key-shot-takes.md)
+- Macro crops from the packshot, vocabulary fallback, generated music. [0021](docs/adr/0021-macro-crop-vocab-fallback-generated-music.md)
 
 ## Limitations and "with more time"
 
-- The keyframe model's layout adherence (light side, prop placement, product shape) is the main
-  weakness. Next steps: a **product reference image** for generation and for the critic, and
-  inpainting near-miss keyframes instead of re-rolling them.
-- The critic is not deterministic and misses fine product identity. Next: a second opinion near the
-  threshold, plus hard checks for geometry stability and alcohol resemblance.
-- An escalation ladder: when the same failure repeats, switch model, then simplify the spec,
-  instead of retrying the same request.
-- Evals were cut for time. The full list is in [docs/MORE_TIME.md](docs/MORE_TIME.md).
+Where it stands honestly:
+- **The critic misses fine material changes.** In montage v2 the droplets shot turned the cap into
+  clear crystal and the keyframe gate passed it (0.78); the cap's shade also drifts between shots.
+  The product reference image locks the shape, not every material detail.
+- **No eval suite yet.** The critic was calibrated on 14 labelled cases (12 of 14 right). That is
+  evidence, not a benchmark, and there is no automatic regression when a prompt template changes.
+- **Single process.** SQLite + asyncio is right for one machine and one user. Many users need more.
+- **Event shots are fragile.** A water ribbon and a splash failed the gate in every montage run; the
+  vocabulary fallback keeps the ad whole, but those shots are still not reliable.
+
+Next, in this order:
+1. **An eval suite for the critic:** a labelled golden set of keyframes and clips, accuracy per
+   issue category, run on every template change; then a cross-shot identity check against the
+   packshot to catch material drift.
+2. **Queue + workers + Postgres:** each orchestrator step becomes a job (steps are already
+   idempotent), object storage for the CAS, per-user budgets.
+3. **The escalation ladder:** when the same failure repeats, simplify the spec, then switch model,
+   before falling back, instead of retrying the same request.
+
+The full list is in [docs/MORE_TIME.md](docs/MORE_TIME.md).
 
 ## Repo map and quality gate
 
@@ -237,5 +257,5 @@ config/                 models.toml (models, prices, profiles), chaos.toml, real
 docs/                   PLAN · PROGRESS · ADRs · MORE_TIME · DEMO_SCRIPT · screenshots · media
 ```
 
-`make check` = ruff + ruff format + **mypy --strict** + pytest: **470 tests** (2 live tests run
-with `--live`). Recovery paths, edits, the wallet, crash/resume and the API all have tests.
+`make check` = ruff + ruff format + **mypy --strict** + pytest: **585 tests** (plus 2 live tests
+that run with `--live`). Recovery paths, edits, the wallet, crash/resume and the API all have tests.
