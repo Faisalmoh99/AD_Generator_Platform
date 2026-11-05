@@ -28,7 +28,7 @@ import contextlib
 import functools
 import random
 from collections.abc import Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal, Protocol
 
@@ -112,6 +112,9 @@ class SceneStageRunner:
     concurrency: int
     sleep: Sleep
     rng: random.Random
+    # Vocabulary fallbacks are decided one at a time: concurrent shots must not pick the same
+    # entry (montage run 1: two shots fell back to bottle_on_rock at once).
+    _fallback_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
     # ------------------------------------------------------------------------ stage entry
     async def run(self, run_id: str, stage: Stage) -> None:
@@ -571,12 +574,14 @@ class SceneStageRunner:
 
         reasons = "; ".join(verdict.fail_reasons)
         issues = "; ".join(f"{i.category}: {i.observation}" for i in verdict.issues)
-        swap = fallback_for(self.node_ctx.settings, state, scene)
-        if rejected + 1 >= max_tries and swap is not None:
-            return await self._fall_back(
-                run_id, stage, scene, swap, verdict, calls, kf_att, rejected + 1
-            )
         if rejected + 1 >= max_tries:
+            async with self._fallback_lock:
+                fresh = self.storage.runs.load(run_id)
+                swap = fallback_for(self.node_ctx.settings, fresh, self._find(fresh, scene_id))
+                if swap is not None:
+                    return await self._fall_back(
+                        run_id, stage, scene, swap, verdict, calls, kf_att, rejected + 1
+                    )
 
             def give_up(s: RunState) -> list[AgentEvent]:
                 sc = record(s)
@@ -1440,10 +1445,13 @@ class SceneStageRunner:
 
 
 def fallback_for(settings: Settings, state: RunState, scene: Scene) -> str | None:
-    """The vocabulary entry a failing shot falls back to, or None. Once per shot (a shot
-    that already fell back fails as before). Follows the fallback chain past entries other shots
-    already use, and past person shots when another shot already shows a person (the montage
-    allows one), so the swap keeps the board varied and within its grammar."""
+    """The vocabulary entry a failing shot falls back to, or None. Once per shot (a shot that
+    already fell back fails as before). In order: the first entry of the fallback chain that no
+    other shot uses; else the first unused safe product shot of the vocabulary (direct identity,
+    no event to miss, no person); else the first usable chain entry even if another shot uses it
+    (a repeated shot beats a hole). Never an entry the run's video model renders badly
+    (``avoid_on``), never an entry another shot already failed with, and never a second person
+    shot (the montage allows one)."""
     vocab = settings.vocabulary
     entry = vocab.get(scene.vocab)
     if entry is None or any(h.reason.startswith("fallback:") for h in scene.history):
@@ -1452,15 +1460,34 @@ def fallback_for(settings: Settings, state: RunState, scene: Scene) -> str | Non
     others = [s for s in state.storyboard.scenes if s.id != scene.id]
     used = {s.vocab for s in others}
     person_taken = any(s.shows_character for s in others)
-    seen = {scene.vocab}
+    model = state.config.video_model
+    # Entries another shot already failed with in this run are not offered again.
+    failed = {
+        h.vocab for s in others for h in s.history if h.reason.startswith("fallback:") and h.vocab
+    }
+
+    def usable(name: str) -> bool:
+        e = vocab.shots[name]
+        return (
+            name != scene.vocab
+            and name not in failed
+            and (model is None or model not in e.avoid_on)
+            and not (e.shows_person and person_taken)
+        )
+
+    chain: list[str] = []
     name = entry.fallback
-    while name not in seen:
-        cand = vocab.shots[name]
-        if name not in used and not (cand.shows_person and person_taken):
+    while name not in chain and name != scene.vocab:
+        chain.append(name)
+        name = vocab.shots[name].fallback
+    for name in chain:
+        if usable(name) and name not in used:
             return name
-        seen.add(name)
-        name = cand.fallback
-    return None
+    for name, e in vocab.shots.items():
+        safe = e.needs_product and e.identity_mode == "direct" and not e.composition_is_spec
+        if safe and not e.shows_person and usable(name) and name not in used:
+            return name
+    return next((n for n in chain if usable(n)), None)
 
 
 def identity_for(settings: Settings, scene: Scene) -> tuple[IdentityMode, str]:

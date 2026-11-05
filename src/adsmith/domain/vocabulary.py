@@ -73,6 +73,15 @@ class VocabLibrary(DomainModel):
     def get(self, name: str | None) -> ShotVocab | None:
         return None if name is None else self.shots.get(name)
 
+    def for_model(self, video_model: str | None) -> VocabLibrary:
+        """The entries the storyboard may use with this video endpoint (``avoid_on``: entries the
+        model renders badly, e.g. light-only events on Kling). Fallback names may point at an
+        avoided entry; the scene runner walks past those."""
+        if video_model is None:
+            return self
+        kept = {n: v for n, v in self.shots.items() if video_model not in v.avoid_on}
+        return VocabLibrary.model_construct(shots=kept)
+
     def prompt_block(self) -> str:
         """The whole vocabulary as prompt text for the storyboard."""
         lines = []

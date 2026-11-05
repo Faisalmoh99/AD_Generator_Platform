@@ -92,17 +92,50 @@ async def test_a_shot_falls_back_only_once(tmp_path: Path, monkeypatch: pytest.M
     assert all(s.status is SceneStatus.APPROVED for s in others)
 
 
-async def test_fallback_skips_entries_in_use_and_a_second_person(tmp_path: Path) -> None:
+async def test_fallback_skips_entries_in_use_avoided_and_a_second_person(tmp_path: Path) -> None:
     h = make_harness(fast_settings(tmp_path), scenario="montage_en")
     run = h.orch.create_run(REQUEST, interactive=False)
     state = await h.orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.storyboard is not None
+    assert state.config.video_model == "kling_v3_pro"  # light-only entries are avoided on Kling
     s = h.rt.settings
     by_vocab = {sc.vocab: sc for sc in state.storyboard.scenes}
-    # spray_from_nozzle → light_sweep (already S7) → rim_light_reveal
-    assert fallback_for(s, state, by_vocab["spray_from_nozzle"]) == "rim_light_reveal"
-    # hand_cuff → bottle_on_rock (unused)
+    # spray_from_nozzle → light_sweep (avoided) → rim_light_reveal (avoided) → hero_push_in (S9)
+    # → bottle_on_rock (unused)
+    assert fallback_for(s, state, by_vocab["spray_from_nozzle"]) == "bottle_on_rock"
+    assert fallback_for(s, state, by_vocab["hero_push_in"]) == "bottle_on_rock"
     assert fallback_for(s, state, by_vocab["hand_cuff"]) == "bottle_on_rock"
-    # water_drop_leaf → droplets_on_glass (S4) → glass_edge_macro (S3) → light_sweep (S7) →
-    # rim_light_reveal
-    assert fallback_for(s, state, by_vocab["water_drop_leaf"]) == "rim_light_reveal"
+
+    # The whole chain in use: the first unused safe product shot of the vocabulary.
+    hand = by_vocab["hand_cuff"]
+    hand.vocab, hand.shows_character = "bottle_on_rock", False
+    assert fallback_for(s, state, by_vocab["spray_from_nozzle"]) == "cap_lift"
+    # Nothing unused left: a repeated shot beats a hole (first usable chain entry).
+    by_vocab["water_drop_leaf"].vocab = "cap_lift"
+    assert fallback_for(s, state, by_vocab["spray_from_nozzle"]) == "hero_push_in"
+
+
+def test_storyboard_vocabulary_drops_entries_the_model_renders_badly() -> None:
+    from adsmith.config import Settings  # noqa: PLC0415
+
+    vocab = Settings().vocabulary
+    kling = vocab.for_model("kling_v3_standard")
+    assert "light_sweep" not in kling.shots and "rim_light_reveal" not in kling.shots
+    assert "light_sweep" in vocab.for_model("ltx_23_fast").shots
+
+
+async def test_concurrent_fallbacks_never_pick_the_same_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # hand_cuff and hero_push_in both fall back to bottle_on_rock first; decided one at a time,
+    # the second takes the next unused safe shot (montage run 1 had two bottle_on_rock shots).
+    monkeypatch.setattr(MockCritic, "review_keyframe", _gate_failing({"hand_cuff", "hero_push_in"}))
+    settings = fast_settings(tmp_path, keyframe_max_tries=2, scene_concurrency=9)
+    h = make_harness(settings, scenario="montage_en")
+    run = h.orch.create_run(REQUEST, interactive=False)
+    state = await h.orch.run_until_blocked(run.id)
+    assert state.storyboard is not None
+    swapped = [s.vocab or "" for s in state.storyboard.scenes if s.version == 2]
+    assert sorted(swapped) == ["bottle_on_rock", "cap_lift"]
+    vocabs = [s.vocab for s in state.storyboard.scenes]
+    assert len(vocabs) == len(set(vocabs))

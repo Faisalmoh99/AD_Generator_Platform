@@ -72,7 +72,8 @@ def load_gallery(config_dir: Path, storage: Storage) -> list[dict[str, Any]]:
                 "endcard": state.endcard.model_dump(mode="json") if state.endcard else None,
                 "spend": round(
                     state.budget.by_category.get("video", 0.0)
-                    + state.budget.by_category.get("image", 0.0),
+                    + state.budget.by_category.get("image", 0.0)
+                    + state.budget.by_category.get("audio", 0.0),
                     3,
                 ),
             }

@@ -130,24 +130,24 @@
         },
         {
           "purpose": "build",
-          "description": "Warm light sweeps across the bottle on wet dark rock.",
+          "description": "A slow orbit catches a glint on the bottle on wet dark rock.",
           "duration_s": 1.35,
           "shot": {
             "shot_type": "close_up",
             "camera_movement": "orbit",
             "lens": "85mm f/2.8",
-            "lighting": "a slow sweep of warm light over cold rim light",
+            "lighting": "a cold rim light from camera-right, a warm glint on one facet",
             "time_of_day": "night",
             "composition": "the bottle on wet rock, slightly low angle",
             "mood": "revealing",
-            "subject_action": "A slow sweep of warm light travels across the bottle on wet dark rock.",
+            "subject_action": "A slow 30-degree orbit around the bottle; a highlight travels over its facets.",
             "setting": "wet dark rock",
             "color_notes": null,
             "speed": "slow_motion"
           },
           "shows_character": false,
           "shows_product": true,
-          "vocab": "light_sweep"
+          "vocab": "turntable_glint"
         },
         {
           "purpose": "reveal",

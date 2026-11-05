@@ -56,7 +56,7 @@ lighting = "a single band of hard light that travels across the bottle, black su
 motion = "a band of hard light travels slowly across the bottle from left to right, revealing its facets"
 keyframe_hint = "the bottle stands in near darkness, one edge lit by a thin band of hard light"
 fallback = "rim_light_reveal"
-avoid_on = []
+avoid_on = ["kling_v3_standard", "kling_v3_pro"]  # light-only: Kling ignores it (2/2 clip QA fails, montage run 1)
 
 [shots.rim_light_reveal]
 label = "Rim light reveal in darkness"
@@ -72,7 +72,7 @@ lighting = "only a rim light outlines the bottle against pure black"
 motion = "the rim light slowly brightens until the whole outline of the bottle glows"
 keyframe_hint = "the bottle seen only as a glowing outline of rim light against pure black"
 fallback = "hero_push_in"
-avoid_on = []
+avoid_on = ["kling_v3_standard", "kling_v3_pro"]  # light-only: Kling ignores it (2/2 clip QA fails, montage run 1)
 
 [shots.turntable_glint]
 label = "Slow turntable glint"
@@ -201,8 +201,9 @@ camera = "push_in"
 speed = "normal"
 lighting = "one hard rim light from camera-right tracing the edges, everything else in darkness, a soft low fill"
 motion = "a slow, steady push-in on the bottle; the light settles"
-keyframe_hint = "the bottle centred and upright, sharp from cap to base, lower fifth of the frame dark and empty for the end card"
-fallback = "rim_light_reveal"
+keyframe_hint = "the bottle centred and upright on a matte black void with no reflection, sharp from cap to base, lower fifth of the frame dark and empty for the end card"
+reference_note = "the surface under the bottle and any reflection of it are gone: the bottle stands on a matte black void and the lower fifth of the frame is empty darkness; the bottle itself stays exactly as in the input image"
+fallback = "bottle_on_rock"
 avoid_on = []
 
 [shots.hand_cuff]

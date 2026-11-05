@@ -104,7 +104,7 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
             brief.product,
         )
 
-    vocab = ctx.settings.vocabulary
+    vocab = ctx.settings.vocabulary.for_model(video_model)
 
     def _montage(draft: StoryboardDraft) -> Storyboard:
         """Montage grammar (formats.toml): counts, kept durations, hero last, people, camera, and
