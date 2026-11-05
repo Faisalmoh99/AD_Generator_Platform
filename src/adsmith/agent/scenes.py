@@ -32,6 +32,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Literal, Protocol
 
+from pydantic import JsonValue
+
 from adsmith.agent.context import NodeContext, reference_enabled, render_window
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.media import GatewayResult, MediaGateway, PreparedJob
@@ -175,7 +177,10 @@ class SceneStageRunner:
             if outcome == "approved":
                 break
         if stage is Stage.GENERATE:
-            n = self.storage.runs.load(run_id).config.clip_candidates
+            state = self.storage.runs.load(run_id)
+            n = state.config.clip_candidates
+            if n == 1:
+                n = self._key_shot_takes(run_id, state, scene_id)
             if n > 1:
                 await self._best_of_n(run_id, scene_id, stage, n)
             else:
@@ -776,7 +781,9 @@ class SceneStageRunner:
     ) -> bool:
         category: CostCategory = "image" if attempt.phase is ScenePhase.KEYFRAME else "video"
         how = ""
+        keyframe_info: dict[str, JsonValue] = {}
         if attempt.phase is ScenePhase.KEYFRAME:
+            keyframe_info = {"identity": prepared.identity, "vocab": scene.vocab}
             how = f", identity {prepared.identity}" + (f" ({scene.vocab})" if scene.vocab else "")
 
         def mutate(s: RunState) -> list[AgentEvent]:
@@ -784,20 +791,18 @@ class SceneStageRunner:
             s.budget.reserve(attempt.id, category, prepared.est_usd, sc.id)
             sc.start()
             sc.attempts.append(attempt)
-            return [
-                _ev(
-                    run_id,
-                    stage,
-                    sc,
-                    EventType.ATTEMPT_STARTED,
-                    f"Scene {sc.order} {attempt.phase} attempt {prepared.job.label.attempt_no}"
-                    f"{how} (reserved ${prepared.est_usd:.3f})",
-                    attempt_id=attempt.id,
-                    est_usd=prepared.est_usd,
-                    identity=prepared.identity,
-                    vocab=sc.vocab,
-                )
-            ]
+            ev = _ev(
+                run_id,
+                stage,
+                sc,
+                EventType.ATTEMPT_STARTED,
+                f"Scene {sc.order} {attempt.phase} attempt {prepared.job.label.attempt_no}"
+                f"{how} (reserved ${prepared.est_usd:.3f})",
+                attempt_id=attempt.id,
+                est_usd=prepared.est_usd,
+            )
+            ev.payload.update(keyframe_info)
+            return [ev]
 
         try:
             self.storage.runs.update(
@@ -1197,6 +1202,44 @@ class SceneStageRunner:
         await self._revise(run_id, Stage.QA, scene_id, "qa_feedback", detail, verdict=verdict)
 
     # ------------------------------------------------------------------------ helpers
+    def _key_shot_takes(self, run_id: str, state: RunState, scene_id: str) -> int:
+        """PLAN_V2 item 8: two takes for a vocabulary key shot (the hero), only if the budget still
+        covers both after one clip for every other shot that has none yet; otherwise one."""
+        scene = self._find(state, scene_id)
+        entry = self.node_ctx.settings.vocabulary.get(scene.vocab)
+        if entry is None or not entry.key_shot:
+            return 1
+        assert state.storyboard is not None
+
+        def clip_usd(sc: Scene) -> float:
+            render_s, _ = render_window(self.node_ctx.settings, state, sc.duration_s)
+            return round(self.gateway.video.usd_per_second * render_s, 6)
+
+        others = sum(
+            clip_usd(sc)
+            for sc in state.storyboard.scenes
+            if sc.id != scene_id and sc.status is SceneStatus.PENDING and sc.clip is None
+        )
+        b = state.budget
+        media = b.media_remaining_usd
+        headroom = min(b.remaining_usd, media) if media is not None else b.remaining_usd
+        take = clip_usd(scene)
+        n = 2 if headroom - others >= 2 * take - 1e-9 else 1
+        why = (
+            f"best-of-2 (headroom ${headroom:.2f} covers 2 × ${take:.2f} after ${others:.2f} "
+            "for the other shots)"
+            if n == 2
+            else f"1 take: headroom ${headroom:.2f} − ${others:.2f} for the other shots does not "
+            f"cover 2 × ${take:.2f}"
+        )
+        ev = _ev(
+            run_id, Stage.GENERATE, scene, EventType.DECISION,
+            f"Scene {scene.order} {scene.vocab} is a key shot: {why}",
+            candidates=n, headroom_usd=round(headroom, 4), others_usd=round(others, 4),
+        )  # fmt: skip
+        self.storage.events.append(run_id, [ev])
+        return n
+
     async def _window(
         self, state: RunState, scene: Scene, clip: Artifact
     ) -> tuple[float, float] | None:

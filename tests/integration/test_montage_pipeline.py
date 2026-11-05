@@ -65,7 +65,7 @@ async def test_identity_mode_is_routed_per_shot_from_the_vocabulary(tmp_path: Pa
     events = [
         e
         for e in h.rt.storage.events.tail(run.id, limit=10_000)
-        if e.type.value == "attempt_started" and "keyframe" in e.summary
+        if e.type.value == "attempt_started" and "identity" in e.payload
     ]
     modes = {str(e.payload["vocab"]): e.payload["identity"] for e in events}
     assert modes["cap_macro"] == "composite" and modes["hand_cuff"] == "composite"
