@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import argparse
 
-from fal_run import report  # scripts/ is on sys.path when run as a script
+from decisions_report import decisions_text  # scripts/ is on sys.path when run as a script
+from fal_run import report
 
 from adsmith.agent.context import AgentRuntime
 from adsmith.agent.nodes.common import concept_block
@@ -21,9 +22,13 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("run")
     ap.add_argument("--ledger-from", type=int, default=0)
+    ap.add_argument("--decisions", action="store_true", help="only what the system decided")
     args = ap.parse_args()
     rt = AgentRuntime.from_settings(Settings())
     st = rt.storage.runs.load(args.run)
+    if args.decisions:
+        print(decisions_text(rt, st))
+        return
     assert st.brief is not None and st.concepts is not None and st.storyboard is not None
     b = st.brief
     print(
