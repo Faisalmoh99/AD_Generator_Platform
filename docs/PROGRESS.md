@@ -737,3 +737,18 @@ concepts, the judge picks"; footage = requested length (end card on top); `fit` 
 `avoid_on`; `prompt_rewrite` does not carry the wardrobe lexicon yet.
 
 **Tests:** 539 passed, 2 skipped (live). `make check` green at every commit.
+
+### STOP 1 proof run (2026-11-05): `run_01M6MGNPSHZ3GV5TTHN983R022`
+Fully automatic (`--auto --until generate`, no human fixes), Kling v3 Standard target, fal media
+cap $0.60 (wallet ceiling 11.90), keyframe tries 2. A first attempt stopped at `understand` with a
+400 "Schema is too complex" ($0 spent); fixed and every changed schema probed before relaunch.
+**Decided by the system:** format montage (physical product, no format asked); concept «حدّ
+الزجاج» (judge 5.25 vs 4.85 / 3.80); 10 shots of 1.2 s; reference packshot passed first try (0.84);
+8 direct + 2 plain keyframes. **Gate:** 9/10 passed on the first try (0.72-0.85); S9 spray_burst
+failed twice (vertical smoke column again, FLUX dev ignores "horizontal burst"; no video money).
+**Spend:** fal $0.42 (ledger 11.30 → 11.72, nothing left reserved), Anthropic $0.49.
+**By eye:** the bottle is the same in every product shot and the look is the references' dark,
+rim-lit world. Weak: Kontext keeps the packshot framing, so the "macro" entries (S1, S3) came out as
+the full bottle and five shots look alike; only S2 re-framed partly. The water ribbon (S6) is
+missing and S7's bubbles rise above the cap; the gate passed both at 0.72-0.80 (composition is
+soft). Sheet: `docs/screenshots/stop1_contact_sheet.png`; decisions: `docs/screenshots/stop1_decisions.txt`.

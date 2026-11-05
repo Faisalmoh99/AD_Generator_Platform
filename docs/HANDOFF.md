@@ -106,10 +106,10 @@ Done by hand in the hero rounds; each maps to a PLAN_V2 item (table in PLAN_V2):
 
 ## 5. Money
 
-- **fal balance (dashboard): about $0.73.** The user reported $0.90; since then Step A spent $0.17
+- **fal balance (dashboard): about $0.31** after STOP 1 ($0.42 of stills; it was about $0.73). The user reported $0.90; since then Step A spent $0.17
   (1 Kontext $0.04 + 2 composite $0.065). **No top-ups planned. No clip money until the user tops
   up after seeing the STOP 1 keyframes.**
-- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$11.30**.
+- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$11.72** (after STOP 1).
   `ADSMITH_FAL_BALANCE_USD` in `.env` = **12.03** (= settled + real remaining), so the ledger says
   $0.73 left. For a capped step, set it on the command line to `settled + cap` (STOP 1:
   `11.30 + 0.60 = 11.90`). A run's own cap: `ADSMITH_BUDGET_USD`, or `adsmith budget <run> <usd>`
