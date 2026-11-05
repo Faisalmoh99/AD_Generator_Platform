@@ -814,3 +814,30 @@ cap lift instead of a hero.
 **Tests:** 574 passed, 2 skipped.
 **Next (one attempt, about $3.4 at ledger prices):** a fresh run with these fixes; the spray
 shot passed in STOP 1, so the event shots are where the next run can win.
+
+## Montage v2: events by rule (2026-11-05)
+**Built:** the montage grammar asks for at least 3 physical-event shots (`min_event_shots`, the
+vocabulary's `physical_event`: spray from the nozzle, droplets, water drop, splash, ribbon) and the
+`hero_push_in` last (`last_vocab`); entries that passed on real media are marked PROVEN in the
+storyboard prompt (spray 0.85, drop on a leaf, droplets). Light alone is no longer listed as an
+event. v1's final kept as `docs/media/montage_v1.mp4`.
+**Run** (`run_01M6MVHD6CE5V22VM38GXNRN09`, `--auto`, Kling v3 Standard, ledger cap $3.80 incl.
+LLM, keyframe tries 2, QA regenerations 1, no human edits): 8 shots: spray_from_nozzle,
+water_drop_leaf, droplets_on_glass, cap_macro, bottle_into_water, water_ribbon, turntable_glint,
+hero_push_in. Packshot passed first try (0.82). Spray: the gate rejected try 1 (cap still on), try
+2 passed 0.80; **best-of-2 clips, 0.78 / 0.82**: a real horizontal plume. Drop on a leaf 0.72,
+droplets 0.80, cap macro (crop) 0.88, turntable 0.80. The splash and the ribbon failed the hard
+composition gate twice and **fell back automatically** (bottle_on_rock 0.82; cap_lift, whose clip
+failed QA 0.45 and whose retake was refused by the budget). Hero: try 1 rejected (reflection), try
+2 on a matte void passed; **best-of-2, 0.82 / 0.82**. **done_partial: 7 shots + Arabic end card,
+12.5 s** (`docs/media/montage_v2.mp4`). **No music:** the track was reserved at assembly and the
+cap was gone (the hero's second take was decided while the cap-lift clip was in flight, so it
+was not counted). Ledger fal $3.090, Anthropic $0.772. Sheet and decisions:
+`docs/screenshots/montage_v2_contact_sheet.png`, `montage_v2_decisions.txt`.
+**Fixed after the run (no spend):** the track is made when the generate stage starts (it depends
+only on the brief and format), so retakes can no longer take its budget; test added.
+**By eye, v1 vs v2:** v2 follows the references (events first, hero last, full 12.5 s) and opens
+on the strongest shot of the project, the nozzle spray. v1 has perfect identity and music but
+plays as 5 near-still product shots in 8.4 s. v2's flaws: silent; the droplets shot has a clear
+crystal cap (a gate miss on a small part); the cap's shade shifts between gunmetal and champagne.
+**Tests:** 578 passed, 2 skipped.

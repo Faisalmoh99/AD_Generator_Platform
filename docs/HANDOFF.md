@@ -106,12 +106,13 @@ Done by hand in the hero rounds; each maps to a PLAN_V2 item (table in PLAN_V2):
 
 ## 5. Money
 
-- **fal balance:** the user topped up to **about $10.03** (2026-11-05). Montage run 1
-  (`run_01M6MT0QP80T95Q796V25HE1VD`) spent **$3.073 on the ledger** (stills $0.705, 27 s of Kling
-  v3 Standard $2.268 at the $0.084/s page price, Lyria music $0.10); at the ≈ $0.066/s fal has
-  actually billed, about $2.59. **Expected dashboard balance ≈ $7.4 (at least $6.96).** Check the
-  dashboard before the next run.
-- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$15.068** (after montage run 1).
+- **fal balance:** the user topped up to **about $10.03** (2026-11-05). Montage v1
+  (`run_01M6MT0QP80T95Q796V25HE1VD`) spent $3.073 on the ledger and montage v2
+  (`run_01M6MVHD6CE5V22VM38GXNRN09`) $3.090 (stills $0.57, 30 s of Kling v3 Standard $2.52 at the
+  $0.084/s page price, no music). At the ≈ $0.066/s fal has actually billed, both runs together come
+  to ≈ $5.1, so the **expected dashboard balance is ≈ $4.9 (at least $3.87 if Kling was billed at
+  the page price)**. Check the dashboard before any further run.
+- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$18.158** (after montage v2).
   For a capped run set `ADSMITH_FAL_BALANCE_USD=settled + cap` on the command line (montage run 1:
   `11.995 + 6.50 = 18.495`). For a capped step, set it on the command line to `settled + cap` (STOP 1:
   `11.30 + 0.60 = 11.90`). A run's own cap: `ADSMITH_BUDGET_USD`, or `adsmith budget <run> <usd>`

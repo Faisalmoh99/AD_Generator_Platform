@@ -1,0 +1,84 @@
+DECISIONS · run_01M6MVHD6CE5V22VM38GXNRN09 · stage done_partial
+
+1. FORMAT: montage (why: physical product and no format in the request); requested_format=none, physical_product=True, 12s, ar/saudi_najdi
+
+2. CONCEPTS (judge weighted score; * = picked by agent)
+    1. ثلاث طبقات من العتمة · 4.85 · العطر يتحول إلى مواد تُلمس بالعين: برودة الافتتاح، ماء وورق في القلب، وزجاج أسود ثقيل في القاعدة، وكلها تنتهي عند القارورة.
+  * 2. رشّة وحدة · 7.30 · رشّة واحدة تضرب سطح ماء أسود فتتسع حلقاتها وتنفجر قطراتها، ثم يهدأ كل شيء وتبقى القارورة.
+    3. قبل الباب · 4.90 · ثواني التجهّز الأخيرة قبل الطلعة: قطعة معدن تسقط على حجر أسود، غطاء يُرفع، ورشّة على الرقبة، وتنتهي على القارورة.
+    why: أكبر نقطة قوة: حدث فيزيائي واحد واضح (رشّة تضرب ماء أسود وتتسع حلقاتها) يناسب النموذج تمامًا، والقارورة وانعكاسها حاضران من البداية في لقطة واحدة. أكبر خطر: الإحساس بالجرأة يعتمد على الصورة أكثر من الفكرة، ويحتاج حذرًا كي لا يختلق النموذج بخارًا. (weighted 7.30/10)
+
+3. PRODUCT REFERENCE
+  APPROVED after 1 tries, 0 rejected, $0.025; last gate 0.82 pass
+
+4. SHOTS (vocab · identity · flags · keyframe gate per try)
+  S1 hook    1.5s · spray_from_nozzle · direct · product · approved
+      action: One short fine horizontal plume of mist leaves the nozzle to the side, catches the backlight and dissolves; the bottle stays still on the edge of the 
+      try 1: success $0.040 gate 0.45 FAIL
+      try 2: success $0.040 gate 0.80 PASS
+      [warn] Scene 1 keyframe rejected by the gate (score 0.45 < threshold 0.70; composition is the spec for this shot and it does not match): composition: The shot spec needs the cap removed and out of frame, with only the bare metal nozzle and collar on the neck. The fra
+      [rewrite] Keyframe gate revision for scene 1: prompt revised (new keyframe needed)
+      clip 3: success $0.252 QA 0.78 PASS
+      clip 4: success $0.252 QA 0.82 PASS
+      peak window: 0.08s + 1.50s
+      [takes] Scene 1 spray_from_nozzle is a key shot: best-of-2 (headroom $2.63 covers 2 × $0.25 after $2.02 for the other shots)
+  S2 build   1.5s · water_drop_leaf · none · no product, no person · approved
+      action: One water drop falls onto the wet dark leaf and bursts into a small crown of droplets.
+      try 1: success $0.025 gate 0.72 PASS
+      clip 2: success $0.252 QA 0.72 PASS
+      peak window: 1.08s + 1.50s
+  S3 build   1.5s · droplets_on_glass · direct · product · approved
+      action: Cold droplets bead on the glass and one droplet runs slowly down the side of the bottle.
+      try 1: success $0.040 gate 0.78 PASS
+      clip 2: success $0.252 QA 0.80 PASS
+      peak window: 0.00s + 1.50s
+  S4 build   1.5s · cap_macro · crop · product · approved
+      action: The camera pushes in very slowly on the faceted cap while a thin band of light slides across its edges.
+      try 1: success $0.040 gate 0.80 PASS
+      clip 2: success $0.252 QA 0.88 PASS
+      peak window: 1.50s + 1.50s
+  S5 build   1.5s · bottle_on_rock · direct · product · approved
+      action: a slow push-in toward the bottle standing on wet dark rock
+      v2: fallback: bottle_into_water → bottle_on_rock (keyframe rejected 2×)
+      try 1: success $0.040 gate 0.82 PASS
+      clip 2: success $0.252 QA 0.82 PASS
+      peak window: 1.50s + 1.50s
+  S6 build   1.5s · cap_lift · direct · product · failed
+      action: the cap lifts slowly straight up off the bottle, revealing the neck
+      v2: fallback: water_ribbon → cap_lift (keyframe rejected 2×)
+      try 1: success $0.040 gate 0.72 PASS
+      clip 2: success $0.252 QA 0.45 FAIL
+      clip QA: score 0.45 < threshold 0.70
+      FAILED budget_exceeded: estimated $0.252 exceeds the remaining $0.000 of the $3.8 budget
+  S7 reveal  1.5s · turntable_glint · direct · product · approved
+      action: The camera makes a slow 30-degree orbit around the bottle while highlights travel over its facets.
+      try 1: success $0.040 gate 0.80 PASS
+      clip 2: success $0.252 QA 0.80 PASS
+      peak window: 0.92s + 1.50s
+  S8 product 1.5s · hero_push_in · direct · product · approved
+      action: The camera pushes in slowly and steadily on the bottle standing at the edge of the calm black water as the light settles.
+      try 1: success $0.040 gate 0.45 FAIL
+      try 2: success $0.040 gate 0.82 PASS
+      [warn] Scene 8 keyframe rejected by the gate (score 0.45 < threshold 0.70; composition is the spec for this shot and it does not match): composition: The shot spec requires the bottle on a matte black void with no reflection and an empty dark lower fifth. The frame s
+      [rewrite] Keyframe gate revision for scene 8: prompt revised (new keyframe needed)
+      clip 3: success $0.252 QA 0.82 PASS
+      clip 4: success $0.252 QA 0.82 PASS
+      peak window: 0.08s + 1.50s
+      [takes] Scene 8 hero_push_in is a key shot: best-of-2 (headroom $0.57 covers 2 × $0.25 after $0.00 for the other shots)
+
+5. BUDGET REFUSALS, FALLBACKS, REPAIRS
+  scenes refused by the budget: [6]
+  vocabulary fallbacks: 2
+    Scene 5: keyframe rejected 2× as bottle_into_water (score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match); the storyboard swapped the shot to its vocabulary fallback bottle_on_rock (v2). Keyframe tries start again.
+    Scene 6: keyframe rejected 2× as water_ribbon (score 0.45 < threshold 0.70; composition is the spec for this shot and it does not match); the storyboard swapped the shot to its vocabulary fallback cap_lift (v2). Keyframe tries start again.
+  schema repairs: 2
+    [storyboard] storyboard via claude-sonnet-5-5: ok, 11853 in (4092 cached) / 3750 out, $0.0538, 19447 ms
+    [keyframe] prompt_writer via claude-sonnet-5-5: ok, 4919 in (1572 cached) / 657 out, $0.0136, 3650 ms
+
+6. MUSIC AND ASSEMBLY
+  Music: refused by the budget (estimated $0.100 exceeds the remaining $0.000 of the $3.8 budget); assembling without music
+  Assembled 7 scene(s) + end card, 12.5s → final.mp4; skipped failed scene(s) [6]
+  End card: نَفَس أسود — رشّة وحدة وتحس إنك صرت أجرأ [PLACEHOLDER: invented by the agent, replace before publishing]
+  Duration check: 12.46s rendered vs 12.50s expected
+
+7. SPEND: image $0.570 · video $2.520 · music $0.000 · LLM $0.772 · run cap $3.80

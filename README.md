@@ -148,7 +148,7 @@ Ambiguous edits ("غيّر شي", "change something") get a clarifying question,
 
 ## What real runs taught me
 
-I spent about $15 of real fal credit; these lessons changed the design.
+I spent about $18 of real fal credit; these lessons changed the design.
 
 1. **The curtain veil.** *"A curtain shadow drifts across the bottle"* was taken literally: LTX
    rendered a translucent curtain over the product. The vision critic rejected it (0.50); the QA
@@ -179,17 +179,25 @@ I spent about $15 of real fal credit; these lessons changed the design.
    and the "blank label plate" became invented lettering in the close-up. Both takes were rejected.
    Now any product mismatch at the gate is hard by code, and product descriptions have no label
    surfaces; re-judged, that keyframe fails (0.78 → 0.45). Closed.
-8. **The montage format, fully automatic.** One Arabic request, `--auto`, no human edits. The
-   agent chose the montage format by code, storyboarded 10 shots from a fixed shot vocabulary,
-   locked one packshot and routed each shot's identity (Kontext from the packshot; macro shots
-   are *cut from the packshot in code* and only relit, because Kontext kept re-framing or copying
-   it). The bottle is identical in every shot: identity is solved. It generated its own music
-   (Lyria 2, $0.10) and cut to the beat. But the shots that make a montage, physical events
-   (water ribbon, splash, light sweep), failed the gates, so it ended **done_partial: 5 still-ish
-   product shots, 8.4 s** ([video](docs/media/montage_v1.mp4), $3.07 of fal). Two fallbacks
-   fired automatically but raced to the same shot, and light-only shots fail on Kling 2/2. Both
-   are now rules: fallbacks are decided one at a time and never leave a hole, and entries a
-   model renders badly (`avoid_on`) never reach its storyboard.
+8. **The montage format, fully automatic (v1).** One Arabic request, `--auto`, no human edits.
+   The agent chose the montage format by code, storyboarded 10 shots from a fixed shot
+   vocabulary, locked one packshot and routed each shot's identity (Kontext from the packshot;
+   macro shots are *cut from the packshot in code* and only relit, because Kontext kept
+   re-framing or copying it). The bottle is identical in every shot. It generated its own music
+   (Lyria 2, $0.10) and cut to the beat. But every physical event (water ribbon, splash, light
+   sweep) failed the gates: **done_partial, 5 near-still product shots, 8.4 s**
+   ([v1](docs/media/montage_v1.mp4), $3.07 of fal). Two fallbacks raced to the same shot, and
+   light-only shots failed on Kling 2/2. Both became rules: fallbacks are decided one at a time
+   and never leave a hole, and entries a model renders badly (`avoid_on`) never reach its
+   storyboard.
+9. **Montage v2: events by rule.** The grammar now asks for at least 3 physical-event shots
+   (preferring ones that already passed on real media) and the hero push-in last. Same request,
+   no human edits: a real horizontal spray from the nozzle, a drop on a leaf, droplets on the glass,
+   the cap macro and a hero ending, **7 of 8 shots, 12.5 s** ([v2](docs/media/montage_v2.mp4),
+   $3.09 of fal). It is much closer to the references, but it lost two things v1 had. **Music:**
+   the track was reserved last and the clip retakes had used the cap, so music is now made when the
+   clips start. **Perfect identity:** the droplets shot turned the cap to crystal and the gate passed
+   it, so the gate still misses fine material changes on small parts.
 
 ## Design decisions
 

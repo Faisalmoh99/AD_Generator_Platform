@@ -84,3 +84,19 @@ Two event shots (water ribbon, bottle into water) failed the gate twice and fell
 three keyframes and two light-only clips failed, so it assembled done_partial: 5 shots + an Arabic \
 end card, cut to a generated 130 bpm track. Ledger spend $3.07 (fal media incl. $0.10 music)."""
 defects = "No physical event survived (spray, ribbon, splash all failed or fell back), so it reads as a series of still product shots; two near-identical 'bottle on rock' shots; no hero push-in at the end; 8.4 s instead of 14 s."
+
+[[items]]
+key = "montage_v2"
+media = ["montage_v2.mp4"]  # committed copy in docs/media (fresh clone)
+spend = 3.09
+title = "Montage v2, fully automatic: events first"
+subtitle = "8 shots planned, 7 kept · 3+ physical events by rule · hero last · Kling v3 Standard · best-of-2 on spray and hero"
+run = "run_01M6MVHD6CE5V22VM38GXNRN09"
+kind = "final"
+poster = 0.7
+caption = """Same Arabic request, --auto, no human edits, after the grammar asked for at least 3 physical \
+events and the hero last. It opens on a real horizontal spray from the nozzle (best-of-2, 0.82), then a \
+drop on a leaf, droplets on the glass, the cap macro (cut from the packshot), the bottle on rock (an \
+automatic fallback from the splash), a turntable glint and the hero push-in (best-of-2, 0.82) before \
+the Arabic end card. 12.5 s. Ledger spend $3.09 of fal."""
+defects = "No music: the track was reserved last and the clips had used the whole $3.80 cap (fixed since: music is made when clips start). The droplets shot turned the cap into clear crystal and the gate passed it (0.78); the cap's shade shifts between gunmetal and champagne across shots. The cap-lift shot failed QA and its retake was refused by the budget."
