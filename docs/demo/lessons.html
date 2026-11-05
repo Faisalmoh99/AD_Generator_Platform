@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Adsmith · lessons from real runs</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="demo.css"></head>
+<body>
+<div class="top"><span class="mark"></span><span class="wordmark">Adsmith</span><span class="sep">/</span><span class="tag">lessons from real runs (fal.ai)</span></div>
+<div class="wrap">
+  <div class="label">What real models taught the system</div>
+  <h1>Three lessons that became code</h1>
+  <div class="cards">
+    <section class="card" id="calibration">
+      <div class="label">1 · Critic calibration</div>
+      <h2>The vision critic needed three tries</h2>
+      <div class="steps">
+        <div class="step bad"><span class="n">v1</span><div>Too lenient: a clip with <b>2 major issues passed at 0.72</b>.</div></div>
+        <div class="step bad"><span class="n">v2</span><div>Too strict: <b>10 of 10 keyframes rejected</b> for staging details.</div></div>
+        <div class="step good"><span class="n">now</span><div><b>Hard / soft split, decided by code.</b> Identity, stray text, brand safety and alcohol look fail a shot; light side and composition only lower the score.</div></div>
+      </div>
+      <div><span class="big">12 / 14</span> <span class="mono" style="color:var(--muted)">stored keyframes re-judged correctly</span></div>
+    </section>
+    <section class="card" id="kurta">
+      <div class="label">2 · The kurta lesson</div>
+      <h2>A Saudi thobe drifted into a kurta</h2>
+      <img class="img" src="assets/kurta_keyframe.png" alt="hero v2 keyframe" style="height:330px;object-fit:cover;object-position:50% 22%">
+      <div class="lint mono">bible: "mandarin collar, visible button placket" → South Asian kurta</div>
+      <div class="fix mono">lint now repairs it: white Saudi thobe, stiff collar, concealed placket</div>
+    </section>
+    <section class="card" id="gate">
+      <div class="label">3 · Keyframe gate</div>
+      <h2>Judge the still before paying for video</h2>
+      <div><span class="big">21</span> <span class="mono" style="color:var(--muted)">keyframes stopped before animation</span></div>
+      <div><span class="big">≈ $5.60</span> <span class="mono" style="color:var(--muted)">of Kling saved in the first full run</span></div>
+      <img class="img" src="assets/v2_contact_sheet.png" alt="montage v2 contact sheet" style="max-height:300px;object-fit:cover;object-position:top">
+      <p class="mono">Montage v2: red thumbnails = stills the gate rejected (spray with the cap on, hero with a reflection).</p>
+    </section>
+  </div>
+</div>
+</body></html>

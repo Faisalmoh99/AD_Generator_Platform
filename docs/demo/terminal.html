@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>make demo</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="demo.css">
+<style>
+  body { background:#0b0b0c; }
+  .term { margin:22px auto; width:min(1560px,96vw); border:1px solid var(--line-2); border-radius:6px; background:#111214; overflow:hidden; }
+  .bar { height:30px; display:flex; align-items:center; gap:7px; padding:0 12px; background:#1a1b1e; border-bottom:1px solid var(--line); }
+  .dot { width:10px; height:10px; border-radius:50%; background:#3a3b3f; }
+  .title { margin-left:10px; font:12px "IBM Plex Mono",monospace; color:var(--dim); }
+  pre { margin:0; height:calc(100vh - 100px); overflow:hidden; padding:12px 16px; font:15px/1.42 "IBM Plex Mono","IBM Plex Sans Arabic",monospace; color:#d6d5d0; white-space:pre-wrap; word-break:break-word; }
+  .b { font-weight:600; } .d { opacity:.6; } .i { font-style:italic; }
+  .c30{color:#6a6a6c}.c31{color:#cf6f62}.c32{color:#9fb08f}.c33{color:#e3a33f}.c34{color:#7f9fc6}.c35{color:#b48ead}.c36{color:#8fb7bd}.c37{color:#e4e3df}
+  .c90{color:#77787c}.c91{color:#e08a7f}.c92{color:#b3c4a3}.c93{color:#f0bd66}.c94{color:#9db6d6}.c95{color:#c9a7c4}.c96{color:#a6cfd4}.c97{color:#ffffff}
+  .prompt { color:var(--accent); }
+</style></head>
+<body>
+<div class="term"><div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="title">~/adsmith · zsh</span></div><pre id="out"></pre></div>
+<script>
+"use strict";
+// Replays a pty capture (scripts/capture_terminal.py): SGR colour codes only, line based.
+const out = document.getElementById("out");
+let style = { b: false, d: false, i: false, c: null };
+function esc(s) { return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+function sgr(codes) {
+  for (const n of codes.split(";").map(Number)) {
+    if (n === 0 || Number.isNaN(n)) style = { b: false, d: false, i: false, c: null };
+    else if (n === 1) style.b = true; else if (n === 2) style.d = true; else if (n === 3) style.i = true;
+    else if (n === 22) { style.b = false; style.d = false; } else if (n === 23) style.i = false;
+    else if ((n >= 30 && n <= 37) || (n >= 90 && n <= 97)) style.c = n; else if (n === 39) style.c = null;
+  }
+}
+function render(text) {
+  let html = "";
+  const parts = text.replace(/\r/g, "").split(/\x1b\[([0-9;]*)m/);
+  parts.forEach((p, i) => {
+    if (i % 2) { sgr(p); return; }
+    if (!p) return;
+    const cls = [style.b && "b", style.d && "d", style.i && "i", style.c && `c${style.c}`].filter(Boolean).join(" ");
+    html += cls ? `<span class="${cls}">${esc(p)}</span>` : esc(p);
+  });
+  return html;
+}
+window.play = (data, speed = 1, maxGap = 0.9) => new Promise((done) => {
+  out.innerHTML = `<span class="prompt">$ </span>`;
+  let t = 0; const timeline = [];
+  let prev = 0;
+  for (const [ts, chunk] of data.frames) { t += Math.min(ts - prev, maxGap) / speed; prev = ts; timeline.push([t, chunk]); }
+  const start = performance.now();
+  let k = 0;
+  (function tick() {
+    const now = (performance.now() - start) / 1000;
+    while (k < timeline.length && timeline[k][0] <= now) { out.insertAdjacentHTML("beforeend", render(timeline[k][1])); k++; }
+    out.scrollTop = out.scrollHeight;
+    if (k < timeline.length) requestAnimationFrame(tick); else done(t);
+  })();
+});
+</script>
+</body></html>

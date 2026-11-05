@@ -1,194 +1,160 @@
-# Demo script (4:45)
+# Demo script (5:00)
 
-Narration is in Saudi-friendly Arabic, with technical terms kept in English. Short sentences:
-read them naturally, and pause on the bold beats.
+Six segments for the new studio UI and the approved montage v2. Narration is Arabic with the
+technical terms in English: short sentences, read naturally. Each segment has its exact on-screen
+actions (what `scripts/record_demo.py` does) and a target duration. The silent footage is in
+`docs/demo/segments/`, the voice guide in `docs/demo/VOICEOVER.md`.
 
-## Before recording (2 minutes)
+| # | File | Time | Duration |
+|---|---|---|---|
+| 1 | `01_hook.mp4` | 0:00–0:30 | 30 s |
+| 2 | `02_brain.mp4` | 0:30–1:30 | 60 s |
+| 3 | `03_chaos_run.mp4` | 1:30–2:45 | 75 s |
+| 4 | `04_edit.mp4` | 2:45–3:30 | 45 s |
+| 5 | `05_real_runs.mp4` | 3:30–4:30 | 60 s |
+| 6 | `06_resume_limits.mp4` | 4:30–5:00 | 30 s |
+
+## Setup (what the recorder uses)
 
 ```bash
-make setup
-uv run adsmith serve --port 8765         # browser at http://127.0.0.1:8765, window ~1440 px
-# second terminal, same font size, ready for segment 6:
-make demo
+# A: the real runs (montage v2, gallery): the default data dir, read only
+uv run adsmith serve --port 8793
+# B: live runs on mock media, fresh data dir (no cache hits), montage scenario
+ADSMITH_DATA_DIR=/tmp/demo/data ADSMITH_ACCOUNT_DB=/tmp/demo/data/account.db \
+ADSMITH_SCRIPTED_SCENARIO=montage_en ADSMITH_MOCK_LATENCY_S=2.2 ADSMITH_SCRIPTED_LATENCY_S=2.5 \
+ADSMITH_MEDIA_LONG_SIDE=480 uv run adsmith serve --port 8792
 ```
 
-- Open the README on GitHub in a second tab, scrolled to "The brain".
-- Have `docs/media/majlis_ad_final.mp4` open in a player, paused on the first frame.
-- In the UI: chaos OFF, "Agent picks the concept" ON, no run open (clean landing page).
-- Mock media is fast but not instant (`ADSMITH_MOCK_LATENCY_S=1.2` makes the live board readable).
+Browser: 1920×1080 video, page at ~115 % (viewport 1670×940), a visible cursor with a click
+ripple. Mock latencies above make the chaos run take ~48 s and the edit ~14 s.
 
 ---
 
-## 1 · Hook (0:00–0:30)
+## 1 · Hook (0:00–0:30, 30 s)
 
-**On screen:** the majlis ad plays full screen (`docs/media/majlis_ad_final.mp4`, 17 s), ending on
-the Arabic end card. Then cut to the UI landing page.
+**On screen**
+1. 0:00–0:12.5: `docs/media/montage_v2.mp4` full height, centred on black, with its music.
+2. 0:12.5–0:30: the studio landing page. The cursor rests on the request box, then moves over
+   the three "Made with real models" cards (v2, v1, the curtain before/after).
 
-**Say:**
-> هذا إعلان عطر من ١٧ ثانية.
-> ما صوّرته، وما عدّلته بإيدي.
-> كتبه وأخرجه **agent**: من الطلب، لثلاث أفكار، لـ storyboard، لكل مشهد، لين التجميع النهائي.
-> بس الإعلان مو هو الشي المهم.
-> المهم هو **العقل** اللي وراه: كيف يقرر، كيف يغلط، وكيف يصلّح غلطه.
-> خلوني أوريكم.
-
----
-
-## 2 · The brain (0:30–1:30)
-
-**On screen:** README → "The brain". Scroll slowly: components diagram (2–3 s), run state machine,
-then scene sub-state machine.
-
-**Say:**
-> أول قرار، وأهم قرار: **الـ LLM ما يقرر وش الخطوة الجاية أبدًا.**
-> الـ stages والـ transitions جدول معرّف في الكود، و `next_stage` هي pure function.
-> الـ LLM يفكر داخل كل node: يكتب الأفكار، يقيّمها، يكتب الـ prompts، ويراجع الجودة.
-> بس ما يمسك الـ control flow.
->
-> كل node ترجع **typed deltas**، ما تعدّل الـ state مباشرة.
-> فيه writer واحد يطبّقها، ويحفظ **snapshot بعد كل خطوة** في SQLite.
-> يعني أقدر أكمّل أي run بعد crash، أو أرجع لنسخة قديمة وأعمل منها fork.
->
-> وكل مشهد له state machine خاصة فيه: pending، generating، QA، approved أو failed.
-> ومشهد يفشل **ما يوقّف** المشاهد الثانية.
->
-> ليش ما استخدمت LangGraph؟
-> لأني أبغى الـ control flow يكون data أقدر أختبره، مو prompt أتمنى إنه يمشي صح.
-> وكل output من الـ LLM يكون Pydantic object متحقق منه. إذا طلع غلط، يمر على **schema repair** ويرجع له الخطأ بالضبط.
+**Say**
+> هذا إعلان عطر، ١٢ ثانية ونص.
+> ما أحد صوّره، وما أحد عدّله بإيده.
+> طلب واحد بالعربي، والـ agent سوّى الباقي: الفكرة، اللقطات، الصور، الفيديو، الموسيقى، والتركيب.
+> بس الإعلان مو أهم شي.
+> الأهم هو العقل اللي وراه: كيف يقرر، كيف يغلط، وكيف يصلّح نفسه.
 
 ---
 
-## 3 · Live run with chaos ON (1:30–2:45)
+## 2 · The brain (0:30–1:30, 60 s)
 
-**On screen (clicks):**
-1. Click the first example chip (the Arabic request «اعطني إعلان ١٥ ثانية لعطر رجالي فاخر…»).
-2. Toggle **Chaos mode** ON. Click **Generate ad**.
-3. Concepts appear with scores and the judge's pick → hover over the weighted score.
-4. Storyboard: scenes go pending → generating → QA → approved. Point at a **recovery chip**
-   (policy rewrite / QA regeneration) on a card, then click **Recoveries** in the trace filter.
-5. Point at the budget meter ("simulated: mock media priced at real Kling rates").
-6. Final player: play the last 3 s → **Arabic end card**. Point at the placeholder note.
+**On screen** (the real montage v2 run, `run_01M6MVHD6CE5V22VM38GXNRN09`)
+1. The run opens: pipeline graph on top, swimlanes below, budget and Decisions on the right.
+2. The cursor visits the graph nodes left to right, pausing ~1.5 s on each tooltip:
+   **Brief** (LLM), **Pick** (LLM · CODE), **Keyframes** (LLM · CODE), **Clips** (CODE),
+   **QA** (LLM · CODE), **Assembly** (CODE).
+3. It points at the first human gate diamond ("auto"), then the dashed qa → clips loop.
+4. It moves to the **Decisions** panel, scrolls it to the top and rests on: "Code chose the
+   montage format…", "Code picked concept 2: highest weighted score 7.30…", a fallback line,
+   "Beat cut: 130 bpm…".
 
-**Say:**
-> هذا طلب بالسعودي. شغّلت **chaos mode**: يحقن أخطاء حقيقية، seeded عشان تتكرر.
-> الـ agent كتب ثلاث أفكار، والحَكَم قيّمها على rubric موزون.
-> **الكود** هو اللي يختار الأعلى، مو الـ LLM.
->
-> شوفوا الـ storyboard. كل مشهد يمشي لحاله.
-> هنا content policy رفض الـ prompt، والـ agent أعاد صياغته وحافظ على المنتج والفكرة.
-> وهنا الـ QA critic رفض الـ clip، وانعاد بالـ fixes حقته.
-> كل retry مصنّف ومحدود ومحسوب على الـ budget، ومكتوب في الـ trace.
->
-> والـ budget هنا simulated، بس بأسعار Kling الحقيقية: كل call يحجز قبل ما يصير.
->
-> وهذا الإعلان النهائي، مع end card عربي.
-> اسم البراند **placeholder** من اختراع الـ agent، عمره ما يستخدم براند حقيقي.
+**Say**
+> هذا الـ run الحقيقي للإعلان.
+> فوق: الـ state machine. عشر مراحل، والانتقال بينها كود ثابت، مو قرار من الـ LLM.
+> كل مرحلة مكتوب عليها مين يقرر.
+> LLM يعني النموذج يفكّر ويملأ schema.
+> LLM · CODE يعني النموذج يقيّم، بس الكود هو اللي يحسم.
+> مثلاً في Pick: النموذج يعطي درجات على ست معايير، والكود يحسب الأوزان ويختار.
+> وفي QA: الناقد يشوف الإطارات، بس النجاح والرسوب يقرره الكود.
+> وهنا بوابات بشرية. في الوضع التفاعلي الـ run يوقف وينتظرك.
+> وعلى اليمين: سجل القرارات، بكلام واضح. مين قرر، وليش.
 
 ---
 
-## 4 · Targeted edits (2:45–3:30)
+## 3 · A live run with Chaos ON (1:30–2:45, 75 s)
 
-**On screen:**
-1. Type in the edit bar: `خل المشهد الثاني أبطأ` → **Apply edit**.
-2. The blast-radius banner appears: S2 "clip", the others "untouched · $0". Pause 2 s on it.
-3. When it finishes, type `make scene 3 at night` → **Apply edit**. Banner: S3 prompt + S4
-   "continues the same moment", S1 and S2 untouched.
+**On screen** (server B, mock media)
+1. Landing page. The cursor ticks **Chaos mode**, then clicks **Generate ad**.
+2. The graph lights up stage by stage (Brief → Concepts → Pick → …); the cursor follows the lit
+   node.
+3. Keyframes: nine swimlanes fill in. The cursor rests on a **retry** tag (hover: the 503 and
+   its backoff), then a **policy rewrite** loop (hover: the content-policy rejection and the
+   rewrite), then a red **Q** diamond (hover: "rejected by QA … motion: …") and its loop back to
+   a new clip.
+4. The run reaches Assembly → done. The budget burn line and the Decisions panel have filled.
+5. Last 10 s: the real v2 run's lanes again, hovering **→ bottle_on_rock** (the automatic
+   vocabulary fallback after the splash shot failed the gate twice).
 
-**Say:**
-> الحين أبغى أعدّل. أكتب بكلامي: «خل المشهد الثاني أبطأ».
-> الكود يعرف إن «الثاني» يعني المشهد ٢، ويحسب الـ **blast radius**.
-> التعديل حركة بس، فالـ keyframe يبقى. **clip واحد جديد، provider call واحد.**
-> المشاهد الثانية: **صفر calls، صفر ريال.**
->
-> تعديل ثاني: «make scene 3 at night».
-> هذا يغيّر الإضاءة، فيرجع لمستوى الـ prompt.
-> والـ agent انتبه إن المشهد ٤ كمّل نفس اللحظة، فخلاه ليل بعد.
-> المشهد ١ و ٢ ما انلمسوا.
-
----
-
-## 5 · Real runs (3:30–4:15)
-
-**On screen:** click **Real runs**.
-1. The curtain card: play **Before** (veil at 2 s), then **After**.
-2. Scroll to the hero attempt card: pause on the close-up frame with the invented label text.
-3. (Optional, 3 s) README → "What real runs taught me", items 2–3.
-
-**Say:**
-> كل اللي شفتوه شغّال بدون keys. بس أنا جرّبته على موديلات حقيقية: FLUX، وLTX، وKling.
->
-> هنا الـ prompt قال «ظل ستارة يمر على الزجاجة»، والموديل حط **ستارة حقيقية** فوق المنتج.
-> الـ critic رفضه، والـ loop صلّحه، وطلعت الزجاجة واضحة.
->
-> والـ critic نفسه احتاج **ثلاث محاولات** عشان يتظبط:
-> أول كان متساهل، بعدين صار متشدد ورفض عشرة من عشرة،
-> والحل كان أقسم المشاكل لـ **hard وsoft**. صار يحكم صح في ١٢ من ١٤.
->
-> وضفت **keyframe gate**: أراجع الصورة قبل ما أدفع على الفيديو. وفّر تقريبًا ٥ دولار ونص في أول run.
->
-> وآخر تجربة: Kling كتب حروف من عنده على الزجاجة، والـ critic رفض النسختين.
-> والسبب الحقيقي إن الـ gate عدّى غطا أسود على إنه «minor».
-> كلّفني دولارين وربع، **والحين صار hard failure بالكود.**
+**Say**
+> الحين أشغّل run جديد، وأفعّل Chaos mode.
+> يعني أحقن أعطال متعمّدة: provider يطيح، رفض content policy، ولقطة جودتها سيئة.
+> شوفوا الـ graph يمشي مرحلة مرحلة.
+> وتحت: كل مشهد له swimlane خاص فيه. keyframe، gate، clip، QA.
+> هذا retry: الـ provider رجّع 503، فانتظر backoff وعاد. محدود ومسجّل.
+> وهذا policy rewrite: الـ prompt انرفض، فانكتب من جديد بنفس النية.
+> وهذا الناقد رفض المقطع. السبب مكتوب، والـ loop رجع لمقطع جديد.
+> ومشهد واحد يطيح ما يوقف الباقي.
+> وفي الإعلان الحقيقي: لقطة الماء فشلت مرتين، فالـ storyboard بدّلها تلقائياً بلقطة أسلم.
 
 ---
 
-## 6 · Crash/resume, limits, close (4:15–4:45)
+## 4 · The edit (2:45–3:30, 45 s)
 
-**On screen:** the terminal with the end of `make demo`: the "Kill mid-generation, then resume"
-table (clips after resume, "regenerated twice: none", "leaked reservations: $0.00"). Then README →
-"Limitations and with more time".
+**On screen** (the finished chaos run)
+1. Scroll to the Storyboard. The cursor clicks the edit box and types «خل المشهد الثاني أبطأ»,
+   then clicks **Apply edit**.
+2. The amber **blast radius** banner appears: "S2 clip · untouched S1, S3 … S9 $0". The cursor
+   rests on it.
+3. It hovers S2's card ("new clip · keyframe kept"), then an untouched card ("untouched · $0").
+4. S2 regenerates and returns to approved; scroll up to S2's swimlane, now v2.
 
-**Say:**
-> وهذا `make demo`: أقتل الـ process بـ SIGKILL وسط التوليد، وأسوي resume.
-> ولا clip انعاد مرتين، ولا ريال ضاع في الحجوزات.
-> وفي fal، الـ request id ينحفظ أول ما ينرسل الطلب، فالـ resume يكمّل نفس الطلب بدل ما يدفع مرة ثانية.
->
-> الحدود بصراحة: دقة شكل المنتج في الصور هي أضعف نقطة، والـ critic مو deterministic.
-> لو عندي وقت أكثر: **product reference image**، وinpainting بدل إعادة التوليد، وevals.
-> شكرًا.
+**Say**
+> بعد ما خلص، أقدر أعدّل بكلام عادي: خل المشهد الثاني أبطأ.
+> الـ LLM يفهم الطلب، بس الكود هو اللي يحدد أي مشهد، وكم عمق التغيير.
+> هذا الـ blast radius.
+> تغيير حركة بس، فالصورة تبقى، والمقطع وحده ينعاد.
+> وباقي المشاهد ما تنلمس، وتكلفتها صفر.
 
 ---
 
-## Likely interview questions
+## 5 · Real runs (3:30–4:30, 60 s)
 
-**Why not LangGraph?**
-I needed a small, fixed pipeline with heavy recovery logic, not a general graph runtime. A
-declared transition table plus a pure `next_stage(state)` gives me control flow I can unit-test
-exhaustively, typed state end to end, and snapshots and forks I own. LangGraph would add checkpointing
-and graph abstractions I would have had to bend for per-scene isolation, budget reservations and
-crash-safe provider jobs. (ADR-0001)
+**On screen**
+1. **Real runs** tab (server A). Scroll to "Before → after: the curtain veil"; both clips play;
+   the cursor rests on "Before: rejected 0.50", then "After: rewritten prompt".
+2. The lessons page (`docs/demo/lessons.html`, same styling), three cards in turn:
+   - **Critic calibration:** too lenient (2 major issues passed at 0.72) → too strict (10 of 10
+     rejected) → hard/soft split → 12 of 14 verdicts right.
+   - **The kurta lesson:** the real hero v2 keyframe (mandarin collar, scarf at the neck) and the
+     wardrobe lint that now rejects it: "mandarin collar · button placket → white Saudi thobe,
+     concealed placket".
+   - **Keyframe gate savings:** 21 keyframes stopped before animation, ≈ $5.60 of Kling in the
+     first full run; the v2 contact sheet with its rejected stills.
 
-**Why does the LLM never pick the next stage?**
-Control flow must be deterministic, testable and cheap to reason about. If a model chooses
-transitions, one odd output can skip QA or loop and spend money. LLMs fill schema fields inside
-nodes (concepts, scores, prompts, verdicts) and code decides: the concept winner (weighted rubric),
-QA pass/fail (hard checks + threshold), what an edit invalidates (pure blast-radius function).
+**Say**
+> هذي نتايج حقيقية على fal.
+> هنا الـ video model فهم كلمة "ظل ستارة" حرفياً، وحط ستارة فوق المنتج.
+> الناقد رفضها بـ 0.50، والـ prompt انكتب من جديد، والمقطع الثاني نظيف.
+> الناقد نفسه احتاج معايرة: أول مرة كان متساهل، بعدين متشدد.
+> الحل: فحوصات hard تُسقط اللقطة، وفحوصات soft تنقص الدرجة بس. صار يصيب ١٢ من ١٤.
+> وهنا النموذج لبّس الرجل ياقة كُرتة بدل الثوب السعودي. الحين فيه lint ثقافي يرفضها قبل التوليد.
+> والـ keyframe gate: نراجع الصورة قبل ما ندفع على الفيديو. وفّر ٢١ مقطع، تقريباً ٥ دولار ونص في أول run.
 
-**How does the cache key work?**
-`sha256` of the canonical JSON of {provider, model, phase, prompt, negative prompt, params, the
-input keyframe's sha256}. Same request → cache hit at $0, logged as an event. Failures are never
-cached, and an output the critic rejected is evicted, so a retry can't be served the bad image.
-Best-of-N candidates carry a `candidate` index in params, so they are distinct paid jobs.
+---
 
-**How is a stale write prevented?**
-Every write goes through one function: it opens a write transaction, loads the *latest* snapshot
-inside it, applies the mutation and bumps `state_version` (optional `expected_version` → conflict
-error). Scene workers never write directly; they return results, and the mutation checks the scene
-version. If an edit bumped the scene while a clip was rendering, the mutation raises
-`StaleWriteError` and the outdated clip is discarded, not applied.
+## 6 · Kill + resume, then honest limits (4:30–5:00, 30 s)
 
-**How do you stop it spending too much?**
-Estimate → reserve → settle or release, in the run budget *and* a cross-run wallet ledger with a hard
-ceiling (the prepaid fal balance). A call that would cross either limit is refused before it is
-made, and that scene fails alone. Provider SDK retries are disabled, so every retry is counted.
+**On screen**
+1. A terminal plays `make demo` (recorded through a pty and replayed with xterm.js): the chaos run,
+   the edit with its blast radius, then a run killed with SIGKILL mid-generation and resumed,
+   finished generations coming back as cache hits at $0.
+2. Last ~8 s: a limits card: the critic misses small material changes (a crystal cap passed at
+   0.78), no eval suite yet, single process (SQLite + asyncio), event shots are fragile.
 
-**What happens on a crash mid-generation?**
-Resume closes interrupted attempts and releases their reservations. For fal, the request id is
-persisted right after submit, so resume polls the job that is already running and only resubmits if
-the provider no longer knows it.
-
-**What would you do with more time?**
-A product reference image for keyframes and for the critic (layout and product shape are the
-main weakness), inpainting near-miss keyframes instead of re-rolling, a second critic opinion near
-the threshold, an escalation ladder (switch model, then simplify the spec), and the evals suite I
-cut for time. See `docs/MORE_TIME.md`.
+**Say**
+> وهذا make demo: أقتل العملية بـ SIGKILL وسط التوليد، وأرجّع.
+> يكمل من آخر snapshot، واللي خلص يرجع من الـ cache ببلاش.
+> وبصراحة، فيه حدود.
+> الناقد يفوّته تغيّر صغير في الخامة، مثل غطا كريستال.
+> ما عندي eval suite للحين، والنظام process واحد.
+> بس كل قرار مسجّل، وكل خطأ له طريق رجعة.

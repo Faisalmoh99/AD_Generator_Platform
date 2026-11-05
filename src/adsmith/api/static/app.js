@@ -508,14 +508,23 @@ function renderTrace() {
 }
 
 // ------------------------------------------------------------------ landing teaser + gallery
+// The landing teaser: the two montages, then the curtain before/after pair (the hero-spray
+// close-up shows invented label text, so it is kept for the gallery only).
+const TEASER = ["montage_v2", "montage_v1", "curtain"];
+
 async function loadTeaser() {
   const items = await api("/api/gallery").catch(() => []);
   const box = $("#teaser");
-  if (!items.length) { box.classList.add("hidden"); return; }
-  const pick = [...items].reverse().slice(0, 3);
+  const pick = TEASER.map((k) => items.find((it) => it.key === k)).filter(Boolean);
+  if (!pick.length) { box.classList.add("hidden"); return; }
+  const media = (v) => `<video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" muted playsinline preload="auto"></video>`;
   box.innerHTML = `<div class="teaser-head"><span class="section-label">Made with real models</span><button class="link" id="teaser-all">All real runs →</button></div>
-    <div class="teaser-row">${pick.map((it) => { const v = it.videos[0];
-      return `<button class="teaser-card" data-key="${esc(it.key)}"><video src="${v.url}${v.poster ? `#t=${v.poster}` : ""}" muted playsinline preload="auto"></video><span>${esc(it.title)}</span></button>`; }).join("")}</div>`;
+    <div class="teaser-row">${pick.map((it) => {
+      const pair = it.videos.length > 1;
+      const body = pair
+        ? `<div class="teaser-pair">${it.videos.slice(0, 2).map((v) => `<div>${media(v)}<em>${esc(v.label)}</em></div>`).join("")}</div>`
+        : media(it.videos[0]);
+      return `<button class="teaser-card" data-key="${esc(it.key)}">${body}<span>${esc(it.title)}</span></button>`; }).join("")}</div>`;
   box.onclick = (ev) => { if (ev.target.closest(".teaser-card") || ev.target.id === "teaser-all") showView("gallery"); };
 }
 

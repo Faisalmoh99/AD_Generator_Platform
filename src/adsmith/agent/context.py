@@ -270,7 +270,11 @@ class AgentRuntime:
             return self._provider_override
         provider = run.config.llm_provider
         if provider == "scripted":
-            return ScriptedLLMProvider.from_scenario(run.config.scripted_scenario or "perfume_en")
+            return ScriptedLLMProvider.from_scenario(
+                run.config.scripted_scenario or "perfume_en",
+                latency_s=self.settings.scripted_latency_s,
+                sleep=self.sleep,
+            )
         if provider == "anthropic":
             from adsmith.providers.llm.anthropic import AnthropicProvider  # noqa: PLC0415
 

@@ -1,0 +1,24 @@
+/* Shared styling for the demo-only pages (lessons, limits, terminal): the studio's tokens. */
+:root { --bg:#0e0f10; --panel:#141517; --raise:#1a1b1e; --line:#2a2b2f; --line-2:#36383d; --text:#e4e3df;
+  --muted:#9b9a95; --dim:#6a6a6c; --accent:#e3a33f; --ok:#9fb08f; --bad:#cf6f62; }
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--bg); color:var(--text); font:400 15px/1.5 "IBM Plex Sans","IBM Plex Sans Arabic",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+.top { height:44px; display:flex; align-items:center; gap:8px; padding:0 16px; background:var(--panel); border-bottom:1px solid var(--line); }
+.mark { width:14px; height:14px; border-radius:2px; background:var(--accent); }
+.wordmark { font-weight:600; font-size:14px; } .sep { color:var(--line-2); } .tag { color:var(--dim); font-size:12px; }
+.label { font:500 11px/1 "IBM Plex Mono",monospace; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); }
+.wrap { padding:28px 32px; }
+h1 { font-size:22px; margin:8px 0 20px; font-weight:600; }
+.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.card { border:1px solid var(--line); border-radius:4px; background:var(--panel); padding:18px; display:flex; flex-direction:column; gap:12px; }
+.card h2 { font-size:16px; margin:0; font-weight:600; }
+.card p { margin:0; color:var(--muted); }
+.mono { font:12.5px "IBM Plex Mono",monospace; }
+.steps { display:flex; flex-direction:column; gap:8px; }
+.step { display:grid; grid-template-columns:28px 1fr; gap:10px; align-items:start; padding:10px; border:1px solid var(--line); border-radius:4px; background:var(--raise); }
+.step .n { font:12px "IBM Plex Mono",monospace; color:var(--dim); }
+.step.bad { border-color:rgba(207,111,98,.45); } .step.good { border-color:rgba(227,163,63,.6); background:rgba(227,163,63,.08); }
+.big { font-size:34px; font-weight:600; color:var(--accent); line-height:1; }
+.img { width:100%; border-radius:3px; border:1px solid var(--line); display:block; }
+.lint { border-left:2px solid var(--bad); padding:6px 10px; background:rgba(207,111,98,.08); }
+.fix { border-left:2px solid var(--ok); padding:6px 10px; background:rgba(159,176,143,.08); }

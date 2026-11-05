@@ -20,8 +20,10 @@ against the node output schemas by ``tests/unit/test_scripted_fixtures.py``.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -57,15 +59,30 @@ def _estimate_input_tokens(req: LLMRequest) -> int:
 class ScriptedLLMProvider:
     name = "scripted"
 
-    def __init__(self, scripts: dict[str, list[Step]]) -> None:
+    def __init__(
+        self,
+        scripts: dict[str, list[Step]],
+        *,
+        latency_s: float = 0.0,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
         if any(not steps for steps in scripts.values()):
             raise ValueError("every scripted template needs at least one step")
         self._scripts = scripts
+        # Simulated thinking time per call (demos: the planning stages become visible in the UI).
+        self._latency, self._sleep = latency_s, sleep
         self._calls: defaultdict[str, int] = defaultdict(int)
         self.requests: list[LLMRequest] = []  # inspected by tests
 
     @classmethod
-    def from_scenario(cls, scenario: str, fixtures_dir: Path = FIXTURES_DIR) -> ScriptedLLMProvider:
+    def from_scenario(
+        cls,
+        scenario: str,
+        fixtures_dir: Path = FIXTURES_DIR,
+        *,
+        latency_s: float = 0.0,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> ScriptedLLMProvider:
         directory = fixtures_dir / scenario
         if not directory.is_dir():
             raise FileNotFoundError(f"no scripted scenario {scenario!r} in {fixtures_dir}")
@@ -73,7 +90,7 @@ class ScriptedLLMProvider:
             p.stem: json.loads(p.read_text(encoding="utf-8"))
             for p in sorted(directory.glob("*.json"))
         }
-        return cls(scripts)
+        return cls(scripts, latency_s=latency_s, sleep=sleep)
 
     def override(self, template_name: str, steps: list[Step]) -> None:
         """Replace (or add) one template's script, e.g. critic verdicts in a test."""
@@ -113,6 +130,8 @@ class ScriptedLLMProvider:
             raise PermanentProviderError(f"scripted provider has no script for {name!r}")
         step = self._pick(name, steps, request)
         self._calls[name] += 1
+        if self._latency > 0:
+            await self._sleep(self._latency)
 
         if "error" in step:
             kind = step["error"]
