@@ -104,6 +104,8 @@ lighting = "a single hard backlight, black void around the leaf"
 motion = "one water drop falls onto the leaf and bursts into a small crown of droplets in extreme slow motion"
 keyframe_hint = "a single dark green leaf fills the lower half against a black void; one water drop hangs just above it; no bottle, no hand"
 fallback = "droplets_on_glass"
+physical_event = true
+proven = "keyframe passed on real media (STOP 1)"
 avoid_on = []
 
 [shots.droplets_on_glass]
@@ -120,6 +122,8 @@ lighting = "one hard rim light from camera-right tracing the edges, everything e
 motion = "cold droplets slowly bead and one runs down the glass"
 keyframe_hint = "fine water droplets cover the glass of the bottle, sharp in the centre, the liquid glowing behind them; black background"
 fallback = "glass_edge_macro"
+physical_event = true
+proven = "keyframe passed on real media (STOP 1)"
 avoid_on = []
 
 [shots.bottle_into_water]
@@ -136,6 +140,7 @@ lighting = "one hard rim light from camera-right tracing the edges, everything e
 motion = "the bottle sinks into still black water, sending up a column of bubbles"
 keyframe_hint = "the bottle just under the surface of still black water, a crown of splash above it and bubbles around it"
 fallback = "water_ribbon"
+physical_event = true
 avoid_on = []
 composition_hard = true
 
@@ -153,6 +158,7 @@ lighting = "one hard rim light from camera-right tracing the edges, everything e
 motion = "a single clear ribbon of water swirls once around the standing bottle"
 keyframe_hint = "a clear ribbon of water curls around the standing bottle, frozen mid-air, lit by the rim light; black background"
 fallback = "bottle_on_rock"
+physical_event = true
 avoid_on = []
 composition_hard = true
 
@@ -270,4 +276,6 @@ motion = "one short, fine horizontal plume of mist leaves the nozzle to the side
 keyframe_hint = "the bottle in profile against black, cap removed and out of frame, the bare metal nozzle on its neck, a fine horizontal plume of mist leaving the nozzle to the right, lit from behind"
 reference_note = "the cap is off and out of frame: the bare metal spray nozzle and collar sit on the neck of the bottle; everything else stays exactly as in the input image"
 fallback = "light_sweep"
+physical_event = true
+proven = "keyframe passed 0.85 on real media under the hard composition rule (STOP 1)"
 avoid_on = []

@@ -69,10 +69,10 @@ and the cap is black, not brushed gold. No ad was assembled: no extra rescue by 
 defects = "Critic error the other way: it said the spray never happens, but both takes show a short burst at about 2–3 s. The real miss is the gate, which passed the black cap as a 'minor' issue."
 
 [[items]]
-key = "montage"
-media = ["montage_final.mp4"]  # committed copy in docs/media (fresh clone)
+key = "montage_v1"
+media = ["montage_v1.mp4"]  # committed copy in docs/media (fresh clone)
 spend = 3.073
-title = "Montage, fully automatic: «ذهب سايل»"
+title = "Montage v1, fully automatic: «ذهب سايل»"
 subtitle = "Physics-led montage · 10 shots planned, 5 kept · Kling v3 Standard · Kontext + macro crop · Lyria 2 music, beat cut"
 run = "run_01M6MT0QP80T95Q796V25HE1VD"
 kind = "final"

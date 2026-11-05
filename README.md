@@ -186,7 +186,7 @@ I spent about $15 of real fal credit; these lessons changed the design.
    it). The bottle is identical in every shot: identity is solved. It generated its own music
    (Lyria 2, $0.10) and cut to the beat. But the shots that make a montage, physical events
    (water ribbon, splash, light sweep), failed the gates, so it ended **done_partial: 5 still-ish
-   product shots, 8.4 s** ([video](docs/media/montage_final.mp4), $3.07 of fal). Two fallbacks
+   product shots, 8.4 s** ([video](docs/media/montage_v1.mp4), $3.07 of fal). Two fallbacks
    fired automatically but raced to the same shot, and light-only shots fail on Kling 2/2. Both
    are now rules: fallbacks are decided one at a time and never leave a hole, and entries a
    model renders badly (`avoid_on`) never reach its storyboard.

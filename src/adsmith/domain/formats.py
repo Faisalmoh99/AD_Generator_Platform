@@ -47,6 +47,10 @@ class FormatGrammar(DomainModel):
     speed_default: Speed = Speed.NORMAL
     max_settings: int | None = Field(default=None, ge=1)
     dialogue: bool = True
+    # Montage v2 (after run 1 had no event at all): at least this many physical-event shots
+    # (vocabulary `physical_event`), and the last shot is this vocabulary entry.
+    min_event_shots: int = Field(default=0, ge=0, le=12)
+    last_vocab: str | None = None
     identity: Literal["reference", "optional"] = "optional"
     look: str = Field(min_length=1, max_length=1000)
     events: str = Field(min_length=1, max_length=1000)
@@ -132,6 +136,13 @@ def format_block(lib: FormatLibrary, fmt: AdFormat) -> str:
         lines.append(f"At most {g.max_settings} distinct setting families across the ad")
     if g.hero_last:
         lines.append("The final shot is the product hero (purpose 'product').")
+    if g.last_vocab:
+        lines.append(f"The final shot uses the vocabulary entry {g.last_vocab}.")
+    if g.min_event_shots:
+        lines.append(
+            f"At least {g.min_event_shots} shots are physical events (entries marked EVENT in "
+            "the vocabulary); prefer the ones marked PROVEN (they passed on real media)."
+        )
     lines += [f"Risk: {r}" for r in g.risk_notes]
     return "\n".join(lines)
 
@@ -207,4 +218,13 @@ def _vocab_problems(
     last = vocab.get(scenes[-1].vocab or "") if scenes else None
     if g.hero_last and last is not None and not last.needs_product:
         problems.append("the final shot must use a vocabulary entry that shows the product")
+    if g.last_vocab and scenes and scenes[-1].vocab != g.last_vocab:
+        problems.append(f"the final shot must use the vocabulary entry {g.last_vocab}")
+    events = [s.vocab for s in scenes if (e := vocab.get(s.vocab or "")) and e.physical_event]
+    if len(events) < g.min_event_shots:
+        names = ", ".join(n for n, e in vocab.items() if e.physical_event)
+        problems.append(
+            f"only {len(events)} physical-event shot(s); this format needs at least "
+            f"{g.min_event_shots}: use entries from {names} (prefer PROVEN ones)"
+        )
     return problems

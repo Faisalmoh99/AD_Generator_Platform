@@ -42,6 +42,11 @@ class ShotVocab(DomainModel):
     # Shot-specific change to the locked product, told to the reference model and the gate
     # (e.g. "the cap is off": otherwise a missing cap is a hard identity mismatch).
     reference_note: str = Field(default="", max_length=300)
+    # A physical event is the point of the shot (spray, droplets, a drop, a splash, bubbles): the
+    # montage grammar asks for a minimum number of them (montage v2).
+    physical_event: bool = False
+    # The keyframe already passed the gate on real media: the storyboard prefers it.
+    proven: str = Field(default="", max_length=120)
     # identity_mode = "crop": which part of the packshot the macro is cut from.
     crop: CropRegion | None = None
     fallback: str
@@ -90,6 +95,8 @@ class VocabLibrary(DomainModel):
                 ", a person (" + v.framing + ")" if v.shows_person else ""
             )
             key = "; KEY SHOT" if v.key_shot else ""
+            key += "; EVENT" if v.physical_event else ""
+            key += f"; PROVEN: {v.proven}" if v.proven else ""
             lines.append(
                 f"- {name}: {v.label} [{shows}; {v.shot_type.value}, camera {v.camera.value}, "
                 f"{v.speed.value}{key}]. Motion: {v.motion}."

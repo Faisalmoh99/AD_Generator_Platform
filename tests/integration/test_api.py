@@ -85,7 +85,7 @@ def test_events_stream_and_files_are_path_checked(tmp_path: Path) -> None:
             "single_take",
             "curtain",
             "hero_spray",
-            "montage",
+            "montage_v1",
         ]
         assert all(v["url"].startswith("/docs-media/") for g in gallery for v in g["videos"])
         first_clip = gallery[0]["videos"][0]["url"]

@@ -99,3 +99,32 @@ def test_montage_scene_bounds_are_the_kept_window(settings: Settings) -> None:
 
     assert scene_duration_bounds(settings, None, AdFormat.MONTAGE) == (1.0, 1.5, 1.5)
     assert scene_duration_bounds(settings, None, AdFormat.NARRATIVE)[:2] == (3.0, 8.0)
+
+
+def _vocab_problems(settings: Settings, draft: StoryboardDraft) -> str:
+    g = settings.formats.grammar(AdFormat.MONTAGE)
+    return "; ".join(grammar_problems(draft.scenes, g, settings.vocabulary.shots))
+
+
+def test_montage_needs_three_physical_events(settings: Settings) -> None:
+    d = board()
+    assert _vocab_problems(settings, d) == ""  # fixture: spray, droplets, drop, splash
+    for s in d.scenes:
+        if s.vocab in {"water_drop_leaf", "droplets_on_glass"}:
+            s.vocab = "turntable_glint"
+    text = _vocab_problems(settings, d)
+    assert "only 2 physical-event shot(s); this format needs at least 3" in text
+    assert "spray_from_nozzle" in text
+
+
+def test_montage_ends_on_the_hero_push_in(settings: Settings) -> None:
+    d = board()
+    d.scenes[-1].vocab = "bottle_on_rock"
+    assert "final shot must use the vocabulary entry hero_push_in" in _vocab_problems(settings, d)
+
+
+def test_format_block_states_the_event_rule(settings: Settings) -> None:
+    text = format_block(settings.formats, AdFormat.MONTAGE)
+    assert "At least 3 shots are physical events" in text and "hero_push_in" in text
+    vocab = settings.vocabulary.prompt_block()
+    assert "spray_from_nozzle" in vocab and "EVENT; PROVEN" in vocab

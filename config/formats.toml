@@ -22,10 +22,13 @@ allowed_camera = ["static", "push_in", "dolly_in", "orbit", "tilt", "rack_focus"
 speed_default = "slow_motion"
 max_settings = 3
 dialogue = false
+# Montage v2: the references are event-driven, and run 1 kept no event at all.
+min_event_shots = 3
+last_vocab = "hero_push_in"
 # Locked packshot + per-shot identity routing from the vocabulary (item 3), always on.
 identity = "reference"
 look = """dark, low-key product photography: black or deep charcoal backgrounds, one hard rim light tracing glass and metal edges, a soft low fill, crisp specular highlights, brushed metal and faceted glass textures, no readable text anywhere"""
-events = """one physical event per shot and nothing else: a light sweep, a water drop, droplets forming, a splash with rising bubbles, a ribbon of water, one spray burst, the cap lifting, a slow turntable glint; never a person acting"""
+events = """one physical event per shot and nothing else: a fine spray from the nozzle, droplets forming on the glass, a water drop hitting a leaf, a splash with rising bubbles, a ribbon of water; between them product beats (the cap macro, the cap lifting, a slow turntable glint); never a person acting; light alone is not an event"""
 risk_notes = [
   "every shot is a separate generation; identity comes only from the locked product reference",
   "8-12 keyframes per ad: more gate calls and stills money than a single take",

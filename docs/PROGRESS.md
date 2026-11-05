@@ -799,7 +799,7 @@ crop to the whole bottle), droplets_on_glass (the cap turned to crystal) and her
 glossy reflection filled the lower fifth) failed with no fallback left. light_sweep and
 rim_light_reveal passed the gate but failed clip QA twice each (Kling ignores light-only events).
 Lyria track generated ($0.10); beat cut 130 bpm, 5 of 5 cuts snapped; **done_partial: 5 shots +
-Arabic end card, 8.4 s** (`docs/media/montage_final.mp4`). Ledger: stills $0.705, clips $2.268,
+Arabic end card, 8.4 s** (`docs/media/montage_v1.mp4`). Ledger: stills $0.705, clips $2.268,
 music $0.10 (fal media $3.073), Anthropic $0.89. Sheet and decisions:
 `docs/screenshots/montage_run1_contact_sheet.png`, `montage_run1_decisions.txt`.
 **Fixed after the run (no spend):** fallbacks decided one at a time under a lock; after the chain,
