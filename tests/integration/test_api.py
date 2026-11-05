@@ -125,3 +125,23 @@ def test_pipeline_view_data_decisions_and_sse_resume(tmp_path: Path) -> None:
         assert any(e["actor"] == "llm" for e in evs)
         resumed = events({"Last-Event-ID": str(evs[9]["seq"])})
         assert resumed[0]["seq"] == evs[10]["seq"]  # no event lost or repeated
+
+
+def test_page_and_assets_change_together(tmp_path: Path) -> None:
+    """A stale cached app.js next to a new index.html broke the dashboard after the redesign:
+    asset URLs carry their content hash, and the page and assets must be revalidated."""
+    import hashlib  # noqa: PLC0415
+    import re  # noqa: PLC0415
+
+    from adsmith.api.app import STATIC  # noqa: PLC0415
+
+    with client(tmp_path) as c:
+        page = c.get("/")
+        assert page.headers["cache-control"] == "no-cache"
+        for name in ("app.js", "app.css"):
+            digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:12]
+            assert f"/static/{name}?v={digest}" in page.text
+        src = re.search(r'src="(/static/app\.js\?v=\w+)"', page.text)
+        assert src is not None
+        asset = c.get(src.group(1))
+        assert asset.status_code == 200 and asset.headers["cache-control"] == "no-cache"

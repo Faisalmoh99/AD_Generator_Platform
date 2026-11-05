@@ -23,13 +23,14 @@ commands and repository as the CLI.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator, Coroutine
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -82,13 +83,34 @@ def ui_settings() -> Settings:
     return s
 
 
+class RevalidatedStatic(StaticFiles):
+    """Static files that the browser must revalidate (ETag) before reuse. Without it a browser
+    may keep a heuristically "fresh" old app.js next to a new index.html: after the UI redesign
+    the old script looked for removed elements and the dashboard failed to render."""
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Response:
+        resp = super().file_response(*args, **kwargs)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+def versioned_index() -> str:
+    """index.html with each asset URL pinned to its content hash (``/static/app.js?v=…``), so
+    the page and its script and stylesheet always change together."""
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    for name in ("app.js", "app.css"):
+        digest = hashlib.sha256((STATIC / name).read_bytes()).hexdigest()[:12]
+        html = html.replace(f"/static/{name}", f"/static/{name}?v={digest}")
+    return html
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - route table
     s = settings or ui_settings()
     rt = AgentRuntime.from_settings(s)
     orch = Orchestrator(rt)
     tasks: dict[str, asyncio.Task[Any]] = {}
     app = FastAPI(title="Adsmith", docs_url="/api/docs")
-    app.mount("/static", StaticFiles(directory=STATIC), name="static")
+    app.mount("/static", RevalidatedStatic(directory=STATIC), name="static")
     app.mount("/fonts", StaticFiles(directory=FONT_DIR), name="fonts")
 
     def background(run_id: str, work: Coroutine[Any, Any, Any]) -> None:
@@ -106,7 +128,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
 
     @app.get("/", response_class=HTMLResponse)
     async def index() -> HTMLResponse:
-        return HTMLResponse((STATIC / "index.html").read_text(encoding="utf-8"))
+        return HTMLResponse(versioned_index(), headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/config")
     async def config() -> dict[str, Any]:
