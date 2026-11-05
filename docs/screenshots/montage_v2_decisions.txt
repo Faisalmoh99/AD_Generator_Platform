@@ -80,5 +80,10 @@ DECISIONS · run_01M6MVHD6CE5V22VM38GXNRN09 · stage done_partial
   Assembled 7 scene(s) + end card, 12.5s → final.mp4; skipped failed scene(s) [6]
   End card: نَفَس أسود — رشّة وحدة وتحس إنك صرت أجرأ [PLACEHOLDER: invented by the agent, replace before publishing]
   Duration check: 12.46s rendered vs 12.50s expected
+  Re-assembling (partial mode: skip) with the stored music track 8847459368 (from montage v1 (run_01M6MT0QP80T95Q796V25HE1VD)).
+  Assembled 7 scene(s) + end card, 12.5s → final.mp4; skipped failed scene(s) [6]
+  Beat cut: 130 bpm, 71 beats; 7 of 7 shot lengths adjusted (≤ ±0.2s per cut); footage 10.50s → 10.59s
+  End card: نَفَس أسود — رشّة وحدة وتحس إنك صرت أجرأ [PLACEHOLDER: invented by the agent, replace before publishing]
+  Duration check: 12.54s rendered vs 12.59s expected
 
 7. SPEND: image $0.570 · video $2.520 · music $0.000 · LLM $0.772 · run cap $3.80

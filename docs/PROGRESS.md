@@ -841,3 +841,9 @@ on the strongest shot of the project, the nozzle spray. v1 has perfect identity 
 plays as 5 near-still product shots in 8.4 s. v2's flaws: silent; the droplets shot has a clear
 crystal cap (a gate miss on a small part); the cap's shade shifts between gunmetal and champagne.
 **Tests:** 578 passed, 2 skipped.
+
+**Music for v2 at $0 (approved as the final ad):** `commands.reassemble(..., music=...)` takes an
+audio artifact already in the CAS; `scripts/reassemble_v2_with_music.py` re-assembled v2 with
+montage v1's Lyria track (wallet ceiling = settled total, so no paid call was possible; ledger
+unchanged at $18.158). Same clips and peak windows; beat cut 130 bpm, 7 of 7 cuts snapped; 12.54 s.
+`docs/media/montage_v2.mp4` (the silent one is `montage_v2_silent.mp4`).

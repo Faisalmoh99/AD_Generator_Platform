@@ -127,3 +127,28 @@ async def test_the_track_is_made_before_any_clip_spends_the_budget(tmp_path: Pat
     assert music < first_clip
     music_ev = next(e for e in events if e.summary.startswith("Music: generated"))
     assert music_ev.stage is Stage.GENERATE
+
+
+async def test_reassemble_with_another_runs_stored_track_generates_nothing(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    donor = await h.orch.run_until_blocked(h.orch.create_run(REQUEST, interactive=False).id)
+    assert donor.music is not None
+    off = make_harness(fast_settings(tmp_path / "b", generate_music=False), scenario="montage_en")
+    off.rt.storage.artifacts.ingest(
+        h.rt.storage.artifacts.resolve(donor.music), kind="audio", provider="mock"
+    )
+    silent = await off.orch.run_until_blocked(off.orch.create_run(REQUEST, interactive=False).id)
+    assert silent.music is None
+    calls_before = off.provider_calls
+    commands.reassemble(off.rt.storage, silent.id, music=donor.music, music_from=donor.id)
+    after = await off.orch.run_until_blocked(silent.id)
+    assert after.stage is Stage.DONE and after.music == donor.music
+    assert off.provider_calls == calls_before  # no keyframe, clip or music call
+    assert after.final is not None and after.final != silent.final
+    assert await _has_audio(off.rt.storage.artifacts.resolve(after.final))
+    summaries = _summaries(off, silent.id)
+    assert any("with the stored music track" in s for s in summaries)
+    assert any(s.startswith("Beat cut: 120 bpm") for s in summaries)
+    with pytest.raises(commands.CommandRejectedError):
+        bad = after.final.model_copy(update={"kind": "video"})
+        commands.reassemble(off.rt.storage, silent.id, music=bad)

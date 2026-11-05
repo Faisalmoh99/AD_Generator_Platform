@@ -196,7 +196,7 @@ I spent about $18 of real fal credit; these lessons changed the design.
    the cap macro and a hero ending, **7 of 8 shots, 12.5 s** ([v2](docs/media/montage_v2.mp4),
    $3.09 of fal). It is much closer to the references, but it lost two things v1 had. **Music:**
    the track was reserved last and the clip retakes had used the cap, so music is now made when the
-   clips start. **Perfect identity:** the droplets shot turned the cap to crystal and the gate passed
+   clips start (the final v2 was re-assembled at $0 with v1's stored track, beat-cut to it). **Perfect identity:** the droplets shot turned the cap to crystal and the gate passed
    it, so the gate still misses fine material changes on small parts.
 
 ## Design decisions

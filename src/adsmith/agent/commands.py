@@ -364,13 +364,30 @@ def accept_scene(
     return storage.runs.update(run_id, mutate, reason=f"scene {scene_order} accepted").state
 
 
-def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None) -> RunState:
-    """Re-run only the assembly of a finished run (new end card / partial mode), no generation:
-    ffmpeg plus at most one small LLM call for the end-card copy."""
+def reassemble(
+    storage: Storage,
+    run_id: str,
+    *,
+    partial_mode: str | None = None,
+    music: Artifact | None = None,
+    music_from: str = "",
+) -> RunState:
+    """Re-run only the assembly of a finished run (new end card / partial mode / a stored music
+    track), no generation: ffmpeg plus at most one small LLM call for the end-card copy.
+    ``music`` is an audio artifact already in the CAS (e.g. another run's generated track): it
+    becomes this run's track, so the montage is beat-cut to it and nothing is generated."""
 
     def mutate(s: RunState) -> list[AgentEvent]:
         if s.stage not in {Stage.DONE, Stage.DONE_PARTIAL}:
             raise CommandRejectedError(f"run is at {s.stage}; reassemble needs a finished run")
+        note = ""
+        if music is not None:
+            if music.kind != "audio" or not storage.artifacts.resolve(music).is_file():
+                raise CommandRejectedError("music must be an audio artifact stored in the CAS")
+            s.music = music
+            note = f" with the stored music track {music.sha256[:10]}" + (
+                f" (from {music_from})" if music_from else ""
+            )
         if partial_mode is not None:
             if partial_mode not in {"skip", "slate"}:
                 raise CommandRejectedError("partial_mode must be 'skip' or 'slate'")
@@ -381,7 +398,7 @@ def reassemble(storage: Storage, run_id: str, *, partial_mode: str | None = None
                 run_id=s.id,
                 stage=Stage.ASSEMBLE,
                 type=EventType.DECISION,
-                summary=f"Re-assembling (partial mode: {s.config.partial_mode}).",
+                summary=f"Re-assembling (partial mode: {s.config.partial_mode}){note}.",
             )
         ]
 
