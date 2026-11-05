@@ -227,14 +227,16 @@ class Orchestrator:
     async def step(self, run_id: str) -> RunState:
         state = self.rt.storage.runs.load(run_id)
         stage = state.stage
-        if stage in SCENE_STAGES:
-            return await self._scene_step(state)
-        if stage is Stage.ASSEMBLE:
-            # Generated music (STOP 2): a provider step before the node, never a failure.
+        if stage in {Stage.GENERATE, Stage.ASSEMBLE}:
+            # Generated music (STOP 2): a provider step, never a failure. Made when clips start
+            # (it depends only on the brief and the format), so clip retakes cannot spend its
+            # budget first (montage v2 lost its track that way); again before assembly if needed.
             from adsmith.agent.music import ensure_music  # noqa: PLC0415
 
             await ensure_music(self.rt, run_id)
             state = self.rt.storage.runs.load(run_id)
+        if stage in SCENE_STAGES:
+            return await self._scene_step(state)
         node = NODES[stage]
         lang = state.language
         self.rt.storage.events.append(

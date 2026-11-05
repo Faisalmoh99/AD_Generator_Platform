@@ -112,3 +112,18 @@ async def test_lyria_payload_and_result(tmp_path: Path) -> None:
     assert fake.paths[0] == "POST https://queue.fal.run/fal-ai/lyria2"
     assert out.kind == "audio" and out.cost_usd == pytest.approx(0.10) and out.duration_s == 30
     assert acct.summary().settled_usd == pytest.approx(0.10)
+
+
+async def test_the_track_is_made_before_any_clip_spends_the_budget(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    run = h.orch.create_run(REQUEST, interactive=False)
+    state = await h.orch.run_until_blocked(run.id)
+    assert state.music is not None
+    events = h.rt.storage.events.tail(run.id, limit=10_000)
+    music = next(e.seq for e in events if e.summary.startswith("Music: generated"))
+    first_clip = min(
+        e.seq for e in events if e.type.value == "attempt_started" and e.stage is Stage.GENERATE
+    )
+    assert music < first_clip
+    music_ev = next(e for e in events if e.summary.startswith("Music: generated"))
+    assert music_ev.stage is Stage.GENERATE

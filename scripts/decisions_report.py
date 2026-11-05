@@ -148,7 +148,8 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
     # 6. music and assembly
     out.append("\n6. MUSIC AND ASSEMBLY")
     for e in events:
-        if e.stage in {Stage.ASSEMBLE} and e.type is EventType.DECISION:
+        music = e.summary.startswith("Music")
+        if (e.stage is Stage.ASSEMBLE or music) and e.type is EventType.DECISION:
             out.append(f"  {e.summary[:300]}")
 
     # 7. spend

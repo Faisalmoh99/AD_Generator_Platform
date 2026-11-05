@@ -1,5 +1,6 @@
 """Generated music for montage assembly (STOP 2). Not a pipeline stage: the orchestrator calls
-``ensure_music`` right before the assemble node, once per run.
+``ensure_music`` when the generate stage starts (before any clip can use the budget) and again
+before the assemble node; it runs once per run.
 
 Order: user track configured → nothing to do; a track already in run state → reuse it; the cache
 (same provider, model, prompt and seed) → $0; else reserve the run budget (category "audio", hard
@@ -33,10 +34,16 @@ MUSIC_SEED = 7
 Level = Literal["info", "warn", "error"]
 
 
-def _event(run_id: str, summary: str, level: Level = "info", **payload: object) -> AgentEvent:
+def _event(
+    run_id: str,
+    summary: str,
+    level: Level = "info",
+    stage: Stage = Stage.ASSEMBLE,
+    **payload: object,
+) -> AgentEvent:
     return AgentEvent.model_validate(
         {
-            "run_id": run_id, "stage": Stage.ASSEMBLE, "type": EventType.DECISION,
+            "run_id": run_id, "stage": stage, "type": EventType.DECISION,
             "summary": summary[:500], "level": level, "payload": payload,
         }
     )  # fmt: skip
@@ -123,7 +130,7 @@ async def ensure_music(rt: AgentRuntime, run_id: str) -> None:
                     run_id,
                     f"Music generation failed ({why}); "
                     "assembling without music",
-                    level="warn", model=provider.model,
+                    level="warn", stage=s.stage, model=provider.model,
                 )
             ]  # fmt: skip
 
@@ -149,10 +156,11 @@ def _store(
         if settle is not None:
             s.budget.settle(*settle)
         s.music = art
-        return [_event(run_id, summary, sha256=art.sha256)]
+        return [_event(run_id, summary, stage=s.stage, sha256=art.sha256)]
 
     rt.storage.runs.update(run_id, mutate, reason="music stored")
 
 
 def _note(rt: AgentRuntime, run_id: str, summary: str, level: Level = "info") -> None:
-    rt.storage.events.append(run_id, [_event(run_id, summary, level=level)])
+    stage = rt.storage.runs.load(run_id).stage
+    rt.storage.events.append(run_id, [_event(run_id, summary, level=level, stage=stage)])
