@@ -26,14 +26,25 @@ class ShotVocab(DomainModel):
     shows_person: bool
     identity_mode: IdentityMode
     key_shot: bool = False
+    # The composition IS the spec (the event is the point of the shot): a missing or different
+    # event fails the keyframe gate and clip QA instead of only lowering the score (STOP 1: a
+    # missing water ribbon passed at 0.72 as a "minor" composition issue).
+    composition_hard: bool = False
     shot_type: ShotType
     camera: CameraMove
     speed: Speed
     lighting: str = Field(min_length=1, max_length=300)
     motion: str = Field(min_length=1, max_length=300)
     keyframe_hint: str = Field(min_length=1, max_length=400)
+    # Shot-specific change to the locked product, told to the reference model and the gate
+    # (e.g. "the cap is off": otherwise a missing cap is a hard identity mismatch).
+    reference_note: str = Field(default="", max_length=300)
     fallback: str
     avoid_on: list[str] = Field(default_factory=list)
+
+    @property
+    def composition_is_spec(self) -> bool:
+        return self.composition_hard or self.key_shot
 
     @model_validator(mode="after")
     def _identity_matches_product(self) -> Self:

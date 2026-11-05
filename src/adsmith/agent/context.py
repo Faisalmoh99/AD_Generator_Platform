@@ -149,17 +149,17 @@ class AgentRuntime:
             composite_prompt=self._composite_prompt,
         )
 
-    def _composite_prompt(self, product_name: str, framing: str) -> str:
-        return (
-            self.prompts.get("keyframe_composite").render(name=product_name, framing=framing).user
-        )
+    def _composite_prompt(self, product_name: str, framing: str, note: str) -> str:
+        tpl = self.prompts.get("keyframe_composite")
+        return tpl.render(name=product_name, framing=framing, note=note).user
 
-    def _reference_prompt(self, keyframe_prompt: str, product_name: str, framing: str) -> str:
-        return (
-            self.prompts.get("keyframe_reference")
-            .render(keyframe_prompt=keyframe_prompt, name=product_name, framing=framing)
-            .user
-        )
+    def _reference_prompt(
+        self, keyframe_prompt: str, product_name: str, framing: str, note: str
+    ) -> str:
+        tpl = self.prompts.get("keyframe_reference")
+        return tpl.render(
+            keyframe_prompt=keyframe_prompt, name=product_name, framing=framing, note=note
+        ).user
 
     def fal_account(self) -> SpendAccount:
         """The cross-run wallet ledger (one per process). Refuses to exist without a ceiling."""

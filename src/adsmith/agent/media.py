@@ -64,9 +64,9 @@ class MediaGateway:
         chaos: ChaosPolicy,
         long_side: int,
         reference: ImageProvider | None = None,
-        reference_prompt: Callable[[str, str, str], str] | None = None,
+        reference_prompt: Callable[[str, str, str, str], str] | None = None,
         composite: ImageProvider | None = None,
-        composite_prompt: Callable[[str, str], str] | None = None,
+        composite_prompt: Callable[[str, str, str], str] | None = None,
     ) -> None:
         self.image, self.video, self.adapter = image, video, adapter
         self.storage, self.chaos, self.long_side = storage, chaos, long_side
@@ -90,6 +90,7 @@ class MediaGateway:
         product_name: str = "product",
         identity_mode: IdentityMode = "direct",
         framing: str = "product",
+        note: str = "",
     ) -> PreparedJob:
         """``identity_mode`` (PLAN_V2 item 3) is decided per shot by the caller from the shot
         vocabulary: none → plain text-to-image; direct → Kontext from the locked packshot (the
@@ -111,8 +112,8 @@ class MediaGateway:
             if product_reference is None or not scene.shows_product or identity_mode == "none":
                 return plain
             if identity_mode == "composite" and self.composite and self.composite_prompt:
-                return self._composite(plain, product_reference, product_name, framing)
-            return self._direct(plain, product_reference, product_name, framing)
+                return self._composite(plain, product_reference, product_name, framing, note)
+            return self._direct(plain, product_reference, product_name, framing, note)
         assert scene.keyframe is not None
         return self._prepare_video(scene, scene.prompt, aspect_ratio, label)
 
@@ -147,14 +148,14 @@ class MediaGateway:
         return self._prepare_image(still, aspect, label)
 
     def _direct(
-        self, plain: PreparedJob, reference: Artifact, product_name: str, framing: str
+        self, plain: PreparedJob, reference: Artifact, product_name: str, framing: str, note: str
     ) -> PreparedJob:
         """Same keyframe, generated from the locked product still by the reference model. The
         reference's sha256 is part of the request, so a new reference is a new cache key."""
         if self.reference is None or self.reference_prompt is None:
             return plain
         assert isinstance(plain.job, ImageJob)
-        prompt = self.reference_prompt(plain.job.prompt, product_name, framing)
+        prompt = self.reference_prompt(plain.job.prompt, product_name, framing, note)
         request = plain.request.model_copy(
             update={
                 "provider": self.reference.name,
@@ -170,10 +171,10 @@ class MediaGateway:
         return PreparedJob(request, job, est, identity="direct")
 
     def _composite(
-        self, plain: PreparedJob, reference: Artifact, name: str, framing: str
+        self, plain: PreparedJob, reference: Artifact, name: str, framing: str, note: str
     ) -> PreparedJob:
         assert isinstance(plain.job, ImageJob) and self.composite and self.composite_prompt
-        swap = self.composite_prompt(name, framing)
+        swap = self.composite_prompt(name, framing, note)
         request = plain.request.model_copy(
             update={
                 "provider": self.composite.name,

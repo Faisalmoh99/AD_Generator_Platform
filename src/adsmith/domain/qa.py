@@ -86,6 +86,10 @@ class QAVerdict(QAVerdictDraft):
     keyframe_approved: bool = False
     # Set by code for single-take ads: then a missing key action is a hard failure.
     single_take: bool = False
+    # Set by code for shots whose composition IS the spec (vocabulary: key shots and event shots
+    # whose event is the point). Then composition issues keep their severity and a major one, or
+    # matches_shot_spec false, fails the verdict.
+    composition_hard: bool = False
 
     @classmethod
     def from_draft(
@@ -95,17 +99,21 @@ class QAVerdict(QAVerdictDraft):
         threshold: float,
         keyframe_approved: bool = False,
         single_take: bool = False,
+        composition_hard: bool = False,
     ) -> QAVerdict:
-        """Applies the severity calibration: soft-category issues are capped at minor."""
+        """Applies the severity calibration: soft-category issues are capped at minor (except
+        composition, when the shot's composition is its spec)."""
+        soft = SOFT_CATEGORIES - {"composition"} if composition_hard else SOFT_CATEGORIES
         data = draft.model_dump()
         for issue in data["issues"]:
-            if issue["category"] in SOFT_CATEGORIES and issue["severity"] != "minor":
+            if issue["category"] in soft and issue["severity"] != "minor":
                 issue["severity"] = "minor"
         return cls(
             **data,
             threshold=threshold,
             keyframe_approved=keyframe_approved,
             single_take=single_take,
+            composition_hard=composition_hard,
         )
 
     @property
@@ -125,6 +133,11 @@ class QAVerdict(QAVerdictDraft):
         reasons += [msg for check, msg in hard.items() if not getattr(self.checks, check)]
         if self.single_take and not self.checks.key_action_happens:
             reasons.append("single take: the key action does not happen in the played frames")
+        if self.composition_hard and (
+            not self.checks.matches_shot_spec
+            or any(i.category == "composition" and i.severity != "minor" for i in self.issues)
+        ):
+            reasons.append("composition is the spec for this shot and it does not match")
         if any(i.severity == "blocker" for i in self.issues):  # soft issues are never blockers
             reasons.append("blocker issue")
         return reasons

@@ -12,7 +12,7 @@ label = "Extreme macro of the cap"
 framing = "macro"
 needs_product = true
 shows_person = false
-identity_mode = "direct"
+identity_mode = "composite"
 key_shot = false
 shot_type = "extreme_close_up"
 camera = "push_in"
@@ -28,7 +28,7 @@ label = "Macro of the glass edge and facets"
 framing = "macro"
 needs_product = true
 shows_person = false
-identity_mode = "direct"
+identity_mode = "composite"
 key_shot = false
 shot_type = "extreme_close_up"
 camera = "push_in"
@@ -105,7 +105,7 @@ avoid_on = []
 
 [shots.droplets_on_glass]
 label = "Droplets on the glass"
-framing = "macro"
+framing = "product"
 needs_product = true
 shows_person = false
 identity_mode = "direct"
@@ -134,6 +134,7 @@ motion = "the bottle sinks into still black water, sending up a column of bubble
 keyframe_hint = "the bottle just under the surface of still black water, a crown of splash above it and bubbles around it"
 fallback = "water_ribbon"
 avoid_on = []
+composition_hard = true
 
 [shots.water_ribbon]
 label = "A ribbon of water around the bottle"
@@ -150,22 +151,7 @@ motion = "a single clear ribbon of water swirls once around the standing bottle"
 keyframe_hint = "a clear ribbon of water curls around the standing bottle, frozen mid-air, lit by the rim light; black background"
 fallback = "bottle_on_rock"
 avoid_on = []
-
-[shots.spray_burst]
-label = "One spray burst, no bottle"
-framing = "event"
-needs_product = false
-shows_person = false
-identity_mode = "none"
-key_shot = false
-shot_type = "close_up"
-camera = "static"
-speed = "slow_motion"
-lighting = "a single hard backlight from behind the burst, black void around it"
-motion = "one short horizontal burst of fine mist enters from the left edge, catches the backlight and dissolves"
-keyframe_hint = "a horizontal burst of fine mist frozen mid-air against a black void, lit from behind; no bottle, no hand, no surface"
-fallback = "light_sweep"
-avoid_on = []
+composition_hard = true
 
 [shots.bottle_on_rock]
 label = "The bottle on dark rock"
@@ -188,7 +174,7 @@ label = "The cap lifting off"
 framing = "macro"
 needs_product = true
 shows_person = false
-identity_mode = "direct"
+identity_mode = "composite"
 key_shot = false
 shot_type = "extreme_close_up"
 camera = "static"
@@ -261,4 +247,22 @@ lighting = "a hard backlight outlines a figure from behind, everything else blac
 motion = "the silhouette turns its head slightly toward the light"
 keyframe_hint = "a man seen from behind as a dark silhouette against a hard backlight; no face, no detail of the garment"
 fallback = "hand_cuff"
+avoid_on = []
+
+[shots.spray_from_nozzle]
+label = "The bottle spraying from its nozzle"
+framing = "event"
+needs_product = true
+shows_person = false
+identity_mode = "direct"
+key_shot = false
+composition_hard = true
+shot_type = "close_up"
+camera = "static"
+speed = "slow_motion"
+lighting = "a single hard backlight behind the mist, the bottle rim-lit, black void around it"
+motion = "one short, fine horizontal plume of mist leaves the nozzle to the side, catches the backlight and dissolves"
+keyframe_hint = "the bottle in profile against black, cap removed and out of frame, the bare metal nozzle on its neck, a fine horizontal plume of mist leaving the nozzle to the right, lit from behind"
+reference_note = "the cap is off and out of frame: the bare metal spray nozzle and collar sit on the neck of the bottle; everything else stays exactly as in the input image"
+fallback = "light_sweep"
 avoid_on = []

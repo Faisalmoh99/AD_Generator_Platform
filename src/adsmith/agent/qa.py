@@ -187,11 +187,13 @@ class LLMCritic:
             motion_prompt=scene.prompt.motion_prompt,
             negative_prompt=scene.prompt.negative_prompt or "(none)",
             image_list="\n".join(f"- image {label}" for label in labels),
-            product_checklist=_product_checklist(state, scene),
+            product_checklist=_product_checklist(state, scene, self.ctx),
             played_s=f"{played:g}",
+            composition_rule=composition_rule(self.ctx, scene),
         )
         threshold = state.config.qa_threshold
         single_take = state.storyboard is not None and len(state.storyboard.scenes) == 1
+        hard = composition_is_spec(self.ctx, scene)
 
         def convert(d: QAVerdictDraft) -> QAVerdict:
             problems = check_verdict(d, n_images=n_images)
@@ -203,6 +205,7 @@ class LLMCritic:
                 threshold=threshold,
                 keyframe_approved=scene.keyframe_approved,
                 single_take=single_take,
+                composition_hard=hard,
             )
 
         res = await self.ctx.llm.call_and_convert(
@@ -259,13 +262,15 @@ class LLMCritic:
         rendered = self.ctx.prompts.get("qa_keyframe").render(
             scene=scene_block(scene),
             scene_bible=state.bible.prompt_block(scene.uses_bible_sections()),
-            product_checklist=_product_checklist(state, scene),
+            product_checklist=_product_checklist(state, scene, self.ctx),
             keyframe_prompt=scene.prompt.keyframe_prompt,
             wardrobe_lexicon=self.ctx.settings.culture.prompt_block(state.brief)
             if scene.shows_character
             else "(no person in this shot)",
+            composition_rule=composition_rule(self.ctx, scene),
         )
         threshold = state.config.qa_threshold
+        hard = composition_is_spec(self.ctx, scene)
 
         def convert(d: QAVerdictDraft) -> QAVerdict:
             problems = check_verdict(d, n_images=1)
@@ -273,7 +278,7 @@ class LLMCritic:
                 problems.append("a still has no motion: use another category")
             if problems:
                 raise ValueError("; ".join(problems))
-            return QAVerdict.from_draft(gate_draft(d), threshold=threshold)
+            return QAVerdict.from_draft(gate_draft(d), threshold=threshold, composition_hard=hard)
 
         res = await self.ctx.llm.call_and_convert(
             LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
@@ -303,8 +308,32 @@ def gate_draft(d: QAVerdictDraft) -> QAVerdictDraft:
     return d.model_copy(update={"frames_inspected": 1, "issues": issues, "checks": checks})
 
 
-def _product_checklist(state: RunState, scene: Scene) -> str:
+def _product_checklist(state: RunState, scene: Scene, ctx: NodeContext | None = None) -> str:
     assert state.bible is not None
     if not scene.shows_product:
         return "(the product is not in this scene)"
-    return "\n".join(f"- {item}" for item in state.bible.product.checklist())
+    items = "\n".join(f"- {item}" for item in state.bible.product.checklist())
+    entry = ctx.settings.vocabulary.get(scene.vocab) if ctx is not None else None
+    if entry is not None and entry.reference_note:
+        items += (
+            f"\n- BY DESIGN FOR THIS SHOT: {entry.reference_note}. Do not report this "
+            "deliberate change as a mismatch."
+        )
+    return items
+
+
+def composition_is_spec(ctx: NodeContext, scene: Scene) -> bool:
+    entry = ctx.settings.vocabulary.get(scene.vocab)
+    return entry is not None and entry.composition_is_spec
+
+
+def composition_rule(ctx: NodeContext, scene: Scene) -> str:
+    """Prompt text: whether this shot's composition is soft (default) or its spec (hard)."""
+    entry = ctx.settings.vocabulary.get(scene.vocab)
+    if entry is None or not entry.composition_is_spec:
+        return "Standard: composition problems are soft (minor) for this shot."
+    return (
+        "HARD FOR THIS SHOT: its composition is the spec. The frame must show: "
+        f"{entry.keyframe_hint}. If that event or framing is missing or clearly different, "
+        "report a MAJOR 'composition' issue and set matches_shot_spec to false."
+    )

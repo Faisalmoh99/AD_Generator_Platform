@@ -94,7 +94,9 @@ def set_budget(
     def mutate(s: RunState) -> list[AgentEvent]:
         committed = s.budget.spent_usd + s.budget.reserved_usd
         new = limit_usd
-        if wallet_remaining_usd is not None:  # future fal spend can never exceed the wallet
+        # Future fal spend can never exceed the wallet. Runs with a media cap carry the wallet
+        # limit there (LLM calls are billed elsewhere); older runs clamp the total, as before.
+        if wallet_remaining_usd is not None and s.budget.media_limit_usd is None:
             new = min(new, committed + wallet_remaining_usd)
         if new < committed:
             raise CommandRejectedError(f"run already committed ${committed:.3f}")
@@ -102,7 +104,7 @@ def set_budget(
         s.budget.limit_usd = round(new, 6)
         if wallet_remaining_usd is not None and s.budget.media_limit_usd is not None:
             s.budget.media_limit_usd = round(
-                min(new, s.budget.media_committed_usd + wallet_remaining_usd), 6
+                s.budget.media_committed_usd + min(new, wallet_remaining_usd), 6
             )
         return [
             AgentEvent(
@@ -131,12 +133,16 @@ def edit_scene_spec(
     shot: dict[str, object] | None = None,
     shows_product: bool | None = None,
     expected_version: int | None = None,
+    vocab: tuple[str, bool, bool] | None = None,
 ) -> RunState:
     """Minimal scene edit (first real use: M11 S4 simplification; the full natural-language edit
     flow is M7). Changes the creative spec of ONE scene, bumps its version (archiving the old spec
     and prompt), marks it stale at prompt depth, and sends the run back to the ``prompt`` stage:
     the prompt node rewrites only this scene's prompt and requeues it. Other scenes are untouched.
-    With no changes it is a pure re-prompt (e.g. after a prompt template upgrade)."""
+    With no changes it is a pure re-prompt (e.g. after a prompt template upgrade).
+
+    ``vocab`` = (entry name, shows_person, needs_product): switch a montage shot to another shot
+    vocabulary entry; its flags come from the entry (ADR-0018)."""
 
     def mutate(s: RunState) -> list[AgentEvent]:
         if s.storyboard is None or s.bible is None:
@@ -155,6 +161,8 @@ def edit_scene_spec(
         scene.shot = new_shot
         if description is not None:
             scene.description = description
+        if vocab is not None:
+            scene.vocab, scene.shows_character, scene.shows_product = vocab
         if shows_product is not None:
             # An explicit user decision (e.g. "no bottle in the macro shot"). ADR-0010's
             # upgrade-only rule governs inferred flags; a user override is logged, and code may
@@ -167,6 +175,7 @@ def edit_scene_spec(
             sorted((shot or {}).keys())
             + (["description"] if description else [])
             + ([f"shows_product={shows_product}"] if shows_product is not None else [])
+            + ([f"vocab={vocab[0]}"] if vocab is not None else [])
         )
         return [
             AgentEvent(

@@ -28,11 +28,11 @@ def test_vocabulary_loads_and_is_consistent(settings: Settings) -> None:
         if v.shows_person:
             assert v.framing in montage.person_framing, name
     assert [n for n, v in lib.shots.items() if v.key_shot] == ["hero_push_in"]
-    assert "spray_burst" in lib.prompt_block()
+    assert "spray_from_nozzle" in lib.prompt_block() and "spray_burst" not in lib.shots
 
 
 def test_identity_mode_must_match_product(settings: Settings) -> None:
-    data: dict[str, Any] = settings.vocabulary.shots["spray_burst"].model_dump()
+    data: dict[str, Any] = settings.vocabulary.shots["water_drop_leaf"].model_dump()
     with pytest.raises(ValidationError, match="identity_mode is 'none' exactly"):
         ShotVocab.model_validate(data | {"identity_mode": "direct"})
     with pytest.raises(ValidationError, match="unknown fallback"):
@@ -41,7 +41,9 @@ def test_identity_mode_must_match_product(settings: Settings) -> None:
 
 def test_entry_block_says_when_there_is_no_product(settings: Settings) -> None:
     lib = settings.vocabulary
-    assert "NO product: no bottle, no hand" in entry_block("spray_burst", lib.get("spray_burst"))
+    assert "NO product: no bottle, no hand" in entry_block(
+        "water_drop_leaf", lib.get("water_drop_leaf")
+    )
     assert "no vocabulary entry" in entry_block(None, None)
 
 
@@ -54,7 +56,7 @@ def test_grammar_needs_a_known_vocab_per_shot(settings: Settings) -> None:
     text = "; ".join(grammar_problems(d.scenes, g, lib))
     assert "scene 2 has no vocab" in text and "scene 3 vocab 'dancing_man' is unknown" in text
     d = board()
-    d.scenes[-1].vocab = "spray_burst"
+    d.scenes[-1].vocab = "water_drop_leaf"
     assert "final shot must use a vocabulary entry that shows the product" in "; ".join(
         grammar_problems(d.scenes, g, lib)
     )
@@ -80,12 +82,17 @@ async def test_full_figure_person_in_a_person_free_shot_is_repaired(tmp_path: Pa
 
 async def test_flags_come_from_the_vocabulary_not_from_text(tmp_path: Path) -> None:
     h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    assert h.llm is not None
+    board = copy.deepcopy(h.llm._scripts["storyboard"][0])
+    drop = board["output"]["scenes"][1]
+    drop["description"] = "A single drop, cool as the perfume itself, lands on a dark leaf."
+    h.llm.override("storyboard", [board])
     run = h.orch.create_run(REQUEST, interactive=False)
     state = await h.orch.run_until_blocked(run.id)
     assert state.storyboard is not None
-    mist = state.storyboard.scenes[4]
-    # The text says "spray burst" (a product term), the entry says no product: the entry wins.
-    assert mist.vocab == "spray_burst" and "spray" in mist.shot.subject_action
-    assert mist.shows_product is False and mist.shows_character is False
+    leaf = state.storyboard.scenes[1]
+    # The text says "perfume" (a product term), the entry says no product: the entry wins.
+    assert leaf.vocab == "water_drop_leaf" and "perfume" in leaf.description
+    assert leaf.shows_product is False and leaf.shows_character is False
     hand = state.storyboard.scenes[7]
     assert hand.vocab == "hand_cuff" and hand.shows_character and hand.shows_product

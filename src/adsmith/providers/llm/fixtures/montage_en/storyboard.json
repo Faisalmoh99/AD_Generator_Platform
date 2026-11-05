@@ -88,7 +88,7 @@
         },
         {
           "purpose": "build",
-          "description": "One short spray burst of fine mist crosses the black frame.",
+          "description": "The bottle, cap off, releases one fine horizontal plume of mist from its nozzle.",
           "duration_s": 1.35,
           "shot": {
             "shot_type": "close_up",
@@ -96,16 +96,16 @@
             "lens": "50mm f/2",
             "lighting": "single hard backlight behind the mist, black void",
             "time_of_day": "night",
-            "composition": "a horizontal band of mist enters from the left edge",
+            "composition": "the bottle in profile on the left third, the plume of mist crossing to the right against black",
             "mood": "explosive, brief",
-            "subject_action": "One short spray burst of fine mist crosses a black void from the left edge.",
+            "subject_action": "The bottle, cap off, releases one fine horizontal plume of mist from its nozzle to the right.",
             "setting": "black void",
             "color_notes": null,
             "speed": "slow_motion"
           },
           "shows_character": false,
-          "shows_product": false,
-          "vocab": "spray_burst"
+          "shows_product": true,
+          "vocab": "spray_from_nozzle"
         },
         {
           "purpose": "build",

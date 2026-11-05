@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from adsmith.domain.budget import BudgetLedger, BudgetRefusedError
@@ -37,3 +39,19 @@ def test_no_media_cap_means_only_the_total_applies() -> None:
     assert b.media_remaining_usd is None
     with pytest.raises(BudgetRefusedError, match="of the \\$2 budget"):
         b.reserve("v2", "video", 0.2, "s2")
+
+
+def test_set_budget_moves_the_wallet_cap_to_media(tmp_path: Path) -> None:
+    from adsmith.agent import commands  # noqa: PLC0415
+    from adsmith.storage import Storage  # noqa: PLC0415
+    from tests.factories import make_run  # noqa: PLC0415
+
+    storage = Storage.open(tmp_path / "d")
+    run = make_run(budget=ledger(0.60))
+    run.budget.record_actual("llm", 0.9, ref="llm")
+    run.budget.reserve("kf", "image", 0.42, "s1")
+    run.budget.settle("kf", 0.42)
+    storage.runs.create(run, events=[])
+    state = commands.set_budget(storage, run.id, 2.5, wallet_remaining_usd=0.28)
+    assert state.budget.limit_usd == 2.5  # LLM headroom is not clamped by the fal wallet
+    assert state.budget.media_limit_usd == pytest.approx(0.42 + 0.28)

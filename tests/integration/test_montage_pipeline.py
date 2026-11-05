@@ -48,29 +48,53 @@ async def test_editing_one_montage_shot_regenerates_only_that_shot(tmp_path: Pat
     assert after.storyboard is not None
     versions = [s.version for s in after.storyboard.scenes]
     assert versions == [1, 1, 2, 1, 1, 1, 1, 1, 1]
-    assert all_calls() - calls_before == 2  # one keyframe + one clip
+    assert all_calls() - calls_before == 3  # composite keyframe (plain + swap) + one clip
 
 
 async def test_identity_mode_is_routed_per_shot_from_the_vocabulary(tmp_path: Path) -> None:
     """PLAN_V2 item 3: montage turns the locked reference on by itself; each keyframe uses the
-    mode its vocabulary entry declares (6 direct, 1 composite, 2 plain in the fixture)."""
+    mode its vocabulary entry declares (5 direct, 3 composite, 1 plain in the fixture)."""
     h = make_harness(fast_settings(tmp_path), scenario="montage_en")
     run = h.orch.create_run(REQUEST, interactive=False)
     assert run.config.product_reference is False  # not asked for: the format implies it
     state = await h.orch.run_until_blocked(run.id)
     assert state.product_reference is not None and state.product_reference.approved
     assert h.reference is not None and h.composite is not None
-    assert (h.reference.calls, h.composite.calls) == (6, 1)
-    assert h.image.calls == 1 + 2 + 1  # packshot + 2 product-free shots + the composite base
+    assert (h.reference.calls, h.composite.calls) == (5, 3)
+    assert h.image.calls == 1 + 1 + 3  # packshot + 1 product-free shot + 3 composite bases
     events = [
         e
         for e in h.rt.storage.events.tail(run.id, limit=10_000)
         if e.type.value == "attempt_started" and "keyframe" in e.summary
     ]
     modes = {str(e.payload["vocab"]): e.payload["identity"] for e in events}
-    assert modes["cap_macro"] == "direct" and modes["hand_cuff"] == "composite"
-    assert modes["spray_burst"] == "none" and modes["water_drop_leaf"] == "none"
+    assert modes["cap_macro"] == "composite" and modes["hand_cuff"] == "composite"
+    assert modes["spray_from_nozzle"] == "direct" and modes["water_drop_leaf"] == "none"
     assert state.storyboard is not None
     cap = state.storyboard.scenes[0]
     kf = next(a for a in cap.attempts if a.phase.value == "keyframe")
-    assert "Re-frame it as an extreme close-up" in kf.prompt_used
+    assert "do not zoom out" in kf.prompt_used  # macro: plain close-up, then the swap
+    spray = state.storyboard.scenes[4]
+    kf = next(a for a in spray.attempts if a.phase.value == "keyframe")
+    assert "the cap is off" in kf.prompt_used
+
+
+async def test_switching_a_shot_to_another_vocabulary_entry(tmp_path: Path) -> None:
+    h = make_harness(fast_settings(tmp_path), scenario="montage_en")
+    run = h.orch.create_run(REQUEST, interactive=False)
+    done = await h.orch.run_until_blocked(run.id)
+    entry = h.rt.settings.vocabulary.shots["light_sweep"]
+    commands.edit_scene_spec(
+        h.rt.storage,
+        done.id,
+        2,
+        reason="drop shot replaced",
+        description="A band of light crosses the bottle.",
+        shot={"subject_action": "A band of hard light travels slowly across the bottle."},
+        vocab=("light_sweep", entry.shows_person, entry.needs_product),
+    )
+    after = await h.orch.run_until_blocked(done.id)
+    assert after.stage is Stage.DONE and after.storyboard is not None
+    s2 = after.storyboard.scenes[1]
+    assert (s2.vocab, s2.shows_product, s2.version) == ("light_sweep", True, 2)
+    assert s2.history[-1].vocab == "water_drop_leaf"

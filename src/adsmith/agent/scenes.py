@@ -1215,6 +1215,7 @@ class SceneStageRunner:
         ref = state.product_reference
         locked = ref.artifact if ref is not None and ref.approved and ref.valid_for(state) else None
         mode, framing = identity_for(self.node_ctx.settings, scene)
+        entry = self.node_ctx.settings.vocabulary.get(scene.vocab)
         return self.gateway.prepare(
             scene,
             phase,
@@ -1225,6 +1226,7 @@ class SceneStageRunner:
             product_name=state.bible.product.name,
             identity_mode=mode,
             framing=framing,
+            note=entry.reference_note if entry is not None else "",
         )
 
     def _update(self, run_id: str, mutate: Mutation, reason: str) -> bool:
