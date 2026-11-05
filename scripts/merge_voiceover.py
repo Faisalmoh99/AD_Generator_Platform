@@ -33,6 +33,8 @@ DEMO = ROOT / "docs" / "demo"
 # ad plays, long enough to carry the whole hook segment.
 MUSIC = ROOT / "docs" / "demo" / "assets" / "v2_music.m4a"
 HOOK = "01_hook"
+# Silence before the voice starts, per segment: the hook lets the ad's spray play first.
+LEADS = {HOOK: 3.0}
 EXTS = (".m4a", ".wav", ".mp3", ".aiff", ".aac")
 
 
@@ -65,12 +67,13 @@ def prepare_voice(src: Path, out: Path) -> float:
 def merge_segment(video: Path, voice: Path | None, out: Path, args: argparse.Namespace,
                   work: Path) -> None:  # fmt: skip
     seg_s = duration(video)
+    lead = LEADS.get(video.stem, args.lead)
     hold = 0.0
     voice_wav: Path | None = None
     if voice is not None:
         voice_wav = work / f"{video.stem}.voice.wav"
         v_s = prepare_voice(voice, voice_wav)
-        over = v_s - seg_s
+        over = lead + v_s - seg_s
         if over > args.trim_tolerance:
             hold = over + 0.3
             print(f"  ! {video.stem}: voice {v_s:.2f}s > segment {seg_s:.2f}s: holding the last "
@@ -89,7 +92,7 @@ def merge_segment(video: Path, voice: Path | None, out: Path, args: argparse.Nam
     if voice_wav is not None:
         inputs += ["-i", str(voice_wav)]
         chains.append(
-            f"[1:a]adelay={int(args.lead * 1000)}|{int(args.lead * 1000)},apad,"
+            f"[1:a]adelay={int(lead * 1000)}|{int(lead * 1000)},apad,"
             f"atrim=0:{total:.3f},afade=t=out:st={fade_at:.3f}:d=0.25,asetpts=N/SR/TB[vo]"
         )
         mix.append("[vo]")

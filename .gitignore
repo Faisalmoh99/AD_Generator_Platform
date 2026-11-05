@@ -23,3 +23,8 @@ docs/screenshots/review/
 assets/music.*
 docs/demo/.raw/
 docs/demo/.merge/
+
+# demo narration: the user's voice recordings, transcripts and the voiced cut stay local
+docs/demo/voice/
+docs/demo/final.mp4
+docs/demo/VOICEOVER_V2.md

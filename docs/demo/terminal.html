@@ -55,5 +55,26 @@ window.play = (data, speed = 1, maxGap = 0.9) => new Promise((done) => {
     if (k < timeline.length) requestAnimationFrame(tick); else done(t);
   })();
 });
+// Replay with a piecewise-linear time map [[capture_s, video_s], ...] so the terminal follows the
+// narration (e.g. the kill lands when it is spoken about).
+window.playMapped = (data, anchors) => new Promise((done) => {
+  out.innerHTML = `<span class="prompt">$ </span>`;
+  const map = (t) => {
+    for (let i = 1; i < anchors.length; i++) {
+      const [c0, v0] = anchors[i - 1], [c1, v1] = anchors[i];
+      if (t <= c1) return v0 + (c1 > c0 ? (t - c0) / (c1 - c0) : 0) * (v1 - v0);
+    }
+    return anchors[anchors.length - 1][1];
+  };
+  const timeline = data.frames.map(([ts, chunk]) => [map(ts), chunk]);
+  const start = performance.now();
+  let k = 0;
+  (function tick() {
+    const now = (performance.now() - start) / 1000;
+    while (k < timeline.length && timeline[k][0] <= now) { out.insertAdjacentHTML("beforeend", render(timeline[k][1])); k++; }
+    out.scrollTop = out.scrollHeight;
+    if (k < timeline.length) requestAnimationFrame(tick); else done();
+  })();
+});
 </script>
 </body></html>
