@@ -106,12 +106,14 @@ Done by hand in the hero rounds; each maps to a PLAN_V2 item (table in PLAN_V2):
 
 ## 5. Money
 
-- **fal balance (dashboard): about $0.035** after STOP 1 ($0.42) and the STOP 1 re-roll ($0.275); it was about $0.73. The user reported $0.90; since then Step A spent $0.17
-  (1 Kontext $0.04 + 2 composite $0.065). **No top-ups planned. No clip money until the user tops
-  up after seeing the STOP 1 keyframes.**
-- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$11.995** (after STOP 1 and its re-roll).
-  `ADSMITH_FAL_BALANCE_USD` in `.env` = **12.03** (= settled + real remaining), so the ledger says
-  $0.73 left. For a capped step, set it on the command line to `settled + cap` (STOP 1:
+- **fal balance:** the user topped up to **about $10.03** (2026-11-05). Montage run 1
+  (`run_01M6MT0QP80T95Q796V25HE1VD`) spent **$3.073 on the ledger** (stills $0.705, 27 s of Kling
+  v3 Standard $2.268 at the $0.084/s page price, Lyria music $0.10); at the ≈ $0.066/s fal has
+  actually billed, about $2.59. **Expected dashboard balance ≈ $7.4 (at least $6.96).** Check the
+  dashboard before the next run.
+- **Wallet ledger:** `data/account.db` (`spend` table). Settled total **$15.068** (after montage run 1).
+  For a capped run set `ADSMITH_FAL_BALANCE_USD=settled + cap` on the command line (montage run 1:
+  `11.995 + 6.50 = 18.495`). For a capped step, set it on the command line to `settled + cap` (STOP 1:
   `11.30 + 0.60 = 11.90`). A run's own cap: `ADSMITH_BUDGET_USD`, or `adsmith budget <run> <usd>`
   (clamped to the wallet headroom).
 - **Ledger vs dashboard:** fal's pricing API reports $0.14/s for every Kling tier, but the bill

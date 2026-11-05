@@ -778,3 +778,39 @@ bpm … 9 of 9 shot lengths adjusted", 13.96 s rendered vs 14.00 s expected.
 **Tests:** 557 passed, 2 skipped.
 **Open:** the macro identity problem (Kontext keeps the packshot framing in direct mode and copies
 the packshot in multi mode); `assets/music.mp3` not yet supplied (gitignored).
+
+## Macro crop, vocabulary fallback, generated music + montage run 1 (2026-11-05)
+**Built (ADR-0021):** identity mode `crop`: `cap_macro` / `glass_edge_macro` are cut from the
+approved packshot in code (`media/crop.py`) and Kontext only relights them onto black
+(`keyframe_relight` v1); `cap_lift` is a direct product shot with a reference note. **Vocabulary
+fallback**: a shot whose keyframe fails the gate on every try is swapped by the scene runner to
+its entry's fallback (new version, fresh prompt, `vocab_fallback` decision), once per shot.
+**Generated music**: Lyria 2 on fal ($0.10 per 30 s track, verified on page, schema and pricing
+API; $0.15 cap), a provider step before the assemble node (cache → budget category `audio` → CAS
+→ `RunState.music`); any failure assembles without music. Spray and water event shots are key
+shots (best-of-2 when the budget covers it; other key shots count at two takes).
+**Montage run 1** (`run_01M6MT0QP80T95Q796V25HE1VD`, `--auto`, Kling v3 Standard, ledger cap
+$6.50, keyframe tries 2, QA regenerations 1, no human edits). Format montage (code: physical
+product, no format requested); concept «ذهب سايل» (7.10 vs 5.10 / 4.60); 10 shots. Packshot passed
+first try (0.80). **Macro crop worked**: cap_macro passed the gate (0.80) and clip QA (0.72). Two
+event shots (water_ribbon, bottle_into_water) failed the hard composition gate twice and **fell
+back automatically**, both to `bottle_on_rock` (a race). glass_edge_macro (Kontext re-framed the
+crop to the whole bottle), droplets_on_glass (the cap turned to crystal) and hero_push_in (its
+glossy reflection filled the lower fifth) failed with no fallback left. light_sweep and
+rim_light_reveal passed the gate but failed clip QA twice each (Kling ignores light-only events).
+Lyria track generated ($0.10); beat cut 130 bpm, 5 of 5 cuts snapped; **done_partial: 5 shots +
+Arabic end card, 8.4 s** (`docs/media/montage_final.mp4`). Ledger: stills $0.705, clips $2.268,
+music $0.10 (fal media $3.073), Anthropic $0.89. Sheet and decisions:
+`docs/screenshots/montage_run1_contact_sheet.png`, `montage_run1_decisions.txt`.
+**Fixed after the run (no spend):** fallbacks decided one at a time under a lock; after the chain,
+an unused safe product shot, then a repeat (never a hole); entries another shot failed with are
+not offered again; `avoid_on` now enforced (storyboard vocabulary and fallbacks): light_sweep and
+rim_light_reveal are avoided on Kling; hero falls back to bottle_on_rock and asks for a matte void
+without a reflection. Fixture S7 is now turntable_glint.
+**By eye:** the look is right (black, one hard rim light, gold cap, amber liquid) and the bottle
+is identical in every shot: identity is solved. But no physical event survived, so it reads as
+five still product shots with slow camera moves, two of them near-identical, and it ends on the
+cap lift instead of a hero.
+**Tests:** 574 passed, 2 skipped.
+**Next (one attempt, about $3.4 at ledger prices):** a fresh run with these fixes; the spray
+shot passed in STOP 1, so the event shots are where the next run can win.

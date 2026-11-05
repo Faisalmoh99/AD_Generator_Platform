@@ -67,3 +67,20 @@ for the wrong bottle before passing the third ($0.075 in stills, no video wasted
 were then rejected: in the final close-up the model invented label text on the blank label plate, \
 and the cap is black, not brushed gold. No ad was assembled: no extra rescue by design."""
 defects = "Critic error the other way: it said the spray never happens, but both takes show a short burst at about 2–3 s. The real miss is the gate, which passed the black cap as a 'minor' issue."
+
+[[items]]
+key = "montage"
+media = ["montage_final.mp4"]  # committed copy in docs/media (fresh clone)
+spend = 3.073
+title = "Montage, fully automatic: «ذهب سايل»"
+subtitle = "Physics-led montage · 10 shots planned, 5 kept · Kling v3 Standard · Kontext + macro crop · Lyria 2 music, beat cut"
+run = "run_01M6MT0QP80T95Q796V25HE1VD"
+kind = "final"
+poster = 2.0
+caption = """One Arabic request, --auto, no human edits. The agent resolved the montage format, picked \
+'liquid gold' from three concepts, storyboarded 10 shots from the shot vocabulary, locked one \
+packshot and routed identity per shot (the cap macro is cut from the packshot in code and relit). \
+Two event shots (water ribbon, bottle into water) failed the gate twice and fell back automatically; \
+three keyframes and two light-only clips failed, so it assembled done_partial: 5 shots + an Arabic \
+end card, cut to a generated 130 bpm track. Ledger spend $3.07 (fal media incl. $0.10 music)."""
+defects = "No physical event survived (spray, ribbon, splash all failed or fell back), so it reads as a series of still product shots; two near-identical 'bottle on rock' shots; no hero push-in at the end; 8.4 s instead of 14 s."

@@ -1,0 +1,98 @@
+DECISIONS · run_01M6MT0QP80T95Q796V25HE1VD · stage done_partial
+
+1. FORMAT: montage (why: physical product and no format in the request); requested_format=none, physical_product=True, 12s, ar/saudi_najdi
+
+2. CONCEPTS (judge weighted score; * = picked by agent)
+  * 1. ذهب سايل · 7.10 · العطر كأنه سبيكة ذهب ذايبة: ينسكب، ينساب، ثم يستقر في زجاجة بحدّة الألماس.
+    2. يسبقك ريحتك · 5.10 · بخّة وحدة تمر على كل شي في الغرفة: الماي يتموج، القماش يرتجف، وآخر شي يوصل صاحبها.
+    3. برود الواثق · 4.60 · جليد، حديد، وقطرات باردة تنزل على زجاج العطر: الجرأة الحقيقية هادئة وما ترفع صوتها.
+    why: أقوى نقطة: سكب السائل العنبري وحركة الزجاجة البطيئة من نوع الحركة الفيزيائية اللي يشتغل عليها النموذج زين، والزجاجة تظهر من أول ثانية. الخطر: الفكرة بصرية أكثر من كونها إنسانية، وتبديل السائل بالزجاجة المصمتة يحتاج دقة كي لا يبان كخدعة. (weighted 7.10/10)
+
+3. PRODUCT REFERENCE
+  APPROVED after 1 tries, 0 rejected, $0.025; last gate 0.80 pass
+
+4. SHOTS (vocab · identity · flags · keyframe gate per try)
+  S1 hook    1.5s · bottle_on_rock · direct · product · approved
+      action: a slow push-in toward the bottle standing on wet dark rock
+      v2: fallback: water_ribbon → bottle_on_rock (keyframe rejected 2×)
+      try 1: success $0.040 gate 0.82 PASS
+      clip 2: success $0.252 QA 0.85 PASS
+      peak window: 1.50s + 1.50s
+  S2 build   1s · cap_macro · crop · product · approved
+      action: A very slow push-in on the metal cap while a thin band of light slides over its facets.
+      try 1: success $0.040 gate 0.80 PASS
+      clip 2: success $0.252 QA 0.72 PASS
+      peak window: 1.75s + 1.00s
+  S3 build   1.5s · bottle_on_rock · direct · product · approved
+      action: a slow push-in toward the bottle standing on wet dark rock
+      v2: fallback: bottle_into_water → bottle_on_rock (keyframe rejected 2×)
+      try 1: success $0.040 gate 0.82 PASS
+      clip 2: success $0.252 QA 0.88 PASS
+      peak window: 1.50s + 1.50s
+  S4 build   1s · glass_edge_macro · crop · product · failed
+      action: A slow push-in on the faceted glass shoulder as the rim light glints along its edge.
+      try 1: success $0.040 gate 0.66 FAIL
+      try 2: success $0.040 gate 0.62 FAIL
+      [warn] Scene 4 keyframe rejected by the gate (score 0.66 < threshold 0.70): composition: The frame shows the whole bottle, centred and upright, from cap to base with its reflection. The brief asked for an extreme macro on the faceted shoulder running diagonally from 
+      [rewrite] Keyframe gate revision for scene 4: prompt revised (new keyframe needed)
+      [error] Scene 4 keyframe rejected 2×; scene failed without spending on video (saved ~$0.25). Other scenes continue.
+      FAILED quality_rejected: keyframe rejected 2× by the gate (score 0.62 < threshold 0.70)
+  S5 build   1s · droplets_on_glass · direct · product · failed
+      action: Cold droplets bead on the glass and one runs slowly down its surface.
+      try 1: success $0.040 gate 0.50 FAIL
+      try 2: success $0.040 gate 0.55 FAIL
+      [warn] Scene 5 keyframe rejected by the gate (score 0.50 < threshold 0.70; product or character identity differs from the bible): product: The cap is clear faceted glass or crystal with a cream/ivory collar. The bible specifies a squat brushed gold-toned metal cap. T
+      [rewrite] Keyframe gate revision for scene 5: prompt revised (new keyframe needed)
+      [error] Scene 5 keyframe rejected 2×; scene failed without spending on video (saved ~$0.25). Other scenes continue.
+      FAILED quality_rejected: keyframe rejected 2× by the gate (score 0.55 < threshold 0.70; product or character identity differs from the bible)
+  S6 build   1.5s · turntable_glint · direct · product · approved
+      action: The camera makes a slow 30-degree orbit around the bottle while highlights travel over its facets.
+      try 1: success $0.040 gate 0.82 PASS
+      clip 2: success $0.252 QA 0.72 PASS
+      peak window: 0.83s + 1.50s
+  S7 build   1s · cap_lift · direct · product · approved
+      action: The cap lifts slowly straight up off the bottle, revealing the bare top of the bottle.
+      try 1: success $0.040 gate 0.80 PASS
+      clip 2: success $0.252 QA 0.82 PASS
+      peak window: 1.67s + 1.00s
+  S8 build   1s · light_sweep · direct · product · failed
+      action: A band of hard light travels slowly across the bottle from left to right, revealing its facets.
+      try 1: success $0.040 gate 0.78 PASS
+      clip 2: success $0.252 QA 0.62 FAIL
+      clip 3: success $0.252 QA 0.42 FAIL
+      clip QA: score 0.42 < threshold 0.70
+      peak window: 1.67s + 1.00s
+      FAILED quality_rejected: QA rejected 2 times: score 0.42 < threshold 0.70
+  S9 reveal  1s · rim_light_reveal · direct · product · failed
+      action: The rim light slowly brightens, making the whole outline of the bottle glow.
+      try 1: success $0.040 gate 0.78 PASS
+      clip 2: success $0.252 QA 0.62 FAIL
+      clip 3: success $0.252 QA 0.62 FAIL
+      clip QA: score 0.62 < threshold 0.70
+      peak window: 2.00s + 1.00s
+      FAILED quality_rejected: QA rejected 2 times: score 0.62 < threshold 0.70
+  S10 product 1.5s · hero_push_in · direct · product · failed
+      action: A slow, steady push-in on the standing bottle as the light settles.
+      try 1: success $0.040 gate 0.62 FAIL
+      try 2: success $0.040 gate 0.50 FAIL
+      [warn] Scene 10 keyframe rejected by the gate (score 0.62 < threshold 0.70; composition is the spec for this shot and it does not match): composition: The bottle is centred and upright and reasonably sharp, but the reflection and the lower part of the frame (about y 
+      [rewrite] Keyframe gate revision for scene 10: prompt revised (new keyframe needed)
+      [error] Scene 10 keyframe rejected 2×; scene failed without spending on video (saved ~$0.25). Other scenes continue.
+      FAILED quality_rejected: keyframe rejected 2× by the gate (score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match)
+
+5. BUDGET REFUSALS, FALLBACKS, REPAIRS
+  scenes refused by the budget: none
+  vocabulary fallbacks: 2
+    Scene 1: keyframe rejected 2× as water_ribbon (score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match); the storyboard swapped the shot to its vocabulary fallback bottle_on_rock (v2). Keyframe tries start again.
+    Scene 3: keyframe rejected 2× as bottle_into_water (score 0.50 < threshold 0.70; composition is the spec for this shot and it does not match); the storyboard swapped the shot to its vocabulary fallback bottle_on_rock (v2). Keyframe tries start again.
+  schema repairs: 1
+    [storyboard] storyboard via claude-sonnet-5-5: ok, 13083 in (4092 cached) / 4174 out, $0.0605, 21235 ms
+
+6. MUSIC AND ASSEMBLY
+  Music: generated a 30 s instrumental track with fal-ai/lyria2 ($0.10, cap $0.15); the ad is cut to its beats. Prompt: Instrumental score for a 16-second luxury product film: Luxury men's fragrance (perfume bottle), for Young men who care about style and presentation. Mood: luxurious, bold. Dark luxu
+  Assembled 5 scene(s) + end card, 8.4s → final.mp4; skipped failed scene(s) [4, 5, 8, 9, 10]
+  Beat cut: 130 bpm, 71 beats; 5 of 5 shot lengths adjusted (≤ ±0.2s per cut); footage 6.50s → 6.43s
+  End card: سبيكة — الفخامة وزن وحضور، مو بس ريحة [PLACEHOLDER: invented by the agent, replace before publishing]
+  Duration check: 8.38s rendered vs 8.43s expected
+
+7. SPEND: image $0.705 · video $2.268 · music $0.100 · LLM $0.890 · run cap $6.50

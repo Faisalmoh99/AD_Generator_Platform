@@ -148,7 +148,7 @@ Ambiguous edits ("غيّر شي", "change something") get a clarifying question,
 
 ## What real runs taught me
 
-I spent about $7 of real fal credit; these lessons changed the design.
+I spent about $15 of real fal credit; these lessons changed the design.
 
 1. **The curtain veil.** *"A curtain shadow drifts across the bottle"* was taken literally: LTX
    rendered a translucent curtain over the product. The vision critic rejected it (0.50); the QA
@@ -179,6 +179,17 @@ I spent about $7 of real fal credit; these lessons changed the design.
    and the "blank label plate" became invented lettering in the close-up. Both takes were rejected.
    Now any product mismatch at the gate is hard by code, and product descriptions have no label
    surfaces; re-judged, that keyframe fails (0.78 → 0.45). Closed.
+8. **The montage format, fully automatic.** One Arabic request, `--auto`, no human edits. The
+   agent chose the montage format by code, storyboarded 10 shots from a fixed shot vocabulary,
+   locked one packshot and routed each shot's identity (Kontext from the packshot; macro shots
+   are *cut from the packshot in code* and only relit, because Kontext kept re-framing or copying
+   it). The bottle is identical in every shot: identity is solved. It generated its own music
+   (Lyria 2, $0.10) and cut to the beat. But the shots that make a montage, physical events
+   (water ribbon, splash, light sweep), failed the gates, so it ended **done_partial: 5 still-ish
+   product shots, 8.4 s** ([video](docs/media/montage_final.mp4), $3.07 of fal). Two fallbacks
+   fired automatically but raced to the same shot, and light-only shots fail on Kling 2/2. Both
+   are now rules: fallbacks are decided one at a time and never leave a hole, and entries a
+   model renders badly (`avoid_on`) never reach its storyboard.
 
 ## Design decisions
 

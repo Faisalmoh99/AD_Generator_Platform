@@ -80,7 +80,13 @@ def test_events_stream_and_files_are_path_checked(tmp_path: Path) -> None:
         assert c.get("/api/runs/run_nope").status_code == 404
         # Fresh data dir: the gallery falls back to the clips committed in docs/media.
         gallery = c.get("/api/gallery").json()
-        assert [g["key"] for g in gallery] == ["majlis", "single_take", "curtain", "hero_spray"]
+        assert [g["key"] for g in gallery] == [
+            "majlis",
+            "single_take",
+            "curtain",
+            "hero_spray",
+            "montage",
+        ]
         assert all(v["url"].startswith("/docs-media/") for g in gallery for v in g["videos"])
         first_clip = gallery[0]["videos"][0]["url"]
         assert c.get(first_clip).headers["content-type"] == "video/mp4"

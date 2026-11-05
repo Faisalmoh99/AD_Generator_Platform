@@ -77,3 +77,17 @@ evidence prompted it. M12 folds this list into the README.
     "full figure" → "hand + cuff"). New `agent/recovery/escalation.py`, one typed event per step,
     budget-respecting; the brain is unchanged. This automates what was done by hand in hero v2
     (S2 re-specced three times, S1 re-specced to a detail shot).
+16. **Higgsfield as a second media provider (researched 2026-11-05, not built).** Higgsfield's API
+    (docs.higgsfield.ai, pricing page dated 16 Sep 2026) offers Kling 3.0 Standard image-to-video
+    at **$0.063/s** (`POST /kling-video/v3.0/std/image-to-video`), cheap stills for product-free
+    shots (Soul 2 from $0.003/image, Z-Image Turbo $0.015/image), and the same queue shape as fal
+    (`request_id` + `status_url` + `cancel_url`, outputs kept ≥ 7 days, `Idempotency-Key`), so our
+    crash-safe resume carries over. It has **no FLUX Kontext**: the closest image-edit models are
+    Qwen Image 3 (1–3 reference images, from $0.040) and Grok Image 2.0 (up to 10 references,
+    from $0.040). **Gate before building:** a ~$0.20 probe that Qwen Image 3 or Grok Image 2.0
+    keeps the locked packshot's bottle identical (direct and macro-relight jobs, judged by the
+    keyframe gate and by eye). If it passes, a `HiggsfieldProvider` (image + video, catalog entries
+    in `config/models.toml`, mocked-HTTP tests, resume via `request_id`) is ~2–3 h. Saving on a
+    montage is small (clips ≈ fal's observed $0.066/s; stills $0.003–0.015 instead of $0.025), so
+    the main value is a second provider for outages and rate limits. New accounts get 2 concurrent
+    jobs (10 at ≥ $25 added in 28 days).
