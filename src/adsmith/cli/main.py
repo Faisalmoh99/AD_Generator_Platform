@@ -217,6 +217,14 @@ def run(
             help="A real product photo: the ad is made in ONE multi-shot generation from it.",
         ),
     ] = None,
+    ref_image: Annotated[
+        list[Path] | None,
+        typer.Option(
+            "--ref-image",
+            help="A prop reference image (repeatable, order kept): sent after the product photo "
+            "(Image 2, 3, ...) and checked by the critic as a prop, never as the product.",
+        ),
+    ] = None,
     ad_format: Annotated[
         AdFormat | None, typer.Option("--format", help="Force a format instead of resolving it.")
     ] = None,
@@ -226,7 +234,7 @@ def run(
     try:
         state = orch.create_run(
             request, interactive=not auto, chaos=chaos, hero=hero, product_reference=product_ref,
-            product_photo=product_photo, ad_format=ad_format,
+            product_photo=product_photo, ref_images=ref_image or [], ad_format=ad_format,
         )  # fmt: skip
     except ValueError as exc:
         console.print(f"[red]{exc}[/]")
@@ -356,6 +364,27 @@ def decline(
     """Decline the estimate of a whole-ad generation: nothing is spent."""
     orch = _orchestrator()
     print_state(orch, commands.decline_generation(orch.rt.storage, run_id, reason=reason))
+
+
+@app.command("settle-actual")
+def settle_actual(
+    run_id: str,
+    usd: Annotated[float, typer.Option(help="The charge the provider's console shows")],
+    version: Annotated[
+        int | None, typer.Option(help="Generation version (default: latest)")
+    ] = None,
+) -> None:
+    """Book the real (console) charge of a whole-ad generation instead of the computed price."""
+    orch = _orchestrator()
+    state = commands.settle_actual(
+        orch.rt.storage, orch.rt.hf_account(), run_id, usd=usd, version=version
+    )
+    s = orch.rt.hf_account().summary()
+    console.print(
+        f"Booked ${usd:.3f}. Higgsfield ledger: settled ${s.settled_usd:.3f}, reserved "
+        f"${s.reserved_usd:.3f}, headroom ${s.remaining_usd:.3f} of ${s.balance_usd:.2f}."
+    )
+    print_state(orch, state)
 
 
 @app.command("accept-ad")

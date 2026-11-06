@@ -993,3 +993,10 @@ estimate table, the montage v2 calibration, a real planning run and the one real
   (ADR-0023 addendum). Human prompt validated, diff logged, priced again, sent verbatim; critic
   windows from the human shots; approve only if the reserve did not rise.
 - **Tests**: 705 passed, 2 skipped (+8 in `tests/integration/test_human_prompt.py`).
+
+## Before try 2 (2026-11-06)
+
+- **Built**: `settle-actual` (observed charge → ledger, run budget, attempt); margin 0; the
+  multishot final keeps the generation size; `--ref-image` prop references in order (cache key,
+  critic v2 checks props as props); 9 s via `ADSMITH_TARGET_DURATION_S`. ADR-0023 addendum.
+- **Tests**: 720 passed, 2 skipped (+12 in `tests/integration/test_try2_changes.py`).

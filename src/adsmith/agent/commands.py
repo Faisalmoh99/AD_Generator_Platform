@@ -23,6 +23,7 @@ from adsmith.domain.run import RunState
 from adsmith.domain.scene import SceneFailure, ShotSpec
 from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.storage import Storage
+from adsmith.storage.account import SpendAccount
 
 
 class CommandRejectedError(ValueError):
@@ -651,3 +652,57 @@ def set_endcard(
         return _endcard_direction(s, brand=brand, tagline=tagline)
 
     return storage.runs.update(run_id, mutate, reason="human end card").state
+
+
+def settle_actual(
+    storage: Storage, account: SpendAccount, run_id: str, *, usd: float, version: int | None = None
+) -> RunState:
+    """Book the charge the provider's console actually shows for a run's whole-ad generation
+    (our price is computed from a formula, the console is the truth). Corrects the wallet ledger
+    (so the headroom is right for the next try), the run budget and the attempt, and logs it."""
+    if usd < 0:
+        raise CommandRejectedError("an observed charge cannot be negative")
+    state = storage.runs.load(run_id)
+    g = state.generation
+    if g is None:
+        raise CommandRejectedError("this run has no whole-ad generation")
+    want = version or g.version
+    attempt = next(
+        (
+            a
+            for a in reversed(g.attempts)
+            if a.scene_version == want and a.outcome == "success" and a.remote_request is not None
+        ),
+        None,
+    )
+    if attempt is None or attempt.remote_request is None:
+        raise CommandRejectedError(f"generation v{want} has no paid, successful attempt")
+    remote_id = attempt.remote_request.request_id
+    try:
+        ledger_old = account.correct_actual(remote_id, usd)
+    except KeyError as exc:
+        raise CommandRejectedError(str(exc)) from exc
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        assert s.generation is not None
+        att = next(a for a in s.generation.attempts if a.id == attempt.id)
+        old = s.budget.correct(att.id, usd)
+        att.cost_usd = usd
+        computed = s.generation.computed_usd
+        diff = f"; computed ${computed:.3f}" if computed is not None else ""
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"HUMAN: observed charge ${usd:.3f} booked for generation v{want} "
+                f"(was ${old:.3f}{diff}); request {remote_id}",
+                payload={
+                    "human": True, "observed_usd": usd, "booked_usd": old,
+                    "ledger_booked_usd": ledger_old, "computed_usd": computed,
+                    "remote_id": remote_id, "version": want,
+                },
+            )
+        ]  # fmt: skip
+
+    return storage.runs.update(run_id, mutate, reason="observed charge").state

@@ -76,6 +76,10 @@ def _ev(
     )  # fmt: skip
 
 
+def _ref_shas(state: RunState) -> tuple[str, ...]:
+    return tuple(r.artifact.sha256 for r in state.reference_images)
+
+
 def _price_check_event(run_id: str, check: dict[str, object]) -> AgentEvent:
     """The computed price next to the real output (ffprobe), so the frame-size assumption behind
     the token formula can be checked against the console balance by hand."""
@@ -119,7 +123,9 @@ class AdGenerationRunner:
             await self._review(run_id)
 
     # ------------------------------------------------------------------------ the request
-    def _request(self, gen: AdGeneration, photo_sha: str) -> GenerationRequest:
+    def _request(
+        self, gen: AdGeneration, photo_sha: str, ref_shas: tuple[str, ...] = ()
+    ) -> GenerationRequest:
         """Everything that determines the video: its hash is the cache key. The version is part
         of it, so a human-requested new generation is a new request (no seed in the schema)."""
         return GenerationRequest(
@@ -131,19 +137,29 @@ class AdGenerationRunner:
                 "duration": gen.duration_s, "resolution": gen.resolution,
                 "aspect_ratio": gen.aspect_ratio, "generate_audio": gen.generate_audio,
                 "version": gen.version, "kind": "whole_ad",
+                # further reference images, in order (absent when none: old keys unchanged)
+                **({"reference_images": list(ref_shas)} if ref_shas else {}),
             },
             input_image_sha256=photo_sha,
         )  # fmt: skip
 
     async def _job(self, state: RunState, gen: AdGeneration, attempt_no: int) -> ReferenceVideoJob:
         assert state.product_photo is not None
-        path = self.storage.artifacts.resolve(state.product_photo)
-        url = await retry_transient(
-            functools.partial(self.provider.reference_url, path), sleep=self.sleep, rng=self.rng
-        )
+        # Image 1 is the product; props follow in the order the user gave them (Image 2, ...).
+        arts = [state.product_photo, *(r.artifact for r in state.reference_images)]
+        urls = []
+        for art in arts:
+            path = self.storage.artifacts.resolve(art)
+            urls.append(
+                await retry_transient(
+                    functools.partial(self.provider.reference_url, path),
+                    sleep=self.sleep,
+                    rng=self.rng,
+                )
+            )
         return ReferenceVideoJob(
             prompt=gen.prompt_text,
-            image_urls=(url,),
+            image_urls=tuple(urls),
             duration_s=gen.duration_s,
             resolution=gen.resolution,
             aspect_ratio=gen.aspect_ratio,
@@ -165,7 +181,7 @@ class AdGenerationRunner:
             why = "a multishot ad is made from a product photo, and this run has none"
             self._fail(run_id, Stage.ESTIMATE, FailureKind.PERMANENT, why)
             return
-        key = self._request(gen, state.product_photo.sha256).cache_key()
+        key = self._request(gen, state.product_photo.sha256, _ref_shas(state)).cache_key()
         if self.storage.cache.get(key) is not None:
             self._record_estimate(run_id, gen.version, 0.0, cached=True)
             return
@@ -192,10 +208,18 @@ class AdGenerationRunner:
                     f"exceeds the remaining ${left:.3f} of the {name}; nothing was generated",
                 )  # fmt: skip
                 return
-        self._record_estimate(run_id, gen.version, quote, cached=False)
+        self._record_estimate(
+            run_id, gen.version, quote, cached=False, image_urls=list(job.image_urls)
+        )
 
     def _record_estimate(
-        self, run_id: str, version: int, quote: PriceQuote | float, *, cached: bool
+        self,
+        run_id: str,
+        version: int,
+        quote: PriceQuote | float,
+        *,
+        cached: bool,
+        image_urls: list[str] | None = None,
     ) -> None:
         if not isinstance(quote, PriceQuote):
             quote = PriceQuote(quote, quote, "mock", "cache hit")
@@ -220,6 +244,7 @@ class AdGenerationRunner:
                     + (" — cache hit, $0" if cached else ""),
                     est_usd=usd, computed_usd=quote.computed_usd, price_source=quote.source,
                     price_basis=quote.basis, model=self.provider.model, cached=cached,
+                    image_urls=image_urls or [],
                 )
             ]  # fmt: skip
             auto = s.config.ad_provider == "mock" and not s.config.interactive
@@ -250,7 +275,7 @@ class AdGenerationRunner:
             self._fail(run_id, Stage.GENERATE, FailureKind.PERMANENT,
                        "refusing to generate: the estimate was not approved")  # fmt: skip
             return
-        request = self._request(gen, state.product_photo.sha256)
+        request = self._request(gen, state.product_photo.sha256, _ref_shas(state))
         key = request.cache_key()
         hit = self.storage.cache.get(key)
         attempt_no = sum(1 for a in gen.attempts if a.scene_version == gen.version) + 1

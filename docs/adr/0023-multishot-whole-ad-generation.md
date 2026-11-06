@@ -72,3 +72,17 @@ gate. `--no-approve` re-prices and stops. Reservation, cache key (the prompt is 
 critic (its frame windows follow the human shots) and assembly are otherwise unchanged.
 `--endcard-tagline` sets the brief's tagline, so the end card shows it (Arabic is shaped by
 `arabic_reshaper` + `python-bidi`).
+
+## Addendum (2026-11-06): before try 2
+
+- **Observed charge.** Try 1 was billed $2.06 (console $5.00 → $2.94) against a computed $2.419.
+  `adsmith settle-actual <run> --usd X` books the console amount on the wallet ledger (by the
+  request id), the run budget and the attempt, with a decision event. The token-formula margin is
+  now 0: the computed price is an upper bound (ADR-0022 addendum).
+- **Export size.** A multishot final keeps the generation's own size (720x1280 at 720p); the
+  project long side (960) applies only when the artifact has no recorded size.
+- **Prop references.** `--ref-image` (repeatable, order kept) adds prop images: `image_urls` =
+  [product photo, prop 1, ...], so prompts can say Image 1 / Image 2. They are part of the cache
+  key. `qa_ad_critic` v2 receives them after the product photo, labelled as props: a prop is
+  never compared with the product; a prop that looks like the product (or the product shown in
+  the prop's place) is a major "product" issue.

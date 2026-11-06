@@ -132,6 +132,25 @@ class SpendAccount:
                 (actual_usd, remote_id, _now(), spend_id),
             )
 
+    def correct_actual(self, remote_id: str, actual_usd: float) -> float:
+        """Operator action: the provider's console shows the real charge of a settled call (our
+        price was computed, not billed). Books the observed amount; returns the old one."""
+        if actual_usd < 0:
+            raise ValueError("an observed charge cannot be negative")
+        with self._tx() as conn:
+            row = conn.execute(
+                "SELECT id, actual_usd FROM spend WHERE remote_id=? AND provider=? "
+                "AND state='settled'",
+                (remote_id, self.provider),
+            ).fetchone()
+            if row is None:
+                raise KeyError(f"no settled {self.provider} call with remote id {remote_id!r}")
+            conn.execute(
+                "UPDATE spend SET actual_usd=?, updated_at=? WHERE id=?",
+                (actual_usd, _now(), row["id"]),
+            )
+            return float(row["actual_usd"] or 0.0)
+
     def release(self, spend_id: str, *, remote_id: str | None = None) -> None:
         with self._tx() as conn:
             conn.execute(

@@ -321,7 +321,9 @@ usd_per_1k_tokens = { "480p" = 0.014, "720p" = 0.014, "1080p" = 0.014, "4k" = 0.
 fps = 24
 tokens_divisor = 1024
 short_side_px = { "480p" = 480, "720p" = 720, "1080p" = 1080, "4k" = 2160 }
-margin = 0.10  # reserved and shown at the gate on top of the computed price (user, 2026-11-06)
+# Was 0.10. Try 1 was billed $2.06 against a computed $2.419 (console, 2026-11-06): the
+# computed price is an upper bound, so no margin (user, 2026-11-06).
+margin = 0.0
 
 [higgsfield.video.endpoints.seedance_20_ref.profile]
 max_single_shot_s = 15

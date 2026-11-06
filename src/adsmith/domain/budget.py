@@ -127,6 +127,21 @@ class BudgetLedger(DomainModel):
             self.by_category.get(entry.category, 0.0) + actual_usd, USD_DECIMALS
         )
 
+    def correct(self, ref: str, actual_usd: float) -> float:
+        """Replace the booked cost of a settled entry with the observed charge (operator
+        action, e.g. from the provider's console). Returns the old amount."""
+        entry = next((e for e in self.entries if e.ref == ref and e.actual_usd is not None), None)
+        if entry is None:
+            raise KeyError(f"no settled entry {ref!r}")
+        old = entry.actual_usd or 0.0
+        delta = actual_usd - old
+        entry.actual_usd = actual_usd
+        self.spent_usd = max(0.0, round(self.spent_usd + delta, USD_DECIMALS))
+        self.by_category[entry.category] = max(
+            0.0, round(self.by_category.get(entry.category, 0.0) + delta, USD_DECIMALS)
+        )
+        return old
+
     def release(self, ref: str) -> None:
         """The call failed before incurring cost: free the reservation (actual = 0)."""
         self.settle(ref, 0.0)

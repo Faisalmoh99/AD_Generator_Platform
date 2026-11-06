@@ -323,7 +323,7 @@ def describe(fake: FakeHiggsfield, body: dict[str, Any] = LIVE_DESCRIPTION) -> N
     fake.faults["estimate"] = [httpx.Response(200, json=body)]
 
 
-async def test_a_pricing_description_is_priced_by_the_token_formula_plus_margin(
+async def test_a_pricing_description_is_priced_by_the_token_formula(
     tmp_path: Path,
 ) -> None:
     acct = account(tmp_path)
@@ -334,9 +334,26 @@ async def test_a_pricing_description_is_priced_by_the_token_formula_plus_margin(
     # 720x1280 x 8 s x 24 fps / 1024 = 172,800 tokens x $0.014 / 1000 = $2.4192
     assert q.source == "token_formula" and (q.width, q.height) == (720, 1280)
     assert q.computed_usd == pytest.approx(2.4192)
-    assert q.reserved_usd == pytest.approx(2.4192 * 1.10)
-    assert "172,800 tokens" in q.basis and "+10% margin" in q.basis
+    assert q.reserved_usd == pytest.approx(2.4192)  # margin 0: the price is an upper bound
+    assert "172,800 tokens" in q.basis and "+0% margin" in q.basis
     assert acct.summary().reserved_usd == 0 and queue.submits == 0
+
+
+def test_a_configured_margin_is_reserved_on_top_of_the_price(tmp_path: Path) -> None:
+    from adsmith.providers.media.base import token_quote  # noqa: PLC0415
+
+    hf = settings(tmp_path).catalog.higgsfield
+    assert hf is not None
+    pricing = hf.video.endpoints["seedance_20_ref"].pricing
+    assert pricing is not None and pricing.margin == 0.0
+    q = token_quote(
+        pricing.model_copy(update={"margin": 0.10}),
+        resolution="720p",
+        aspect_ratio="9:16",
+        duration_s=9,
+    )
+    # 720x1280 x 9 s x 24 / 1024 = 194,400 tokens x $0.014/1k = $2.7216
+    assert q.computed_usd == pytest.approx(2.7216) and q.reserved_usd == pytest.approx(2.99376)
 
 
 @pytest.mark.parametrize(

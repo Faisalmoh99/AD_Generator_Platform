@@ -235,6 +235,6 @@ async def test_inconsistent_verdicts_go_through_schema_repair(tmp_path: Path) ->
             e
             for e in events(rt, run.id)
             if e.type in {EventType.LLM_CALL, EventType.LLM_REPAIR}
-            and e.payload.get("template") == "qa_ad_critic@v1"
+            and e.payload.get("template") == "qa_ad_critic@v2"
         ]
         assert len(repairs) == 2  # one invalid answer, one repaired

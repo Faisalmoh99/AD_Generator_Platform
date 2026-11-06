@@ -40,8 +40,9 @@ from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.enums import AWAITING_STAGES, TERMINAL_STAGES, FailureKind, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.formats import AdFormat
+from adsmith.domain.generation import Artifact
 from adsmith.domain.llm import LLMCallRecord
-from adsmith.domain.run import RunConfig, RunError, RunState
+from adsmith.domain.run import PropReference, RunConfig, RunError, RunState
 from adsmith.domain.similarity import detect_language
 from adsmith.logging import get_logger
 from adsmith.providers.llm.scripted import FIXTURES_DIR
@@ -128,6 +129,25 @@ class Orchestrator:
         self._locks: dict[str, asyncio.Lock] = {}
 
     # ------------------------------------------------------------------------ lifecycle
+    def _ingest_images(
+        self, product_photo: Path | None, ref_images: Sequence[Path]
+    ) -> tuple[Artifact | None, list[PropReference]]:
+        """The product photo and the prop references, in order, into the CAS."""
+        photo = None
+        if product_photo is not None:
+            if not product_photo.is_file():
+                raise ValueError(f"no product photo at {product_photo}")
+            photo = self.rt.storage.artifacts.ingest(product_photo, kind="image", provider="user")
+        if ref_images and photo is None:
+            raise ValueError("reference images go with a product photo (--product-photo)")
+        refs = []
+        for ref in ref_images:
+            if not ref.is_file():
+                raise ValueError(f"no reference image at {ref}")
+            art = self.rt.storage.artifacts.ingest(ref, kind="image", provider="user")
+            refs.append(PropReference(artifact=art, name=ref.name))
+        return photo, refs
+
     def create_run(
         self,
         request: str,
@@ -137,6 +157,7 @@ class Orchestrator:
         hero: bool = False,
         product_reference: bool | None = None,
         product_photo: Path | None = None,
+        ref_images: Sequence[Path] = (),
         ad_format: AdFormat | None = None,
         scripted_scenario: str | None = None,
     ) -> RunState:
@@ -162,11 +183,7 @@ class Orchestrator:
             # a duration in the request text still wins (the brief reads it).
             ep = ad_endpoint(s, config.ad_model)
             config = config.model_copy(update={"target_duration_s": float(ep.default_duration_s)})
-        photo = None
-        if product_photo is not None:
-            if not product_photo.is_file():
-                raise ValueError(f"no product photo at {product_photo}")
-            photo = self.rt.storage.artifacts.ingest(product_photo, kind="image", provider="user")
+        photo, refs = self._ingest_images(product_photo, ref_images)
         if chaos is not None:
             config = config.model_copy(update={"chaos": chaos})
         if product_reference is not None:  # locked product still (ADR-0003 addendum 3)
@@ -186,6 +203,7 @@ class Orchestrator:
             config=config,
             request=request,
             product_photo=photo,
+            reference_images=refs,
             budget=BudgetLedger(
                 limit_usd=limit,
                 media_limit_usd=media_limit,

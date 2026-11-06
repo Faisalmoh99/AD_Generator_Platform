@@ -244,6 +244,7 @@ class LLMCritic:
         video = self.ctx.artifacts.resolve(g.artifact)
         video_s = g.artifact.duration_s or float(g.duration_s)
         reference = self.ctx.artifacts.resolve(state.product_photo) if state.product_photo else None
+        props = [(r.name, self.ctx.artifacts.resolve(r.artifact)) for r in state.reference_images]
         verdict, calls = await self.review_video(
             state,
             video=video,
@@ -252,6 +253,7 @@ class LLMCritic:
             prompt_text=g.prompt_text,
             duration_s=video_s,
             storyboard_text=human_storyboard_block(g),
+            props=props,
         )
         return verdict, calls
 
@@ -265,6 +267,7 @@ class LLMCritic:
         prompt_text: str,
         duration_s: float,
         storyboard_text: str | None = None,
+        props: Sequence[tuple[str, Path]] = (),
     ) -> tuple[AdVerdict, list[LLMCallRecord]]:
         """Review any finished ad: the hard checks (code decides ``passed``), a note per shot and
         the six rubric scores (code computes the creative total). Also used to calibrate the
@@ -279,6 +282,16 @@ class LLMCritic:
                 ImagePart("image/jpeg", base64.b64encode(jpeg).decode("ascii")),
             ]
             labels.append("0: the real product photo (the reference)")
+        prop_labels: list[str] = []
+        for name, path in props:
+            jpeg = await asyncio.to_thread(image_to_jpeg, path, long_side=self.long_side)
+            label = f"{len(labels)}: prop reference ({name}), a prop and NOT the product"
+            parts += [
+                TextPart(f"Image {label}"),
+                ImagePart("image/jpeg", base64.b64encode(jpeg).decode("ascii")),
+            ]
+            prop_labels.append(f"image {len(labels)} ({name})")
+            labels.append(label)
         for w in shots:
             length = max(0.1, w.end_s - w.start_s)
             frames = await sample_frames(
@@ -306,6 +319,7 @@ class LLMCritic:
             if reference is not None
             else "No product photo was given: compare the product against the checklist.",
             image_list="\n".join(f"- image {label}" for label in labels),
+            props=", ".join(prop_labels),
         )
         threshold = state.config.qa_threshold
         creative_threshold = self.ctx.settings.creative_threshold

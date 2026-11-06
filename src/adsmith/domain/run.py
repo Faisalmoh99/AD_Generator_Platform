@@ -116,6 +116,13 @@ class ProductReference(DomainModel):
         return made_with is not None and made_with.product == bible.product
 
 
+class PropReference(DomainModel):
+    """A non-product reference image (a prop), given by the user at run creation."""
+
+    artifact: Artifact
+    name: str = Field(min_length=1, max_length=120)  # the file name, for labels
+
+
 class RunState(DomainModel):
     id: str = Field(default_factory=lambda: new_id("run"))
     created_at: datetime = Field(default_factory=utcnow)
@@ -137,6 +144,9 @@ class RunState(DomainModel):
     product_reference: ProductReference | None = None
     # The real product photo (CAS), given at run creation; the multishot format is made from it.
     product_photo: Artifact | None = None
+    # Further reference images (props such as an incense burner), in the order given: sent to
+    # the video model after the product photo (Image 2, 3, ...) and shown to the critic as props.
+    reference_images: list[PropReference] = Field(default_factory=list, max_length=8)
     # The whole-ad generation of a multishot run (None for scene-based formats).
     generation: AdGeneration | None = None
     budget: BudgetLedger

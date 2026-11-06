@@ -86,9 +86,9 @@ async def test_auto_mock_run_reaches_done_with_its_own_audio(tmp_path: Path) -> 
     assert state.brief.format is AdFormat.MULTISHOT
     g = state.generation
     assert g is not None and g.status == "approved" and g.approved_by == "auto_mock"
-    # 720x1280 x 8 s x 24 / 1024 = 172,800 tokens x $0.014/1k = $2.4192; +10% reserved
+    # 720x1280 x 8 s x 24 / 1024 = 172,800 tokens x $0.014/1k = $2.4192 (margin 0: reserved)
     assert g.computed_usd == pytest.approx(2.4192) and len(g.prompt.shots) == 4
-    assert g.est_usd == pytest.approx(2.4192 * 1.1) and g.price_basis is not None
+    assert g.est_usd == pytest.approx(2.4192) and g.price_basis is not None
     assert "172,800 tokens" in g.price_basis
     assert g.prompt.text.startswith("An 8-second vertical 9:16 product film in 4 shots")
     assert "No text, letters" in g.prompt.text
@@ -117,11 +117,11 @@ async def test_interactive_run_waits_at_the_estimate_gate_then_generates(tmp_pat
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.AWAITING_GENERATION_APPROVAL
     g = state.generation
-    assert g is not None and g.est_usd == pytest.approx(2.66112) and not g.approved
+    assert g is not None and g.est_usd == pytest.approx(2.4192) and not g.approved
     assert mock_provider(rt, state).calls == 0  # nothing generated before the approval
     assert state.budget.by_category.get("video", 0) == 0
-    assert any("Waiting for a human to approve $2.661" in m for m in events(rt, run.id))
-    assert any("price $2.419, reserved $2.661 (with margin)" in m for m in events(rt, run.id))
+    assert any("Waiting for a human to approve $2.419" in m for m in events(rt, run.id))
+    assert any(m.startswith("Estimate: $2.419 for one generation") for m in events(rt, run.id))
     commands.approve_generation(rt.storage, run.id)
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE and state.generation is not None
@@ -346,7 +346,7 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
     active = [p["stage"] for p in v["pipeline"] if p["state"] == "active"]
     assert active == ["estimate"]  # the spend gate sits on the estimate
     g = v["generation"]
-    assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(2.4192 * 1.1)
+    assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(2.4192)
     assert g["computed_usd"] == pytest.approx(2.4192)
     assert g["prompt"].startswith("An 8-second") and g["approved_by"] is None
     c = v["concepts"][0]

@@ -269,8 +269,13 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
             events=[decision(ctx.run_id, Stage.ASSEMBLE, f"Nothing to assemble: {why}")],
         )
     cfg = state.config
-    long_side = cfg.media_long_side or ctx.settings.media_long_side
-    w, h = frame_size(state.brief.aspect_ratio, long_side=long_side)
+    a = g.artifact
+    if a.width and a.height:
+        # The deliverable keeps the size that was paid for (720x1280 at 720p): no downscale.
+        w, h = a.width // 2 * 2, a.height // 2 * 2
+    else:
+        long_side = cfg.media_long_side or ctx.settings.media_long_side
+        w, h = frame_size(state.brief.aspect_ratio, long_side=long_side)
     work: Path = ctx.artifacts.scratch_dir(ctx.run_id) / "assemble"
     await asyncio.to_thread(work.mkdir, parents=True, exist_ok=True)
     clip_s = min(float(g.duration_s), g.artifact.duration_s or float(g.duration_s))
