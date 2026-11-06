@@ -23,6 +23,7 @@ from adsmith.agent.nodes.common import (
     scene_block,
     storyboard_block,
 )
+from adsmith.agent.nodes.photo import product_photo_parts
 from adsmith.agent.recovery.errors import AgentError
 from adsmith.agent.structured import StructuredResult
 from adsmith.config import LLMNode
@@ -34,6 +35,7 @@ from adsmith.domain.ad import (
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.creative_rules import creative_rule_problems
 from adsmith.domain.enums import Stage
 from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
@@ -191,7 +193,20 @@ async def _whole_ad_prompt(state: RunState, ctx: NodeContext) -> NodeResult:
     )
 
 
+def cliches_block(state: RunState) -> str:
+    cl = state.concepts.category_cliches if state.concepts else []
+    return "\n".join(f"- {c}" for c in cl) or "(none listed)"
+
+
+def prop_image_names(state: RunState) -> list[str]:
+    """Names of the run's reference images, in the order they follow the product photo."""
+    return [r.name for r in state.reference_images]
+
+
 async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult[AdGeneration]:
+    """``ad_prompt_writer`` v2 (ADR-0026): the human-directed prompt's structure, structured
+    references, the product's size per shot, one location, the key shot; it SEES the product
+    photo. Code checks the timecodes against the storyboard and every creative rule it can."""
     assert state.brief and state.concepts and state.storyboard and state.bible
     concept = state.concepts.selected
     assert concept is not None
@@ -201,13 +216,17 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     durations = [s.duration_s for s in sb.scenes]
     t, marks = 0.0, []
     for i, d in enumerate(durations, 1):
-        marks.append(f"shot {i} {t:g}-{t + d:g} s")
+        marks.append(f"shot {i} {t:g}-{t + d:g} s ({sb.scenes[i - 1].purpose.value})")
         t += d
+    rules = ctx.settings.creative_rules
+    names = prop_image_names(state)
     template = ctx.prompts.get("ad_prompt_writer")
     rendered = template.render(
         brief=brief_block(state.brief),
         concept=concept_block(concept),
         bible=bible.prompt_block(),
+        creative_rules=rules.prompt_block(),
+        cliches=cliches_block(state),
         storyboard=storyboard_block(sb),
         duration=str(duration),
         aspect_ratio=state.brief.aspect_ratio,
@@ -215,21 +234,25 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         shots=str(len(durations)),
         timecodes="; ".join(marks),
         max_chars=str(ep.max_prompt_chars),
+        photo="attached as Image 0" if state.product_photo is not None else "none",
+        user_refs=", ".join(names) or "none",
     )
     aspect = state.brief.aspect_ratio
     model_key = ad_model_key(ctx.settings, cfg.ad_model)
+    images = await product_photo_parts(state, ctx)
 
     def convert(d: AdPromptDraft) -> AdGeneration:
         problems = ad_prompt_problems(
-            d, durations, duration_s=duration, max_chars=ep.max_prompt_chars
+            d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names
         )
+        problems += creative_rule_problems(d, rules)
         if problems:
             raise ValueError("; ".join(problems))
-        ad_prompt = AdPrompt(
-            **d.model_dump(),
+        ad_prompt = AdPrompt.from_draft(
+            d,
             duration_s=duration,
             aspect_ratio=aspect,
-            text=render_ad_prompt(d, duration_s=duration, aspect_ratio=aspect),
+            text=render_ad_prompt(d, duration_s=duration, aspect_ratio=aspect, image_names=names),
             template_version=template.template_id,
             bible_version=bible.version,
         )
@@ -243,4 +266,6 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
             generate_audio=cfg.ad_generate_audio,
         )
 
-    return await ctx.llm.call_and_convert(LLMNode.PROMPT_WRITER, rendered, AdPromptDraft, convert)
+    return await ctx.llm.call_and_convert(
+        LLMNode.PROMPT_WRITER, rendered, AdPromptDraft, convert, images=images
+    )

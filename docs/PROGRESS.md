@@ -1018,3 +1018,26 @@ estimate table, the montage v2 calibration, a real planning run and the one real
   4.375-5.375 s: the morph runs straight into the hard cut to shot 4 at frame 129 (5.375 s).
   `final_v2.mp4`: 264 frames, cuts at 29/86/129/216, audio identical to `final.mp4`, frames
   0-92 and 129-263 identical. Crossfade stays available (`--crossfade`), unused here.
+
+## Phase 1 (creative director plan): rules as data, ad prompt v2, storyboard v9 (2026-11-07)
+
+Context: frame-by-frame analysis of Halai's product-review ad and the Valentino Seedance
+reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); plan approved 2026-11-07
+(phases 1–7). ADR-0026.
+- **Built**: `config/creative_rules.toml` + `domain/creative_rules.py` (`Settings.creative_rules`):
+  params and banned words checked by code (repair messages name the replacement), judge rules and
+  lessons for the director. `domain/ad.py`: v2 drafts (`ReferenceSpec`, `event`, `shows_product`,
+  `product_in_frame`, `handled`, `location`, film-level `lighting`, `key_shot`), stored
+  `AdShot`/`AdPrompt` with defaults (old runs load), `render_ad_prompt` in the human prompt's
+  structure with a References block built by code from the images that exist, `ref_key`,
+  `timecode_problems`, `References` in the human-prompt diff. `ad_prompt_writer` v2 (sees the
+  product photo; rules and clichés in context). `storyboard` v9 (multishot block only).
+  `formats.toml` multishot: `min_product_shots = 3`, `purpose_min_s = {reveal 2, product 2}`.
+  `agent/nodes/photo.py` (the product photo as an image part, shared with continuity).
+- **Decisions (user)**: a prop that transforms into the product counts toward screen time; the
+  product itself ≥ 2 shots, handled ≥ 1, hero ≥ 2 s; one film-level lighting sentence.
+- **Deviation**: none from the plan. `scripts/live_one_clip.py` (untracked, not ours) still fails
+  ruff; the gate is run with it excluded.
+- **Tests**: 755 passed, 2 skipped (+26: `tests/unit/test_creative_rules.py`,
+  `tests/integration/test_ad_prompt_v2.py`; header assertions and `storyboard@v9` pins moved).
+- **Next**: phase 2, the creative-director stage.

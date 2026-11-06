@@ -69,6 +69,10 @@ hero_last = true
 generation = "whole"
 identity = "photo"
 dialogue = false
+# ADR-0026 (Halai keeps the product on screen 93 % of the time; ours were 13-19 %): the product
+# in at least 3 shots, and the turn (reveal) and the hero get at least 2 s each.
+min_product_shots = 3
+purpose_min_s = { reveal = 2.0, product = 2.0 }
 look = """one coherent cinematic look across every shot (one grade, one lighting logic), built around the real product photo; the product is the same object in every shot"""
 events = """each shot is ONE clear beat: a physical event, a human gesture or a camera reveal; the story turns once before the product hero at the end"""
 risk_notes = [

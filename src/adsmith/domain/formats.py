@@ -53,6 +53,10 @@ class FormatGrammar(DomainModel):
     # Montage v2 (after run 1 had no event at all): at least this many physical-event shots
     # (vocabulary `physical_event`), and the last shot is this vocabulary entry.
     min_event_shots: int = Field(default=0, ge=0, le=12)
+    # Multishot (ADR-0026): shots that show the product (shows_product), and the minimum length
+    # of a shot by its purpose (the turn and the hero need time to read).
+    min_product_shots: int = Field(default=0, ge=0, le=12)
+    purpose_min_s: dict[str, float] = Field(default_factory=dict)
     last_vocab: str | None = None
     identity: Literal["reference", "optional", "photo"] = "optional"
     # scenes: one keyframe + one clip per scene (today's pipeline); whole: the storyboard's shots
@@ -155,6 +159,14 @@ def format_block(lib: FormatLibrary, fmt: AdFormat) -> str:
         lines.append("The final shot is the product hero (purpose 'product').")
     if g.last_vocab:
         lines.append(f"The final shot uses the vocabulary entry {g.last_vocab}.")
+    if g.min_product_shots:
+        lines.append(
+            f"The product is visible in at least {g.min_product_shots} shots (a person may hold "
+            "it before the turn); the turn withholds what it does, not the product."
+        )
+    if g.purpose_min_s:
+        mins = ", ".join(f"{k} {v:g} s" for k, v in g.purpose_min_s.items())
+        lines.append(f"Minimum shot length by purpose: {mins}.")
     if g.min_event_shots:
         lines.append(
             f"At least {g.min_event_shots} shots are physical events (entries marked EVENT in "
@@ -212,8 +224,32 @@ def grammar_problems(
                 f"only {share:.0%} of shots are product or physics shots; need at least "
                 f"{g.min_product_share:.0%}"
             )
+    problems += _whole_ad_problems(scenes, g)
     if vocab is not None:
         problems += _vocab_problems(scenes, g, vocab)
+    return problems
+
+
+def _whole_ad_problems(scenes: Sequence[SceneDraft], g: FormatGrammar) -> list[str]:
+    """Multishot rules (ADR-0026): the product in enough shots, and a minimum length by purpose."""
+    problems: list[str] = []
+    n = len(scenes)
+    if n and g.min_product_shots:
+        seen = [i for i, s in enumerate(scenes, 1) if s.shows_product]
+        need = min(g.min_product_shots, n)
+        if len(seen) < need:
+            problems.append(
+                f"the product is visible in shots {seen}; this format needs it in at least {need} "
+                "shots (held by a person, in the background, or as the hero): what is withheld "
+                "until the turn is what the product does, not the product"
+            )
+    for i, s in enumerate(scenes, 1):
+        need_s = g.purpose_min_s.get(s.purpose.value)
+        if need_s is not None and s.duration_s + 1e-9 < need_s:
+            problems.append(
+                f"scene {i} ({s.purpose.value}) lasts {s.duration_s:g} s; a {s.purpose.value} "
+                f"shot needs at least {need_s:g} s in this format"
+            )
     return problems
 
 

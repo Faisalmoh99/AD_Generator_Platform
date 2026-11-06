@@ -1,0 +1,130 @@
+# Creative rules for the whole-ad (multishot) prompt (ADR-0026). DATA: the code only reads it
+# (domain/creative_rules.py). Where they come from: the frame-by-frame analysis of Halai's
+# product-review ad and the Valentino Seedance reference (2026-11-07), and what our two real
+# generations got wrong (try 1 run_01M6RTDPZEDAG98QZ9KPXT4NRY, try 2 run_01M6RYP42HB0GBFFYBAY09SGCW).
+#
+# [params] and [[banned]] are checked by CODE on every ad prompt (writer and director); a
+# failure goes back to the model through the schema-repair loop with the replacement named.
+# [[judge]] rules need judgement: the creative director (an LLM) rules on each by id.
+# [lessons] are shown to the director verbatim.
+
+[params]
+max_shots = 4              # the format allows 3-4 (formats.toml)
+min_shot_s = 1.5           # the model cut try 2's 2 s shot 1 to 1.2 s; never plan less than this
+key_min_s = 2.0            # the turn / transformation shot (try 2's morph lasted 0.5 s)
+hero_min_s = 2.0           # the last shot: the product holds the frame
+product_min_shots = 3      # shots showing the product, or a prop that transforms into it
+product_self_min_shots = 2 # shots showing the product itself
+product_min_share = 0.5    # of the runtime, same counting as product_min_shots
+handled_min_shots = 1      # shots where a person's hands hold or use the product
+max_locations = 1          # one location for the whole film (both references: one)
+max_references = 3         # prop or location references besides the product photo
+
+# Words the video model took literally or that do not describe a picture. One table per word.
+# `pattern` is a case-insensitive regex (default: the word with word boundaries);
+# `fields = "camera"` limits the check to the camera text; `except_hero` allows it in the last shot.
+[[banned]]
+word = "ember"
+pattern = "\\bembers?\\b"
+why = "try 1: rendered as an open flame on the floor"
+use = "a thin thread of incense smoke"
+
+[[banned]]
+word = "match cut"
+pattern = "\\bmatch[- ]cut"
+why = "try 1: read as 'show both objects', the hostess held a bottle-like burner"
+use = "hard cut to"
+
+[[banned]]
+word = "becomes"
+pattern = "\\b(becomes?|becoming|turns into)\\b"
+why = "try 2: rendered as a swap, not a transformation"
+use = "condenses in mid-air into (name what the viewer sees, step by step)"
+
+[[banned]]
+word = "dissolve"
+pattern = "\\b(dissolves?|crossfades?|fades? into)\\b"
+why = "try 1: a crossfade instead of a cut"
+use = "hard cut to"
+
+[[banned]]
+word = "silhouette"
+pattern = "\\bsilhouettes?\\b"
+why = "try 1: the bottle 'as a soft silhouette' never rendered"
+use = "the bottle in soft focus at the edge of the frame"
+
+[[banned]]
+word = "teased"
+pattern = "\\b(teased?|teasing)\\b"
+why = "not a visual instruction; the model ignores it"
+use = "visible in soft focus"
+
+[[banned]]
+word = "floats"
+pattern = "\\b(floats?|floating|hovers?|hovering)\\b"
+why = "try 2: the burner and the bottle lost contact with the hand"
+use = "rests in the open palm"
+
+[[banned]]
+word = "haze"
+pattern = "\\bhaze\\b"
+why = "fills the frame and veils the product"
+use = "a single thread of smoke, away from the product"
+
+[[banned]]
+word = "hint"
+pattern = "\\b(hints?|hinting|suggests?|suggesting|implies|implied)\\b"
+why = "an idea, not a picture: the model renders nothing or something literal"
+use = "name the visible object or motion"
+
+[[banned]]
+word = "glow"
+pattern = "\\b(a|an|the) (\\w+ )?glow\\b"
+why = "a glow named as an object becomes a lamp or a flame (try 1's 'ember glow')"
+use = "warm light falls on ..."
+
+[[banned]]
+word = "static"
+pattern = "\\b(static|locked[- ]off)\\b"
+fields = "camera"
+except_hero = true
+why = "both references move every second; a static shot reads as a still"
+use = "a slow push-in, a slow orbit or a gentle handheld drift"
+
+# Judged by the creative director. The id is echoed in its verdicts (code checks one per id).
+[[judge]]
+id = "turn_withheld"
+text = "The turn is not revealed before the key shot: shot 1 opens a question, it does not answer it. The product may be seen early; what it DOES is withheld until the key shot."
+
+[[judge]]
+id = "product_causes"
+text = "A person handles the product and its use causes the turn (spray, open, pass, smell, gift). The product is never decoration on a table while the story happens elsewhere."
+
+[[judge]]
+id = "one_location"
+text = "One location for the whole film, named in the location line; every shot can be filmed there (a doorway of the same room is the same location; outside the house is not)."
+
+[[judge]]
+id = "hook_motion"
+text = "Shot 1 has a physical motion in the first second and shows, at a readable size (at least a third of the frame), either the product or the prop that leads to it."
+
+[[judge]]
+id = "sizes_named"
+text = "Every shot where the product is visible says how big it is in frame; the hero fills at least half the frame."
+
+[[judge]]
+id = "no_cliche"
+text = "No shot uses an idea from the run's own category-cliché list."
+
+[[judge]]
+id = "references_roles"
+text = "Every prop that matters is a reference with a one-line physical description, a role and its shots; a prop is never described with the product's shape, colour or materials (a transforming prop may share one material, never the shape)."
+
+[[judge]]
+id = "sound_on_event"
+text = "The audio line names one sound hit exactly on the key shot's event (the spray, the latch, the glass settling)."
+
+[lessons]
+try_1 = "One reference image only: the hostess held a red bottle with smoke instead of an incense burner, because nothing told the model what the burner looks like. 'Ember glow' became an open flame on the floor. 'Match cut' produced a crossfade with both objects on screen. The correct product was on screen 1.5 s of 8 (19 %), only as a still bottle at the end."
+try_2 = "With the burner as Image 2 and roles in a References block, the props and the Saudi wardrobe were right. But the smoke-to-bottle morph lasted 0.5 s although the shot was planned at 2.5 s, the bottle floated above the palm, the spray in the last shot was invisible because the bottle was tiny, and the model cut the 2 s first shot to 1.2 s. The correct product was on screen 1.2 s of 9 (13 %)."
+references = "Halai's product-review ad keeps the product on screen 93 % of the time and in a person's hands 54 %: lift, open, spray the wrist, smell with eyes closed. One location, one warm grade, a camera or a person moving every second. The Valentino reference cuts sound hits to its motion. Neither has an idea; we keep ours and borrow their execution."

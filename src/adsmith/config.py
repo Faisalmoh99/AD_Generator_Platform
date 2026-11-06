@@ -18,6 +18,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from adsmith.domain.creative_rules import CreativeRules
 from adsmith.domain.culture import CultureLexicon
 from adsmith.domain.formats import FormatLibrary
 from adsmith.domain.rubric import Rubric
@@ -416,6 +417,13 @@ class Settings(BaseSettings):
         """The creative rubric for concepts and finished ads (config/rubric.toml, ADR-0024)."""
         with (self.config_dir / "rubric.toml").open("rb") as fh:
             return Rubric.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def creative_rules(self) -> CreativeRules:
+        """Rules for the whole-ad prompt, checked by code or judged by the director
+        (config/creative_rules.toml, ADR-0026)."""
+        with (self.config_dir / "creative_rules.toml").open("rb") as fh:
+            return CreativeRules.model_validate(tomllib.load(fh))
 
     @cached_property
     def culture(self) -> CultureLexicon:

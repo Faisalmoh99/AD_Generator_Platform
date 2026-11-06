@@ -90,7 +90,7 @@ async def test_auto_mock_run_reaches_done_with_its_own_audio(tmp_path: Path) -> 
     assert g.computed_usd == pytest.approx(2.4192) and len(g.prompt.shots) == 4
     assert g.est_usd == pytest.approx(2.4192) and g.price_basis is not None
     assert "172,800 tokens" in g.price_basis
-    assert g.prompt.text.startswith("An 8-second vertical 9:16 product film in 4 shots")
+    assert g.prompt.text.startswith("An 8-second vertical 9:16 film in 4 shots")
     assert "No text, letters" in g.prompt.text
     assert mock_provider(rt, state).calls == 1
     assert state.storyboard is not None

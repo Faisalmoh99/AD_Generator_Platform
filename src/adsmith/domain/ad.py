@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import itertools
 import re
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -31,93 +32,294 @@ from adsmith.domain.qa import AdVerdict, QAVerdict
 from adsmith.domain.scene import SceneFailure
 
 ShotText = Annotated[str, Field(min_length=1, max_length=400)]
+Line = Annotated[str, Field(min_length=1, max_length=200)]
 TIMECODE_TOLERANCE_S = 0.25
+ProductSize = Literal["absent", "small", "half", "fills"]
+SIZE_TEXT: dict[str, str] = {
+    "small": "the product is small in frame",
+    "half": "the product fills about half the frame",
+    "fills": "the product fills the frame",
+}
+
+
+class ReferenceSpec(DomainModel):
+    """A non-product reference the prompt relies on (ADR-0026): a prop the video model must not
+    confuse with the product, or the location. Code renders the References block from these and
+    the reference images that exist, so the image numbering is always right."""
+
+    name: Annotated[str, Field(min_length=1, max_length=40)] = Field(
+        description="Short English name used in the shots, e.g. 'incense burner'."
+    )
+    description: Line = Field(
+        description="One physical line: shape, size, material, colour. Never the product's."
+    )
+    role: Literal["prop", "location"]
+    shots: list[Annotated[int, Field(ge=1, le=12)]] = Field(min_length=1, max_length=12)
+    transforms_into_product: bool = Field(
+        description="True only for a prop that visibly transforms into the product on screen."
+    )
 
 
 class AdShotDraft(DomainModel):
+    """One numbered shot as the writer and the director write it (v2, every field required)."""
+
     number: int = Field(ge=1, le=12)
     start_s: float = Field(ge=0, le=60)
     end_s: float = Field(gt=0, le=60)
     action: ShotText = Field(description="What the viewer sees happen in this shot, one beat.")
+    event: Annotated[str, Field(min_length=1, max_length=160)] = Field(
+        description="The one physical motion of the shot (a hand lifts, smoke spirals, a spray)."
+    )
     camera: ShotText = Field(description="Shot size, lens feel and the camera move.")
-    lighting: ShotText
     sound: ShotText = Field(description="What is heard in this shot (sound design, music cue).")
+    shows_product: bool = Field(description="The product itself (Image 1) is visible.")
+    product_in_frame: ProductSize = Field(description="How big the product is; absent if unseen.")
+    handled: bool = Field(description="A person's hand holds or uses the product in this shot.")
 
 
 class AdPromptDraft(DomainModel):
-    """``ad_prompt_writer`` output. English only (generation-facing)."""
+    """``ad_prompt_writer`` v2 / ``director`` output. English only (generation-facing)."""
 
+    location: Line = Field(description="The ONE location of the whole film.")
     look: Annotated[str, Field(min_length=1, max_length=500)] = Field(
-        description="One look for the whole ad: grade, contrast, texture, lighting logic."
+        description="One look for the whole ad: grade, contrast, texture."
     )
+    lighting: Line = Field(description="One lighting logic for the whole film.")
+    references: list[ReferenceSpec] = Field(max_length=3)
     shots: list[AdShotDraft] = Field(min_length=2, max_length=8)
+    key_shot: int = Field(ge=1, le=12, description="The shot where the turn happens.")
     audio: Annotated[str, Field(min_length=1, max_length=400)] = Field(
         description="The soundtrack arc across the ad (music feel, key sound effects, no voice)."
     )
 
 
-class AdPrompt(AdPromptDraft):
+class AdShot(DomainModel):
+    """A stored shot. Defaults keep prompts written before v2 loadable (they had per-shot
+    lighting and none of the v2 fields)."""
+
+    number: int = Field(ge=1, le=12)
+    start_s: float = Field(ge=0, le=60)
+    end_s: float = Field(gt=0, le=60)
+    action: ShotText
+    camera: ShotText
+    sound: ShotText
+    lighting: str = Field(default="", max_length=400)
+    event: str = Field(default="", max_length=160)
+    shows_product: bool = True
+    product_in_frame: ProductSize = "half"
+    handled: bool = False
+
+
+class AdPrompt(DomainModel):
+    """The stored whole-ad prompt: the structured shots and the text the model receives."""
+
+    look: Annotated[str, Field(min_length=1, max_length=500)]
+    shots: list[AdShot] = Field(min_length=2, max_length=8)
+    audio: Annotated[str, Field(min_length=1, max_length=400)]
+    location: str = Field(default="", max_length=200)
+    lighting: str = Field(default="", max_length=200)
+    references: list[ReferenceSpec] = Field(default_factory=list, max_length=3)
+    key_shot: int | None = Field(default=None, ge=1, le=12)
     duration_s: int = Field(ge=1, le=60)
     aspect_ratio: str
     text: str = Field(min_length=1)  # rendered by code: what the model receives
     template_version: str
     bible_version: int = Field(ge=1)
 
-
-def render_ad_prompt(draft: AdPromptDraft, *, duration_s: int, aspect_ratio: str) -> str:
-    """The text the video model receives. The product-identity and no-text rules are fixed by
-    code, so a prompt can never drop them."""
-    orient = "vertical" if aspect_ratio in {"9:16", "3:4"} else "horizontal"
-    lines = [
-        f"{'An' if str(duration_s).startswith('8') or duration_s in (11, 18) else 'A'} "
-        f"{duration_s}-second {orient} {aspect_ratio} product film in {len(draft.shots)} shots, "
-        "hard cuts between shots.",
-        "The product is exactly the one in the reference image: keep its shape, colours, cap and "
-        "materials identical in every shot. No text, letters, numbers or logos anywhere.",
-        f"Look: {draft.look}",
-    ]
-    for s in draft.shots:
-        lines.append(
-            f"Shot {s.number} ({s.start_s:g}-{s.end_s:g} s): {s.action} Camera: {s.camera} "
-            f"Lighting: {s.lighting} Sound: {s.sound}"
+    @classmethod
+    def from_draft(
+        cls,
+        d: AdPromptDraft,
+        *,
+        duration_s: int,
+        aspect_ratio: str,
+        text: str,
+        template_version: str,
+        bible_version: int,
+    ) -> AdPrompt:
+        return cls(
+            **d.model_dump(),
+            duration_s=duration_s,
+            aspect_ratio=aspect_ratio,
+            text=text,
+            template_version=template_version,
+            bible_version=bible_version,
         )
-    lines.append(f"Audio: {draft.audio} No voice-over, no dialogue.")
+
+    def to_draft(self) -> AdPromptDraft:
+        """The v2 draft of a stored v2 prompt (the director rewrites it, props re-render it)."""
+        keep = set(AdPromptDraft.model_fields)
+        data = {k: v for k, v in self.model_dump().items() if k in keep}
+        shot_keys = set(AdShotDraft.model_fields)
+        data["shots"] = [{k: v for k, v in s.items() if k in shot_keys} for s in data["shots"]]
+        return AdPromptDraft.model_validate(data)
+
+
+def ref_key(name: str) -> str:
+    """Comparable name of a reference: 'Incense_Burner.png' and 'the incense burner' match."""
+    stem = re.sub(r"\.(png|jpe?g|webp)$", "", name.strip().lower())
+    stem = re.sub(r"[_\-]+", " ", stem)
+    return re.sub(r"^(the|a|an) ", "", " ".join(stem.split()))
+
+
+def shot_list(numbers: Sequence[int]) -> str:
+    """'1-3', '2, 4', '1-2, 4' (sorted, ranges collapsed)."""
+    nums = sorted(set(numbers))
+    parts: list[str] = []
+    i = 0
+    while i < len(nums):
+        j = i
+        while j + 1 < len(nums) and nums[j + 1] == nums[j] + 1:
+            j += 1
+        parts.append(f"{nums[i]}-{nums[j]}" if j > i else str(nums[i]))
+        i = j + 1
+    return ", ".join(parts)
+
+
+def shots_phrase(numbers: Sequence[int]) -> str:
+    """'shot 3' or 'shots 1-3'."""
+    return f"shot{'s' if len(set(numbers)) > 1 else ''} {shot_list(numbers)}"
+
+
+def _clause(text: str) -> str:
+    """A description that follows a colon: lower-case first letter unless it is an acronym."""
+    t = _sentence(text)
+    return t[0].lower() + t[1:] if len(t) > 1 and not t[1].isupper() else t
+
+
+def _sentence(text: str) -> str:
+    t = text.strip()
+    return t if t.endswith((".", "!", "?")) else f"{t}."
+
+
+def _capital(text: str) -> str:
+    t = _sentence(text)
+    return t[0].upper() + t[1:] if t else t
+
+
+def references_block(p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = ()) -> str:
+    """The References line, built by code. Image 1 is always the product photo; image k+2 is
+    ``image_names[k]`` (the run's reference images, in the order they are sent). A reference with
+    no image keeps its description (the model still needs to know what it is); a reference image
+    no spec names is still declared a prop, so numbering and roles never drift."""
+    keys = [ref_key(n) for n in image_names]
+    seen = [s.number for s in p.shots if s.shows_product]
+    parts = ["Image 1 is the product: keep its shape, colours, cap and materials identical."]
+    if seen:
+        parts.append(f"It appears in {shots_phrase(seen)}.")
+    used: set[int] = set()
+    for r in p.references:
+        k = ref_key(r.name)
+        idx = keys.index(k) if k in keys else None
+        head = f"Image {idx + 2} is the {r.name}" if idx is not None else f"The {r.name}"
+        if idx is not None:
+            used.add(idx)
+        if r.role == "location":
+            parts.append(f"{head}: {_clause(r.description)} Every shot takes place there.")
+            continue
+        tail = f" It appears in {shots_phrase(r.shots)}"
+        if r.transforms_into_product:
+            turn = p.key_shot if p.key_shot in r.shots else max(r.shots)
+            tail += f" and transforms into the product in shot {turn}; before that it is never "
+            tail += "the product."
+        else:
+            tail += " and is never the product."
+        parts.append(f"{head}: {_clause(r.description)}{tail}")
+    for idx, name in enumerate(image_names):
+        if idx not in used:
+            parts.append(
+                f"Image {idx + 2} is the {ref_key(name)}, a prop; it is never the product."
+            )
+    parts.append("No text, letters, numbers or logos anywhere.")
+    return "References: " + " ".join(parts)
+
+
+def _article(duration_s: int) -> str:
+    return "An" if str(duration_s).startswith("8") or duration_s in (11, 18) else "A"
+
+
+def render_ad_prompt(
+    p: AdPromptDraft | AdPrompt,
+    *,
+    duration_s: int,
+    aspect_ratio: str,
+    image_names: Sequence[str] = (),
+) -> str:
+    """The text the video model receives, in the structure of the human-directed prompt of try 2
+    (header, References, Look, numbered shots, Audio). The identity, no-text and no-voice rules
+    and the References block are written by code, so a prompt can never drop them."""
+    orient = "vertical" if aspect_ratio in {"9:16", "3:4"} else "horizontal"
+    look = " ".join(_capital(x) for x in (p.location, p.look, p.lighting) if x and x.strip())
+    lines = [
+        f"{_article(duration_s)} {duration_s}-second {orient} {aspect_ratio} film in "
+        f"{len(p.shots)} shots, hard cuts between shots.",
+        references_block(p, image_names),
+        f"Look: {look}",
+    ]
+    for s in p.shots:
+        size = SIZE_TEXT.get(s.product_in_frame) if s.shows_product else None
+        legacy = s.lighting if isinstance(s, AdShot) else ""  # prompts stored before v2
+        light = f" Lighting: {_sentence(legacy)}" if legacy else ""
+        lines.append(
+            f"Shot {s.number} ({s.start_s:g}-{s.end_s:g} s): {_capital(s.action)}"
+            + (f" Framing: {size}." if size else "")
+            + f" Camera: {_sentence(s.camera)}{light} Sound: {_sentence(s.sound)}"
+        )
+    lines.append(f"Audio: {_capital(p.audio)} No voice, no dialogue.")
     return "\n".join(lines)
 
 
-def ad_prompt_problems(
-    draft: AdPromptDraft, durations: list[float], *, duration_s: int, max_chars: int
+def timecode_problems(
+    draft: AdPromptDraft, durations: Sequence[float] | None, *, duration_s: int
 ) -> list[str]:
-    """Deterministic checks against the storyboard (→ schema repair): one shot per storyboard
-    scene, numbered 1..n, contiguous timecodes from 0 that follow the scene durations, ending at
-    the ad's length, and a rendered text within the model's prompt limit."""
+    """Numbered 1..n, contiguous from 0, ending at the ad's length; with ``durations`` (the
+    storyboard's), one shot per scene and each shot as long as its scene."""
     problems: list[str] = []
-    n = len(durations)
-    if len(draft.shots) != n:
+    if durations is not None and len(draft.shots) != len(durations):
         problems.append(
-            f"write exactly {n} shots (one per storyboard scene), not {len(draft.shots)}"
+            f"write exactly {len(durations)} shots (one per storyboard scene), "
+            f"not {len(draft.shots)}"
         )
     numbers = [s.number for s in draft.shots]
     if numbers != list(range(1, len(draft.shots) + 1)):
         problems.append(f"number the shots 1..{len(draft.shots)} in order, got {numbers}")
     t = 0.0
     for i, s in enumerate(draft.shots):
-        expected_end = t + (durations[i] if i < n else 0.0)
         if abs(s.start_s - t) > TIMECODE_TOLERANCE_S or s.end_s <= s.start_s:
             problems.append(f"shot {s.number} must start at {t:g} s (the previous shot's end)")
-        if i < n and abs(s.end_s - expected_end) > TIMECODE_TOLERANCE_S:
-            problems.append(
-                f"shot {s.number} must end at {expected_end:g} s (its storyboard scene lasts "
-                f"{durations[i]:g} s)"
-            )
+        if durations is not None and i < len(durations):
+            expected_end = t + durations[i]
+            if abs(s.end_s - expected_end) > TIMECODE_TOLERANCE_S:
+                problems.append(
+                    f"shot {s.number} must end at {expected_end:g} s (its storyboard scene lasts "
+                    f"{durations[i]:g} s)"
+                )
         t = s.end_s
     if draft.shots and abs(draft.shots[-1].end_s - duration_s) > TIMECODE_TOLERANCE_S:
         problems.append(f"the last shot must end at {duration_s} s, the ad's length")
-    text = render_ad_prompt(draft, duration_s=duration_s, aspect_ratio="9:16")
+    return problems
+
+
+def ad_prompt_problems(
+    draft: AdPromptDraft,
+    durations: Sequence[float] | None,
+    *,
+    duration_s: int,
+    max_chars: int,
+    image_names: Sequence[str] = (),
+) -> list[str]:
+    """Deterministic checks (→ schema repair): the timecodes (against the storyboard's scene
+    durations when given), the key shot exists, and the rendered text fits the model's limit."""
+    problems = timecode_problems(draft, durations, duration_s=duration_s)
+    if not 1 <= draft.key_shot <= len(draft.shots):
+        problems.append(f"key_shot {draft.key_shot} is not one of the shots 1..{len(draft.shots)}")
+    text = render_ad_prompt(
+        draft, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names
+    )
     if len(text) > max_chars:
         problems.append(
             f"the rendered prompt is {len(text)} characters; the limit is {max_chars}: shorten "
-            "each shot's action, camera, lighting and sound"
+            "each shot's action, camera and sound, and the look"
         )
     return problems
 
@@ -127,7 +329,7 @@ _SHOT_LINE = re.compile(
     r"^\s*Shot\s+(\d+)\s*\(\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*s\s*\)\s*:\s*(.+)$",
     re.IGNORECASE,
 )
-_SECTION = re.compile(r"^\s*(Look|Audio)\s*:", re.IGNORECASE)
+_SECTION = re.compile(r"^\s*(References|Look|Audio)\s*:", re.IGNORECASE)
 
 
 class HumanShot(DomainModel):

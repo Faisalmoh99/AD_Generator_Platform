@@ -35,9 +35,12 @@ def shots(durations: list[float]) -> list[dict[str, Any]]:
                 "start_s": t,
                 "end_s": t + d,
                 "action": f"beat {i}.",
-                "camera": "close-up",
-                "lighting": "warm key",
+                "event": "a hand lifts",
+                "camera": "close-up, slow push-in",
                 "sound": "room tone",
+                "shows_product": True,
+                "product_in_frame": "half",
+                "handled": i == 1,
             }
         )
         t += d
@@ -46,14 +49,22 @@ def shots(durations: list[float]) -> list[dict[str, Any]]:
 
 def draft(durations: list[float]) -> AdPromptDraft:
     return AdPromptDraft.model_validate(
-        {"look": "warm amber film look", "shots": shots(durations), "audio": "oud then strings"}
+        {
+            "location": "a warm majlis",
+            "look": "warm amber film look",
+            "lighting": "warm lamps from the left",
+            "references": [],
+            "shots": shots(durations),
+            "key_shot": 1,
+            "audio": "oud then strings",
+        }
     )
 
 
 def generation(**over: Any) -> AdGeneration:
     d = draft([3, 3, 3, 3])
-    prompt = AdPrompt(
-        **d.model_dump(),
+    prompt = AdPrompt.from_draft(
+        d,
         duration_s=12,
         aspect_ratio="9:16",
         text=render_ad_prompt(d, duration_s=12, aspect_ratio="9:16"),
@@ -109,9 +120,9 @@ def test_a_prompt_that_follows_the_storyboard_has_no_problems() -> None:
 
 def test_rendered_prompt_carries_the_fixed_rules() -> None:
     text = render_ad_prompt(draft([4, 4, 4]), duration_s=12, aspect_ratio="9:16")
-    assert text.startswith("A 12-second vertical 9:16 product film in 3 shots, hard cuts")
-    assert "exactly the one in the reference image" in text and "No text, letters" in text
-    assert "Shot 2 (4-8 s): beat 2." in text and "No voice-over" in text
+    assert text.startswith("A 12-second vertical 9:16 film in 3 shots, hard cuts")
+    assert "Image 1 is the product: keep its shape" in text and "No text, letters" in text
+    assert "Shot 2 (4-8 s): Beat 2." in text and "No voice, no dialogue." in text
 
 
 @pytest.mark.parametrize(
