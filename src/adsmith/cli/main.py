@@ -92,7 +92,8 @@ def print_state(orch: Orchestrator, state: RunState) -> None:
             f"[bold]End card[/] {state.endcard.brand_name} — {state.endcard.tagline}{flag}"
         )
     if state.final:
-        path = orch.rt.storage.artifacts.run_dir(state.id) / "final.mp4"
+        name = state.generation.final_name if state.generation else "final.mp4"
+        path = orch.rt.storage.artifacts.run_dir(state.id) / name
         console.print(f"[bold green]Final ad:[/] {path} ({state.final.duration_s:g}s)")
     if state.error:
         console.print(
