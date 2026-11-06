@@ -17,6 +17,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from adsmith.domain.ad import AdGeneration
 from adsmith.domain.base import DomainModel, new_id, utcnow
 from adsmith.domain.brief import AspectRatio, Brief
 from adsmith.domain.budget import BudgetLedger
@@ -25,6 +26,7 @@ from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.edit import ScenePatch
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.enums import FailureKind, Stage
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.generation import Artifact
 from adsmith.domain.qa import QAVerdict
 from adsmith.domain.similarity import detect_language
@@ -59,6 +61,12 @@ class RunConfig(DomainModel):
     image_model: str | None = None
     video_model: str | None = None
     media_long_side: int | None = Field(default=None, ge=256, le=4096)
+    # Whole-ad generations (ADR-0023): the reference-to-video catalog key, the render settings,
+    # and a format the operator forced (else resolved by code from the brief and the photo).
+    ad_model: str | None = None
+    ad_resolution: str | None = None
+    ad_generate_audio: bool = True
+    forced_format: AdFormat | None = None
 
 
 class RunError(DomainModel):
@@ -126,6 +134,10 @@ class RunState(DomainModel):
     music: Artifact | None = None  # generated track (fal.audio), kept for re-assembly
     endcard: EndCardCopy | None = None
     product_reference: ProductReference | None = None
+    # The real product photo (CAS), given at run creation; the multishot format is made from it.
+    product_photo: Artifact | None = None
+    # The whole-ad generation of a multishot run (None for scene-based formats).
+    generation: AdGeneration | None = None
     budget: BudgetLedger
     error: RunError | None = None
 
@@ -155,6 +167,10 @@ class RunState(DomainModel):
             missing.append("final video")
         if s is Stage.ERRORED and self.error is None:
             missing.append("error record")
+        if s is Stage.AWAITING_GENERATION_APPROVAL and (
+            self.generation is None or self.generation.est_usd is None
+        ):
+            missing.append("an estimated ad generation")
         if missing:
             raise ValueError(f"stage {s} requires: {', '.join(missing)}")
 

@@ -11,7 +11,7 @@ from adsmith.agent.nodes.common import (
     concept_block,
     decision,
     language_name,
-    video_profile_block,
+    profile_block_for,
 )
 from adsmith.config import LLMNode
 from adsmith.domain.concept import CLICHE_PENALTY, JUDGE_WEIGHTS, ConceptJudgementDraft
@@ -24,7 +24,7 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
     concepts = state.concepts.concepts
     prompt = ctx.prompts.get("select").render(
         brief=brief_block(state.brief),
-        video_profile=video_profile_block(ctx.settings, state.config.video_model),
+        video_profile=profile_block_for(ctx.settings, state),
         concepts="\n\n".join(concept_block(c, i) for i, c in enumerate(concepts, start=1)),
         user_language=language_name(state.brief.language),
         cliches="\n".join(f"- {c}" for c in state.concepts.category_cliches) or "(none listed)",

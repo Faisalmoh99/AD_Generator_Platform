@@ -170,6 +170,11 @@ class HiggsfieldVideoEndpoint(_Frozen):
     aspect_ratios: list[str] = Field(min_length=1)
     max_images: int = Field(ge=1, le=50)
     max_usd_per_second: float = Field(gt=0)
+    # Simulated price used ONLY by the mock provider (zero-key runs), so the budget guard and the
+    # estimate gate behave as they will for real. Not a Higgsfield price.
+    mock_usd_per_second: float = Field(default=0.3, ge=0)
+    # Prompt length we allow until the real limit is probed (scripts/hf_estimate.py).
+    max_prompt_chars: int = Field(default=2500, ge=200)
     # Endpoint-specific request fields (verified against the schema), merged into the body.
     params: dict[str, int | float | str | bool] = Field(default_factory=dict)
     profile: VideoProfile | None = None
@@ -271,6 +276,8 @@ class Settings(BaseSettings):
     # Separate from media_provider, which serves the per-scene keyframe/clip path (ADR-0022).
     ad_provider: Literal["mock", "higgsfield"] = "mock"
     hf_video_model: str | None = None  # catalog key under [higgsfield.video.endpoints]
+    hf_resolution: str | None = None  # default: the endpoint's default_resolution
+    hf_generate_audio: bool = True
 
     # secrets (standard names, no prefix)
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")

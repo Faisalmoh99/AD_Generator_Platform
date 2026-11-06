@@ -3,6 +3,9 @@ Then the bible-aware scene-flag check runs (ADR-0010): upgrade-only, every overr
 
 from __future__ import annotations
 
+import asyncio
+import base64
+
 from adsmith.agent.context import NodeContext
 from adsmith.agent.deltas import Delta, SetBible, UpgradeSceneFlags
 from adsmith.agent.nodes.base import NodeResult
@@ -23,6 +26,8 @@ from adsmith.domain.continuity import (
 from adsmith.domain.enums import Stage
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags
+from adsmith.media.frames import image_to_jpeg
+from adsmith.providers.llm.base import ImagePart, TextPart
 
 
 async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
@@ -35,7 +40,19 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
         concept=concept_block(concept),
         storyboard=storyboard_block(state.storyboard),
         wardrobe_lexicon=ctx.settings.culture.prompt_block(state.brief),
+        product_photo="attached (the image above): describe this exact product"
+        if state.product_photo is not None
+        else "(none: design the product from the brief)",
     )
+    images: list[ImagePart | TextPart] = []
+    if state.product_photo is not None:
+        jpeg = await asyncio.to_thread(
+            image_to_jpeg, ctx.artifacts.resolve(state.product_photo), long_side=1024
+        )
+        images = [
+            TextPart("Image 0: the real product photo"),
+            ImagePart("image/jpeg", base64.b64encode(jpeg).decode("ascii")),
+        ]
     culture, brief = ctx.settings.culture, state.brief
 
     def convert(d: ContinuityBibleDraft) -> ContinuityBible:
@@ -47,7 +64,7 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
         return ContinuityBible(**d.model_dump(), version=version)
 
     result = await ctx.llm.call_and_convert(
-        LLMNode.CONTINUITY, prompt, ContinuityBibleDraft, convert
+        LLMNode.CONTINUITY, prompt, ContinuityBibleDraft, convert, images=images
     )
     bible = result.value
     # Check on a copy: the node must not mutate the snapshot it was given.

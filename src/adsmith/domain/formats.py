@@ -28,6 +28,9 @@ class AdFormat(StrEnum):
     MONTAGE = "montage"
     SINGLE_TAKE = "single_take"
     NARRATIVE = "narrative"
+    # One whole ad from ONE reference-to-video generation (numbered shots, native audio) made
+    # from the real product photo (ADR-0023).
+    MULTISHOT = "multishot"
 
 
 Framing = Literal["macro", "product", "event", "detail", "silhouette", "full"]
@@ -51,7 +54,10 @@ class FormatGrammar(DomainModel):
     # (vocabulary `physical_event`), and the last shot is this vocabulary entry.
     min_event_shots: int = Field(default=0, ge=0, le=12)
     last_vocab: str | None = None
-    identity: Literal["reference", "optional"] = "optional"
+    identity: Literal["reference", "optional", "photo"] = "optional"
+    # scenes: one keyframe + one clip per scene (today's pipeline); whole: the storyboard's shots
+    # are rendered by ONE generation of the whole ad (multishot, ADR-0023).
+    generation: Literal["scenes", "whole"] = "scenes"
     look: str = Field(min_length=1, max_length=1000)
     events: str = Field(min_length=1, max_length=1000)
     risk_notes: list[str] = Field(default_factory=list, max_length=5)
@@ -89,14 +95,25 @@ class FormatLibrary(DomainModel):
         return self.formats[fmt]
 
 
-def resolve_format(
+def resolve_format(  # noqa: PLR0911 - an ordered list of rules
     lib: FormatLibrary,
     *,
     requested: AdFormat | None,
     requested_shots: int | None,
     physical_product: bool,
+    forced: AdFormat | None = None,
+    has_photo: bool = False,
 ) -> tuple[AdFormat, str]:
-    """(format, why). Pure: the same brief always resolves to the same format."""
+    """(format, why). Pure: the same brief always resolves to the same format. A format forced by
+    the operator wins; then a real product photo (one whole generation made from it); then the
+    request."""
+    if forced is not None:
+        return forced, f"the operator chose the {forced.value} format"
+    if has_photo:
+        return (
+            AdFormat.MULTISHOT,
+            "a real product photo was given: one multi-shot generation made from it",
+        )
     if requested is not None:
         return requested, f"the request asks for a {requested.value} format"
     if requested_shots == 1:

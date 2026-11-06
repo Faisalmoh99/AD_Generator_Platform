@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
+from adsmith.domain.ad import AdPromptDraft
 from adsmith.domain.brief import BriefDraft
 from adsmith.domain.concept import ConceptJudgementDraft, ConceptSetDraft
 from adsmith.domain.continuity import ContinuityBibleDraft
@@ -30,4 +31,5 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "qa_keyframe": QAVerdictDraft,
     "qa_product_ref": QAVerdictDraft,
     "endcard_copy": EndCardCopyDraft,
+    "ad_prompt_writer": AdPromptDraft,
 }

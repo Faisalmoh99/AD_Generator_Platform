@@ -14,6 +14,8 @@ class Stage(StrEnum):
     STORYBOARD = "storyboard"
     CONTINUITY = "continuity"
     PROMPT = "prompt"
+    ESTIMATE = "estimate"  # whole-ad generation: the provider's price for the one generation
+    AWAITING_GENERATION_APPROVAL = "awaiting_generation_approval"  # human gate before real money
     KEYFRAME = "keyframe"
     AWAITING_STORYBOARD_APPROVAL = "awaiting_storyboard_approval"
     GENERATE = "generate"
@@ -25,7 +27,11 @@ class Stage(StrEnum):
 
 
 AWAITING_STAGES: frozenset[Stage] = frozenset(
-    {Stage.AWAITING_CONCEPT_CHOICE, Stage.AWAITING_STORYBOARD_APPROVAL}
+    {
+        Stage.AWAITING_CONCEPT_CHOICE,
+        Stage.AWAITING_STORYBOARD_APPROVAL,
+        Stage.AWAITING_GENERATION_APPROVAL,
+    }
 )
 TERMINAL_STAGES: frozenset[Stage] = frozenset({Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED})
 

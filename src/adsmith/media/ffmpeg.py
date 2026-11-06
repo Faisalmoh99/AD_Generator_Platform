@@ -104,3 +104,50 @@ async def add_music(video: Path, music: Path, out: Path, *, seconds: float) -> P
 async def duration_of(video: Path) -> float:
     _, _, seconds = await probe_video(video)
     return seconds
+
+
+# ------------------------------------------------------------------------ audio-carrying clips
+# A whole-ad generation (multishot) brings its own soundtrack. Every part of such an ad carries
+# the same audio format (AAC, 48 kHz, stereo), so the parts can be joined with a stream copy.
+_AUDIO = ("-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2")
+
+
+async def has_audio(path: Path) -> bool:
+    proc = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
+        "-of", "csv=p=0", str(path),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    out, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"ffprobe {path.name}: {err.decode(errors='replace')[-300:]}")
+    return bool(out.strip())
+
+
+async def normalise_clip_av(
+    src: Path, out: Path, *, seconds: float, width: int, height: int
+) -> Path:
+    """Like ``normalise_clip`` but the clip's own audio is KEPT (re-encoded to the common format);
+    a clip without audio gets a silent track, so every part has the same streams."""
+    if await has_audio(src):
+        audio_in: list[str] = []
+        audio_map = "0:a:0"
+    else:
+        audio_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
+        audio_map = "1:a:0"
+    await run(
+        "-i", str(src), *audio_in, "-t", f"{seconds:.3f}", "-vf", _vf(width, height),
+        "-map", "0:v:0", "-map", audio_map, "-c:v", "libx264", "-preset", "veryfast",
+        "-crf", "18", *_AUDIO, "-shortest", str(out),
+    )  # fmt: skip
+    return out
+
+
+async def with_silence(video: Path, out: Path, *, seconds: float) -> Path:
+    """A silent-video part (the end card) with a silent track in the common audio format."""
+    await run(
+        "-i", str(video), "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+        "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", *_AUDIO, "-t", f"{seconds:.3f}",
+        str(out),
+    )  # fmt: skip
+    return out

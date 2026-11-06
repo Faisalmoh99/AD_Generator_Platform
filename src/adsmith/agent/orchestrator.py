@@ -32,12 +32,13 @@ from adsmith.agent.nodes.select import select
 from adsmith.agent.nodes.storyboard import storyboard
 from adsmith.agent.nodes.understand import understand
 from adsmith.agent.recovery.errors import AgentError
-from adsmith.agent.transitions import next_stage
+from adsmith.agent.transitions import next_stage, whole_ad
 from adsmith.config import Settings
 from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.enums import AWAITING_STAGES, TERMINAL_STAGES, FailureKind, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.run import RunConfig, RunError, RunState
 from adsmith.domain.similarity import detect_language
@@ -59,12 +60,16 @@ NODES: dict[Stage, Node] = {
 }
 # Per-scene stages: run by the SceneStageRunner, which commits each scene's progress itself.
 SCENE_STAGES: frozenset[Stage] = frozenset({Stage.KEYFRAME, Stage.GENERATE, Stage.QA})
+# Whole-ad stages (multishot, ADR-0023): run by the AdGenerationRunner, which commits itself.
+AD_STAGES: frozenset[Stage] = frozenset({Stage.ESTIMATE, Stage.GENERATE, Stage.QA})
 
 # Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
 EXPORT_AFTER: frozenset[Stage] = frozenset({Stage.PROMPT, Stage.ASSEMBLE})
 
 
 def run_config_from_settings(settings: Settings, request: str, *, interactive: bool) -> RunConfig:
+    hf = settings.catalog.higgsfield
+    ad_model = settings.hf_video_model or (hf.video.default if hf else None)
     scenario = settings.scripted_scenario
     if settings.llm_provider == "scripted" and scenario is None:
         guess = f"perfume_{detect_language(request)}"
@@ -91,6 +96,9 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         product_reference=settings.product_reference,
         music_path=str(settings.music_path.resolve()) if settings.music_path else None,
         generate_music=settings.generate_music and settings.music_path is None,
+        ad_model=ad_model,
+        ad_resolution=settings.hf_resolution,
+        ad_generate_audio=settings.hf_generate_audio,
     )
 
 
@@ -126,9 +134,31 @@ class Orchestrator:
         chaos: bool | None = None,
         hero: bool = False,
         product_reference: bool | None = None,
+        product_photo: Path | None = None,
+        ad_format: AdFormat | None = None,
+        scripted_scenario: str | None = None,
     ) -> RunState:
         s = self.rt.settings
         config = run_config_from_settings(s, request, interactive=interactive)
+        if (
+            scripted_scenario is None
+            and config.llm_provider == "scripted"
+            and (product_photo is not None and s.scripted_scenario is None)
+        ):
+            # Zero keys with a photo: replay the multishot script in the request's language.
+            guess = f"multishot_{detect_language(request)}"
+            scripted_scenario = guess if (FIXTURES_DIR / guess).is_dir() else "multishot_en"
+        if scripted_scenario is not None:
+            config = config.model_copy(update={"scripted_scenario": scripted_scenario})
+        if ad_format is not None:
+            config = config.model_copy(update={"forced_format": ad_format})
+        if ad_format is AdFormat.MULTISHOT and product_photo is None:
+            raise ValueError("the multishot format is made from a product photo: give one")
+        photo = None
+        if product_photo is not None:
+            if not product_photo.is_file():
+                raise ValueError(f"no product photo at {product_photo}")
+            photo = self.rt.storage.artifacts.ingest(product_photo, kind="image", provider="user")
         if chaos is not None:
             config = config.model_copy(update={"chaos": chaos})
         if product_reference is not None:  # locked product still (ADR-0003 addendum 3)
@@ -147,6 +177,7 @@ class Orchestrator:
         state = RunState(
             config=config,
             request=request,
+            product_photo=photo,
             budget=BudgetLedger(
                 limit_usd=limit,
                 media_limit_usd=media_limit,
@@ -176,7 +207,9 @@ class Orchestrator:
                 state.stage not in AWAITING_STAGES
                 and state.stage not in TERMINAL_STAGES
                 and state.stage is not stop_before
-                and (state.stage in NODES or state.stage in SCENE_STAGES)
+                and (
+                    state.stage in NODES or state.stage in SCENE_STAGES or state.stage in AD_STAGES
+                )
             ):
                 state = await self.step(state.id)
             return state
@@ -210,6 +243,25 @@ class Orchestrator:
                                 s.budget.release(att.id)
                     scene.release_lease()
                     released.append(scene.order)
+            g = s.generation
+            if g is not None and g.status == "generating":
+                # The whole-ad job from a crashed process: close the attempt (its request id is
+                # kept, so the next GENERATE polls it instead of paying again), free the money.
+                for att in g.attempts:
+                    if att.outcome is None:
+                        att.outcome, att.finished_at = "failed", utcnow()
+                        att.failure_kind = FailureKind.TRANSIENT
+                        att.error_message = "interrupted (process stopped); resumed"
+                        with contextlib.suppress(KeyError):
+                            s.budget.release(att.id)
+                g.release()
+                events.append(
+                    _event(
+                        s.id, s.stage, EventType.DECISION,
+                        "Released the interrupted whole-ad generation; its submitted job will be "
+                        "polled, not paid again.",
+                    )
+                )  # fmt: skip
             if released:
                 events.append(
                     _event(
@@ -226,7 +278,7 @@ class Orchestrator:
         return await self.run_until_blocked(run_id, stop_before=stop_before)
 
     # ------------------------------------------------------------------------ one step
-    async def step(self, run_id: str) -> RunState:
+    async def step(self, run_id: str) -> RunState:  # noqa: PLR0911 - one exit per outcome
         state = self.rt.storage.runs.load(run_id)
         stage = state.stage
         if stage in {Stage.GENERATE, Stage.ASSEMBLE}:
@@ -237,6 +289,8 @@ class Orchestrator:
 
             await ensure_music(self.rt, run_id)
             state = self.rt.storage.runs.load(run_id)
+        if stage in AD_STAGES and whole_ad(state):
+            return await self._ad_step(state)
         if stage in SCENE_STAGES:
             return await self._scene_step(state)
         node = NODES[stage]
@@ -349,6 +403,34 @@ class Orchestrator:
             await self.rt.scene_runner(state).run(run_id, stage)
         except Exception as exc:
             log.exception("scene stage stopped", run_id=run_id, stage=stage.value)
+            return self._fail(
+                run_id,
+                stage=stage,
+                kind=exc.kind if isinstance(exc, AgentError) else FailureKind.PERMANENT,
+                debug=f"{type(exc).__name__}: {exc}",
+                calls=[],
+                lang=state.language,
+                started=started,
+            )
+        spent = self.rt.storage.runs.load(run_id).budget.spent_usd - spent_before
+        return self._commit(run_id, stage, NodeResult(), started, stage_cost=spent)
+
+    async def _ad_step(self, state: RunState) -> RunState:
+        run_id, stage = state.id, state.stage
+        self.rt.storage.events.append(
+            run_id,
+            [
+                _event(
+                    run_id, stage, EventType.STAGE_STARTED, f"Started: {stage_label(stage, 'en')}"
+                )
+            ],
+        )
+        started = time.monotonic()
+        spent_before = state.budget.spent_usd
+        try:
+            await self.rt.ad_runner(state).run(run_id, stage)
+        except Exception as exc:
+            log.exception("ad stage stopped", run_id=run_id, stage=stage.value)
             return self._fail(
                 run_id,
                 stage=stage,

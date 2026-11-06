@@ -1,0 +1,79 @@
+[
+  {
+    "output": {
+      "category_cliches": [
+        "A model emerging from the sea at dusk",
+        "Slow-motion gold liquid splashing around the bottle",
+        "A woman drawn to a man after one spray"
+      ],
+      "concepts": [
+        {
+          "title": "The Last Guest",
+          "logline": "The majlis empties; the host keeps one gesture for the last guest: the bottle, offered with both hands.",
+          "narrative_arc": [
+            "the gathering ends",
+            "one guest lingers at the door",
+            "the host offers the scent",
+            "the bottle as the memory of the night"
+          ],
+          "visual_hook": "A coffee cup set down in silence as the room empties",
+          "insight": "In the Gulf, the scent you leave a guest with is the last word of your hospitality.",
+          "emotional_driver": "Generosity and pride",
+          "differentiator": "A human story of hospitality, not a display of luxury.",
+          "style_references": [
+            "warm practical light",
+            "slow dolly",
+            "shallow depth of field"
+          ],
+          "risk_notes": [],
+          "estimated_scene_count": 4
+        },
+        {
+          "title": "Amber Hour",
+          "logline": "Late sun pours through a mashrabiya and turns the bottle's facets into a lattice of gold on the wall.",
+          "narrative_arc": [
+            "light finds the lattice",
+            "the pattern crawls across the room",
+            "the bottle holds the light"
+          ],
+          "visual_hook": "A gold lattice of light sliding across a plaster wall",
+          "insight": "A scent is worn like a time of day: some people carry the golden hour with them.",
+          "emotional_driver": "Calm warmth",
+          "differentiator": "Pure light and pattern, no person.",
+          "style_references": [
+            "hard sunlight",
+            "long shadows",
+            "macro texture"
+          ],
+          "risk_notes": [
+            "light-only motion may read as static"
+          ],
+          "estimated_scene_count": 4
+        },
+        {
+          "title": "Wedding Night Walk",
+          "logline": "A groom's friends adjust his bisht in a corridor; the final touch before he walks out is the scent.",
+          "narrative_arc": [
+            "the corridor before the hall",
+            "hands fix the bisht",
+            "the spray",
+            "the doors open"
+          ],
+          "visual_hook": "Many hands fixing one collar in a narrow corridor",
+          "insight": "The last thing you put on before the biggest night is the one you remember.",
+          "emotional_driver": "Brotherhood and anticipation",
+          "differentiator": "A milestone moment with a group, built on touch and anticipation.",
+          "style_references": [
+            "tungsten corridor light",
+            "handheld-feel gimbal",
+            "warm grade"
+          ],
+          "risk_notes": [
+            "several people in frame"
+          ],
+          "estimated_scene_count": 4
+        }
+      ]
+    }
+  }
+]

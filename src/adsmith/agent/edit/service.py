@@ -50,6 +50,18 @@ from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.domain.storyboard import Storyboard
 
 MIN_CONFIDENCE = 0.6
+_WHOLE_AD_EDIT = {
+    False: (
+        "This ad was made in ONE generation, so a single scene cannot be changed on its own yet. "
+        "Ask for a new generation of the whole ad instead: adsmith regenerate-ad {run} "
+        "--reason '...' (it is estimated first and waits for your approval)."
+    ),
+    True: (
+        "هذا الإعلان صُنع في توليد واحد، فلا يمكن تعديل مشهد واحد منه وحده حالياً. "
+        "اطلب توليداً جديداً للإعلان كاملاً: adsmith regenerate-ad {run} --reason '...' "
+        "(تُقدَّر تكلفته أولاً وينتظر موافقتك)."
+    ),
+}
 EDITABLE_STAGES = frozenset(
     {Stage.DONE, Stage.DONE_PARTIAL, Stage.AWAITING_STORYBOARD_APPROVAL, Stage.ERRORED}
 )
@@ -124,6 +136,12 @@ class EditService:
         if state.stage not in EDITABLE_STAGES or state.storyboard is None or state.bible is None:
             raise EditRejectedError(f"run is at {state.stage}; edits apply to a finished run")
         sb, bible = state.storyboard, state.bible
+        if state.generation is not None:
+            # One generation renders every shot, so a scene edit cannot be applied locally
+            # (ADR-0023). Say so plainly instead of regenerating the whole ad behind the user.
+            msg = _WHOLE_AD_EDIT[state.language == "ar"].format(run=run_id)
+            self._record(run_id, [], [], f"Edit rejected: {msg}")
+            return EditOutcome("rejected", msg)
         ctx = self.rt.node_context(state)
         calls: list[LLMCallRecord] = []
 

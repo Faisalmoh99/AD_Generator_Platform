@@ -895,3 +895,27 @@ body + estimate → explicit y/N → one submit; request id saved for `--resume`
 **Note:** `scripts/live_one_clip.py` (untracked, not mine) fails `ruff`; the gate was checked with
 it excluded and it is not committed.
 **Tests:** 34 new (`tests/unit/test_higgsfield.py`); 619 passed, 2 skipped (live).
+
+## Phase B: the multishot generation unit (2026-11-06)
+**Built (ADR-0023):** format `multishot` (`generation = "whole"`, 3–6 shots of 1.5–6 s), resolved
+by code when a product photo is given (`--product-photo`) or forced (`--format`); the brief's
+duration is fitted to one generation. `domain/ad.py`: `AdPrompt` (numbered shots with timecodes,
+camera, lighting, sound; text rendered by code with fixed identity/no-text/no-voice rules) and
+`AdGeneration` (estimate → approval → generating → qa_review → approved | flagged | failed,
+crash release, human accept, renew with history). Stages `ESTIMATE` and
+`AWAITING_GENERATION_APPROVAL`; pure guards branch on `state.generation`; scene path unchanged.
+`agent/generation_runner.py`: estimate (provider price, refused against the run and media caps
+before any spend), generate (reserve exactly the approved estimate, request id persisted at
+submit, cache by request hash incl. version), review once (warn only). Real money always stops
+at the gate, even with `--auto`; code approves only a $0 cache hit or mock media in auto mode.
+Commands + CLI: `approve` (gate-aware), `decline`, `accept-ad`, `regenerate-ad`; API approve is
+gate-aware. Prompts: `ad_prompt_writer` v1, `storyboard` v8 (multishot section), `continuity` v5
+(the real photo is passed as an image). Assembly keeps the generation's audio (end card gets a
+silent track). Edits on multishot runs are rejected with a message pointing to `regenerate-ad`.
+Mock reference-to-video provider (ffmpeg push-in on the photo + a tone track). Studio pipeline,
+labels, Production Pack and `adsmith show` know the new stages. Scripted scenario `multishot_en`.
+**Deviation:** the ad critic (`LLMCritic.review_ad`) lands in Phase D; until then only the mock
+critic reviews whole ads.
+**Tests:** 45 new (`tests/unit/test_ad_generation.py`, `tests/integration/test_multishot_pipeline.py`,
+incl. kill-during-generation → resume pays once on a fake Higgsfield server); version-pinned
+storyboard tests moved to v8. 664 passed, 2 skipped.

@@ -42,6 +42,7 @@ from adsmith.agent.orchestrator import Orchestrator
 from adsmith.api.gallery import load_gallery
 from adsmith.api.view import event_json, run_view
 from adsmith.config import Settings
+from adsmith.domain.enums import Stage
 from adsmith.media.endcard import FONT_DIR
 from adsmith.storage import RunNotFoundError
 
@@ -177,7 +178,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
     @app.post("/api/runs/{run_id}/approve")
     async def approve(run_id: str) -> dict[str, str]:
         try:
-            commands.approve_storyboard(rt.storage, run_id)
+            if rt.storage.runs.load(run_id).stage is Stage.AWAITING_GENERATION_APPROVAL:
+                commands.approve_generation(rt.storage, run_id)
+            else:
+                commands.approve_storyboard(rt.storage, run_id)
         except commands.CommandRejectedError as exc:
             raise HTTPException(409, str(exc)) from exc
         background(run_id, orch.run_until_blocked(run_id))

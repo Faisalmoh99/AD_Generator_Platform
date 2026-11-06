@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from adsmith.domain.ad import AdGeneration
 from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import ConceptSet
@@ -67,6 +68,13 @@ class SetEndCard(DomainModel):
     endcard: EndCardCopy
 
 
+class SetAdGeneration(DomainModel):
+    """The whole-ad generation of a multishot run, with its prompt (written by the prompt node)."""
+
+    kind: Literal["set_ad_generation"] = "set_ad_generation"
+    generation: AdGeneration
+
+
 class UpgradeSceneFlags(DomainModel):
     """Upgrade-only (ADR-0010): flags can be turned on, never off."""
 
@@ -91,7 +99,8 @@ Delta = Annotated[
     | UpgradeSceneFlags
     | FailScenes
     | SetFinal
-    | SetEndCard,
+    | SetEndCard
+    | SetAdGeneration,
     Field(discriminator="kind"),
 ]
 
@@ -165,3 +174,11 @@ def apply_delta(state: RunState, delta: Delta) -> None:
             state.final = delta.final
         case SetEndCard():
             state.endcard = delta.endcard
+        case SetAdGeneration():
+            if state.generation is not None and state.generation.status not in {
+                "pending",
+                "estimated",
+                "failed",
+            }:
+                raise StaleDeltaError(f"the ad generation is {state.generation.status}")
+            state.generation = delta.generation

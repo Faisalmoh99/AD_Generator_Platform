@@ -9,12 +9,12 @@ from __future__ import annotations
 from pydantic import JsonValue
 
 from adsmith.agent.transitions import GATE_EXITS
-from adsmith.domain.enums import SceneStatus, Stage, StaleFrom
+from adsmith.domain.enums import FailureKind, SceneStatus, Stage, StaleFrom
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.generation import Artifact
 from adsmith.domain.qa import QAVerdict
 from adsmith.domain.run import RunState
-from adsmith.domain.scene import ShotSpec
+from adsmith.domain.scene import SceneFailure, ShotSpec
 from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.storage import Storage
 
@@ -441,3 +441,113 @@ def retry_scene(storage: Storage, run_id: str, scene_order: int) -> RunState:
         ]
 
     return storage.runs.update(run_id, mutate, reason=f"retry scene {scene_order}").state
+
+
+# ------------------------------------------------------------------------ whole-ad generations
+def approve_generation(
+    storage: Storage, run_id: str, *, expected_version: int | None = None
+) -> RunState:
+    """The estimate gate (ADR-0023): approve spending exactly the shown estimate on ONE
+    generation. Nothing is spent before this command."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.stage is not Stage.AWAITING_GENERATION_APPROVAL or s.generation is None:
+            raise CommandRejectedError(f"run is at {s.stage}, not waiting for a spend approval")
+        g = s.generation
+        g.approve("user")
+        s.stage = GATE_EXITS[Stage.AWAITING_GENERATION_APPROVAL]
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.AWAITING_GENERATION_APPROVAL,
+                type=EventType.DECISION,
+                summary=f"HUMAN: approved ${g.approved_usd or 0:.3f} for one generation of the "
+                f"whole ad ({g.model}, {g.duration_s}s {g.resolution}).",
+                payload={"approved_usd": g.approved_usd, "human": True},
+            )
+        ]
+
+    return storage.runs.update(
+        run_id, mutate, reason="generation approved", expected_version=expected_version
+    ).state
+
+
+def decline_generation(storage: Storage, run_id: str, *, reason: str = "declined") -> RunState:
+    """The estimate gate: decline. Nothing is spent; the run ends partial and can be renewed."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.stage is not Stage.AWAITING_GENERATION_APPROVAL or s.generation is None:
+            raise CommandRejectedError(f"run is at {s.stage}, not waiting for a spend approval")
+        s.generation.fail(
+            SceneFailure(
+                kind=FailureKind.BUDGET_EXCEEDED,
+                reason_user="Declined at the estimate gate: nothing was spent.",
+                reason_debug=reason[:4000],
+            )
+        )
+        s.stage = Stage.DONE_PARTIAL
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.AWAITING_GENERATION_APPROVAL,
+                type=EventType.DECISION,
+                summary=f"HUMAN: declined the estimate ({reason}); nothing was spent.",
+                payload={"human": True},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="generation declined").state
+
+
+def accept_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
+    """Human override: accept a whole-ad generation the critic flagged (the failing verdict stays
+    as the record). The ad was already assembled, so the run is simply done."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if g is None or g.status != "flagged":
+            raise CommandRejectedError("there is no flagged whole-ad generation to accept")
+        g.accept(reason)
+        if s.final is not None and s.stage is Stage.DONE_PARTIAL:
+            s.stage = Stage.DONE
+        score = g.qa.score if g.qa else 0.0
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"HUMAN OVERRIDE: whole ad accepted despite the critic ({score:.2f}). "
+                f"Reason: {reason}",
+                payload={"human_override": True, "critic_score": score, "reason": reason},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="ad accepted").state
+
+
+def regenerate_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
+    """A human asks for a NEW generation of the whole ad (same prompt, new version, so a new
+    request): it goes back to the estimate, and real money waits at the gate again."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if g is None:
+            raise CommandRejectedError("this run has no whole-ad generation")
+        if s.stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}:
+            raise CommandRejectedError(f"run is at {s.stage}; regenerate a finished run")
+        old = g.version
+        g.renew(f"regenerate: {reason}")
+        s.final, s.error = None, None
+        s.stage = Stage.ESTIMATE
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.ESTIMATE,
+                type=EventType.DECISION,
+                summary=f"HUMAN: new generation of the whole ad (v{old} → v{g.version}): "
+                f"{reason}. It is estimated first and waits for approval.",
+                payload={"human": True, "version": g.version},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="ad regenerate").state

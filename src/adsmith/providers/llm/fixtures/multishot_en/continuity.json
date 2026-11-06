@@ -1,0 +1,57 @@
+[
+  {
+    "output": {
+      "character": {
+        "description": "a Saudi host in his thirties",
+        "age_range": "30-38",
+        "appearance": "warm olive skin, calm dark eyes",
+        "hair": "short black hair under a white ghutra",
+        "grooming": "neatly trimmed beard",
+        "build": "medium build",
+        "wardrobe": [
+          "white Saudi thobe with a stiff stand collar and a concealed placket",
+          "white ghutra with a black agal"
+        ]
+      },
+      "product": {
+        "name": "the fragrance",
+        "form": "faceted rectangular glass flacon with a domed cap",
+        "materials": "heavy faceted amber glass, polished gold metal cap with an open geometric lattice",
+        "colors": "deep amber glass, gold cap",
+        "branding_text": "",
+        "branding_style": "a small gold geometric emblem on the front, no letters",
+        "distinctive_features": [
+          "gold mabkhara-dome cap with a geometric lattice",
+          "gold geometric emblem on the front facet"
+        ],
+        "hero_angle": "straight-on, slightly low"
+      },
+      "color_grade": {
+        "palette": [
+          "#140C06",
+          "#5A3412",
+          "#C98A2E",
+          "#E9C77B"
+        ],
+        "contrast": "high",
+        "saturation": "warm, moderate",
+        "film_emulation": null
+      },
+      "location": {
+        "primary": "a traditional majlis at night",
+        "secondary": [
+          "the carved wooden doorway"
+        ],
+        "era": "contemporary"
+      },
+      "mood": "warm, proud, generous",
+      "lighting": "warm practical lamps against deep brown shadows",
+      "audio_mood": "oud and low strings, soft room tone",
+      "forbidden": [
+        "readable text",
+        "alcohol cues",
+        "smoke near the product"
+      ]
+    }
+  }
+]

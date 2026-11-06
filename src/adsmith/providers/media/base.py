@@ -153,6 +153,11 @@ class ReferenceVideoProvider(Protocol):
 
     name: str
     model: str
+    max_prompt_chars: int
+
+    async def reference_url(self, path: Path) -> str:
+        """A url the model can read for a local reference image (public for real providers)."""
+        ...
 
     async def estimate_usd(self, job: ReferenceVideoJob) -> float: ...
 

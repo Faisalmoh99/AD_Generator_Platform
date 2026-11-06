@@ -24,7 +24,7 @@ import json
 import time
 from pathlib import Path
 
-from adsmith.agent.context import AgentRuntime
+from adsmith.agent.context import AgentRuntime, ad_model_key
 from adsmith.config import Settings
 from adsmith.domain.enums import ScenePhase
 from adsmith.domain.generation import RemoteRequest
@@ -35,7 +35,7 @@ def load_prompt(args: argparse.Namespace, rt: AgentRuntime) -> str:
     if args.prompt_file:
         return Path(args.prompt_file).read_text(encoding="utf-8").strip()
     state = rt.storage.runs.load(args.run)
-    gen = getattr(state, "generation", None)
+    gen = state.generation
     if gen is None or gen.prompt is None:
         raise SystemExit(f"run {args.run} has no ad prompt yet (plan it with --until estimate)")
     text: str = gen.prompt.text
@@ -49,7 +49,7 @@ async def main() -> None:  # noqa: PLR0915
     src.add_argument("--run", help="take the ad prompt from a planned run")
     src.add_argument("--resume", help="poll the job recorded in this .json (no new submit)")
     ap.add_argument("--photo", default="assets/perfume.jpeg")
-    ap.add_argument("--model", default=None, help="catalog key, e.g. seedance_20_ref")
+    ap.add_argument("--model", default=None, help="catalog key (default: the catalog default)")
     ap.add_argument("--duration", type=int, default=12)
     ap.add_argument("--resolution", default="720p")
     ap.add_argument("--aspect", default="9:16")
@@ -79,7 +79,7 @@ async def main() -> None:  # noqa: PLR0915
         if not await asyncio.to_thread(photo.is_file):
             raise SystemExit(f"no product photo at {photo}")
         image_urls = (await rt.hf_queue().upload(photo),)
-        model = args.model or s.hf_video_model or "seedance_20_ref"
+        model = ad_model_key(s, args.model)
         duration, resolution, aspect, audio = (
             args.duration,
             args.resolution,

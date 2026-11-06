@@ -1,0 +1,92 @@
+[
+  {
+    "output": {
+      "scenes": [
+        {
+          "purpose": "hook",
+          "description": "The majlis is empty; a small coffee cup is set down on a brass tray, the bottle glowing on the side table behind it.",
+          "duration_s": 3.0,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "static",
+            "lens": "85mm f/2, shallow depth of field",
+            "lighting": "warm 2700K practical lamp camera-left, soft amber fill, deep shadows",
+            "time_of_day": "night",
+            "composition": "cup in the foreground, the amber bottle soft in the background right",
+            "mood": "calm",
+            "subject_action": "a hand sets a small coffee cup down on the brass tray",
+            "setting": "an empty majlis at night, cushions and a brass tray",
+            "color_notes": "amber, gold and deep brown",
+            "speed": "normal"
+          },
+          "shows_character": true,
+          "shows_product": true,
+          "vocab": null
+        },
+        {
+          "purpose": "build",
+          "description": "At the door, the host turns back toward the last guest.",
+          "duration_s": 3.0,
+          "shot": {
+            "shot_type": "medium",
+            "camera_movement": "dolly_in",
+            "lens": "50mm f/2.8",
+            "lighting": "tungsten hall light from above, warm rim on the shoulders",
+            "time_of_day": "night",
+            "composition": "the host in a white thobe frames the right third, the doorway left",
+            "mood": "tender",
+            "subject_action": "the host turns toward the guest at the doorway",
+            "setting": "the majlis doorway, carved wood",
+            "color_notes": "amber, gold and deep brown",
+            "speed": "normal"
+          },
+          "shows_character": true,
+          "shows_product": false,
+          "vocab": null
+        },
+        {
+          "purpose": "reveal",
+          "description": "He offers the bottle with both hands; the guest's hand reaches for it.",
+          "duration_s": 3.0,
+          "shot": {
+            "shot_type": "close_up",
+            "camera_movement": "push_in",
+            "lens": "100mm macro f/2.8",
+            "lighting": "warm practical key camera-left, gold rim on the cap",
+            "time_of_day": "night",
+            "composition": "two hands and the bottle centred, the gold dome cap catching light",
+            "mood": "generous",
+            "subject_action": "the host's two hands offer the amber bottle to the guest",
+            "setting": "the doorway, soft background",
+            "color_notes": "amber, gold and deep brown",
+            "speed": "normal"
+          },
+          "shows_character": true,
+          "shows_product": true,
+          "vocab": null
+        },
+        {
+          "purpose": "product",
+          "description": "The bottle alone on the brass tray, its gold cap catching the last light.",
+          "duration_s": 3.0,
+          "shot": {
+            "shot_type": "medium_close_up",
+            "camera_movement": "push_in",
+            "lens": "85mm f/4",
+            "lighting": "one warm key from camera-left, soft fill, a thin gold rim",
+            "time_of_day": "night",
+            "composition": "the bottle centred and upright, the lower fifth dark and empty for the end card",
+            "mood": "proud",
+            "subject_action": "a slow push-in on the amber bottle",
+            "setting": "the brass tray in the empty majlis",
+            "color_notes": "amber, gold and deep brown",
+            "speed": "normal"
+          },
+          "shows_character": false,
+          "shows_product": true,
+          "vocab": null
+        }
+      ]
+    }
+  }
+]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from adsmith.agent.context import NodeContext
 from adsmith.agent.deltas import SetConcepts
 from adsmith.agent.nodes.base import NodeResult
-from adsmith.agent.nodes.common import brief_block, decision, language_name, video_profile_block
+from adsmith.agent.nodes.common import brief_block, decision, language_name, profile_block_for
 from adsmith.config import LLMNode
 from adsmith.domain.concept import ConceptSet, ConceptSetDraft
 from adsmith.domain.enums import Stage
@@ -20,7 +20,7 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         brief=brief_block(state.brief),
         user_language=language_name(state.brief.language),
         duration=f"{state.brief.duration_s:g}",
-        video_profile=video_profile_block(ctx.settings, state.config.video_model),
+        video_profile=profile_block_for(ctx.settings, state),
         format_block=format_block(ctx.settings.formats, state.brief.format),
     )
     result = await ctx.llm.call_and_convert(

@@ -101,6 +101,8 @@ def test_scenario_passes_production_lints(scenario: Path) -> None:
     scenes = StoryboardDraft.model_validate(_outputs(scenario, "storyboard")[0]).scenes
     for i, s in enumerate(scenes, 1):
         assert multi_action_problem(s.shot.subject_action) is None, f"scene {i}"
+    if not (scenario / "prompt_writer.json").is_file():
+        return  # a whole-ad scenario (multishot) writes one ad prompt, not per-scene prompts
     prompts = _outputs(scenario, "prompt_writer")
     for i, (s, p) in enumerate(zip(scenes, prompts, strict=False), 1):
         clashes = negative_contradictions(

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from adsmith.config import FalVideoEndpoint, Settings
+from adsmith.config import FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept
 from adsmith.domain.enums import Language, Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.formats import AdFormat
+from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene
 from adsmith.domain.scene_flags import Flag, FlagOverride
 from adsmith.domain.storyboard import Storyboard
@@ -89,7 +90,7 @@ def scene_duration_bounds(
     model_max = endpoint.max_duration_s or max(endpoint.allowed_durations_s or [MAX_SCENE_S])
     single = endpoint.profile.max_single_shot_s if endpoint.profile else model_max
     single_max = min(single, model_max, MAX_SCENE_S)
-    if fmt is AdFormat.MONTAGE:
+    if fmt in {AdFormat.MONTAGE, AdFormat.MULTISHOT}:
         g = settings.formats.grammar(fmt)
         return g.kept_min, g.kept_max, g.kept_max
     narrative = settings.formats.grammar(AdFormat.NARRATIVE)
@@ -97,14 +98,43 @@ def scene_duration_bounds(
     return max(narrative.kept_min, model_min), MULTI_SCENE_MAX_S, single_max
 
 
-def video_profile_block(settings: Settings, video_model: str | None = None) -> str:
+def _ad_endpoint(settings: Settings, ad_model: str | None) -> HiggsfieldVideoEndpoint:
+    from adsmith.agent.context import ad_endpoint  # noqa: PLC0415
+
+    return ad_endpoint(settings, ad_model)
+
+
+def profile_block_for(settings: Settings, state: RunState) -> str:
+    """The capability profile of the model that will render this run: the reference-to-video
+    model for a multishot run, else the per-scene video model."""
+    if state.brief is not None and state.brief.format is AdFormat.MULTISHOT:
+        return video_profile_block(settings, ad_model=state.config.ad_model, whole_ad=True)
+    return video_profile_block(settings, state.config.video_model)
+
+
+def video_profile_block(
+    settings: Settings,
+    video_model: str | None = None,
+    *,
+    ad_model: str | None = None,
+    whole_ad: bool = False,
+) -> str:
     """The target video model's capability profile as prompt text (ideate, select, storyboard)."""
-    endpoint = _video_endpoint(settings, video_model)
+    endpoint: FalVideoEndpoint | HiggsfieldVideoEndpoint = (
+        _ad_endpoint(settings, ad_model) if whole_ad else _video_endpoint(settings, video_model)
+    )
     p = endpoint.profile
     if p is None:
         return "(no capability profile for this video model)"
     lines = [
-        f"Video model: {endpoint.endpoint} (one continuous take up to {p.max_single_shot_s:g} s)"
+        f"Video model: {endpoint.endpoint} ("
+        + (
+            f"one generation renders the whole ad, up to {p.max_single_shot_s:g} s, in "
+            "several shots with native sound"
+            if whole_ad
+            else f"one continuous take up to {p.max_single_shot_s:g} s"
+        )
+        + ")"
     ]
     lines += ["Renders well:", *(f"- {s}" for s in p.strengths)]
     lines += ["Renders badly:", *(f"- {w}" for w in p.weaknesses)]

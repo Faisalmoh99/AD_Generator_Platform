@@ -76,7 +76,7 @@ async def test_full_figure_person_in_a_person_free_shot_is_repaired(tmp_path: Pa
     state = await h.orch.run_until_blocked(run.id, stop_before=None)
     assert state.storyboard is not None and h.llm.calls_for("storyboard") == 2
     names = [r.template for r in h.llm.requests]
-    repair = h.llm.requests[names.index("storyboard@v7") + 1].messages[-1]
+    repair = h.llm.requests[names.index("storyboard@v8") + 1].messages[-1]
     text = repair.parts[0].text  # type: ignore[union-attr]
     assert "vocab 'water_drop_leaf' shows no person" in text and "man" in text
 

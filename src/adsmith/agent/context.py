@@ -10,16 +10,21 @@ from typing import TYPE_CHECKING
 
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.structured import StructuredCaller
-from adsmith.config import FalImageEndpoint, FalVideoEndpoint, Settings
+from adsmith.config import FalImageEndpoint, FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
 from adsmith.domain.run import RunConfig, RunState
 from adsmith.providers.llm.base import LLMProvider
 from adsmith.providers.llm.scripted import ScriptedLLMProvider
 from adsmith.storage import ArtifactStore, Storage
 
 if TYPE_CHECKING:
+    from adsmith.agent.generation_runner import AdGenerationRunner
     from adsmith.agent.media import MediaGateway
     from adsmith.agent.scenes import SceneStageRunner
-    from adsmith.providers.media.base import MusicProvider, VideoCapabilities
+    from adsmith.providers.media.base import (
+        MusicProvider,
+        ReferenceVideoProvider,
+        VideoCapabilities,
+    )
     from adsmith.providers.media.chaos import ChaosPolicy
     from adsmith.providers.media.fal import FalQueue
     from adsmith.providers.media.higgsfield import HiggsfieldQueue, HiggsfieldVideoProvider
@@ -49,6 +54,9 @@ class AgentRuntime:
     _provider_override: LLMProvider | None = None
     _gateways: dict[str, MediaGateway] = field(default_factory=dict)
     media_factory: Callable[[RunState], MediaGateway] | None = None  # tests / demos
+    # Whole-ad generations (multishot): tests inject a provider (e.g. Higgsfield on a fake server).
+    ad_provider_factory: Callable[[RunState], ReferenceVideoProvider] | None = None
+    _ad_providers: dict[str, ReferenceVideoProvider] = field(default_factory=dict)
     _account: SpendAccount | None = None
     _fal_queue: FalQueue | None = None
     _hf_account: SpendAccount | None = None
@@ -234,6 +242,30 @@ class AgentRuntime:
         key = model_key or self.settings.hf_video_model or catalog.video.default
         return HiggsfieldVideoProvider(self.hf_queue(), catalog.video.endpoints[key], probe_video)
 
+    def ad_video_provider(self, run: RunState) -> ReferenceVideoProvider:
+        """The run's reference-to-video provider (one per run): Higgsfield for real, else a mock
+        that obeys the same endpoint's limits at a simulated price (ADR-0023)."""
+        if run.id not in self._ad_providers:
+            if self.ad_provider_factory is not None:
+                self._ad_providers[run.id] = self.ad_provider_factory(run)
+            elif run.config.ad_provider == "higgsfield":
+                self._ad_providers[run.id] = self.higgsfield_video(run.config.ad_model)
+            else:
+                from adsmith.providers.media.mock import (  # noqa: PLC0415
+                    MockReferenceVideoProvider,
+                )
+
+                ep = ad_endpoint(self.settings, run.config.ad_model)
+                self._ad_providers[run.id] = MockReferenceVideoProvider(
+                    model=f"mock:{ep.endpoint}",
+                    usd_per_second=ep.mock_usd_per_second,
+                    max_prompt_chars=ep.max_prompt_chars,
+                    latency_s=self.settings.mock_latency_s,
+                    sleep=self.sleep,
+                    long_side=run.config.media_long_side or self.settings.media_long_side,
+                )
+        return self._ad_providers[run.id]
+
     def media_remaining_usd(self, run_config: RunConfig) -> float | None:
         """What is left of the prepaid wallets this run's paid media draws on (None = no real
         media provider: only the run budget applies)."""
@@ -327,6 +359,19 @@ class AgentRuntime:
             rng=self.rng,
         )
 
+    def ad_runner(self, run: RunState) -> AdGenerationRunner:
+        from adsmith.agent.generation_runner import AdGenerationRunner  # noqa: PLC0415
+        from adsmith.agent.qa import LLMCritic, MockCritic  # noqa: PLC0415
+
+        critic = LLMCritic(self.node_context(run)) if run.config.qa_mode == "llm" else MockCritic()
+        return AdGenerationRunner(
+            storage=self.storage,
+            provider=self.ad_video_provider(run),
+            critic=critic,
+            sleep=self.sleep,
+            rng=self.rng,
+        )
+
     def _make_provider(self, run: RunState) -> LLMProvider:
         if self._provider_override is not None:
             return self._provider_override
@@ -377,6 +422,22 @@ def reference_enabled(settings: Settings, run: RunState) -> bool:
         return True
     sb = run.storyboard
     return sb is not None and settings.formats.grammar(sb.format).identity == "reference"
+
+
+def ad_model_key(settings: Settings, ad_model: str | None) -> str:
+    """Catalog key of the reference-to-video endpoint: the run's, else the setting's, else the
+    catalog default."""
+    catalog = settings.catalog.higgsfield
+    if catalog is None:
+        raise RuntimeError("config/models.toml has no [higgsfield] section")
+    return ad_model or settings.hf_video_model or catalog.video.default
+
+
+def ad_endpoint(settings: Settings, ad_model: str | None) -> HiggsfieldVideoEndpoint:
+    """The reference-to-video endpoint whose limits a whole-ad run plans for (mock runs too)."""
+    catalog = settings.catalog.higgsfield
+    assert catalog is not None
+    return catalog.video.endpoints[ad_model_key(settings, ad_model)]
 
 
 def video_capabilities(endpoint: FalVideoEndpoint) -> VideoCapabilities:

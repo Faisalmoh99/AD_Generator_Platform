@@ -24,6 +24,7 @@ from adsmith.cli.live import LiveTrace
 from adsmith.config import Settings
 from adsmith.domain.enums import SceneStatus, Stage
 from adsmith.domain.events import EventType
+from adsmith.domain.formats import AdFormat
 from adsmith.domain.run import RunState
 from adsmith.logging import configure_logging
 
@@ -83,6 +84,7 @@ def print_state(orch: Orchestrator, state: RunState) -> None:
                 note,
             )
         console.print(table)
+    _print_generation(state)
     if state.endcard:
         flag = "  [yellow](placeholder)[/]" if state.endcard.is_placeholder else ""
         console.print(
@@ -101,9 +103,31 @@ def print_state(orch: Orchestrator, state: RunState) -> None:
     nxt = {
         Stage.AWAITING_CONCEPT_CHOICE: f"adsmith choose {state.id} <1-3>",
         Stage.AWAITING_STORYBOARD_APPROVAL: f"adsmith approve {state.id}",
+        Stage.AWAITING_GENERATION_APPROVAL: f"adsmith approve {state.id}   (or: adsmith decline "
+        f"{state.id})",
     }.get(state.stage)
     if nxt:
         console.print(f"Next: [bold]{nxt}[/]")
+
+
+def _print_generation(state: RunState) -> None:
+    g = state.generation
+    if g is None:
+        return
+    est = f"${g.est_usd:.3f}" if g.est_usd is not None else "not estimated"
+    appr = f", approved by {g.approved_by}" if g.approved_by else ""
+    console.print(
+        f"[bold]Whole ad[/] v{g.version} [cyan]{g.status}[/] · {g.model} · {g.duration_s}s "
+        f"{g.resolution} {g.aspect_ratio} · audio {'on' if g.generate_audio else 'off'} · "
+        f"estimate {est}{appr}"
+    )
+    if state.stage is Stage.AWAITING_GENERATION_APPROVAL:
+        console.print(f"[bold]Prompt sent to the model:[/]\n{g.prompt.text}")
+    if g.qa is not None:
+        why = "; ".join(g.qa.fail_reasons) or "hard gate passed"
+        console.print(f"[dim]Critic: {g.qa.score:.2f} ({why})[/]")
+    if g.failure is not None:
+        console.print(f"[red]Whole ad failed:[/] {g.failure.reason_user}")
 
 
 def run_edit(orch: Orchestrator, run_id: str, instruction: str, resolution: str | None) -> None:
@@ -176,12 +200,27 @@ def run(
             help="Lock one gated product still and condition product keyframes on it.",
         ),
     ] = None,
+    product_photo: Annotated[
+        Path | None,
+        typer.Option(
+            "--product-photo",
+            help="A real product photo: the ad is made in ONE multi-shot generation from it.",
+        ),
+    ] = None,
+    ad_format: Annotated[
+        AdFormat | None, typer.Option("--format", help="Force a format instead of resolving it.")
+    ] = None,
 ) -> None:
     """Start a new run."""
     orch = _orchestrator()
-    state = orch.create_run(
-        request, interactive=not auto, chaos=chaos, hero=hero, product_reference=product_ref
-    )
+    try:
+        state = orch.create_run(
+            request, interactive=not auto, chaos=chaos, hero=hero, product_reference=product_ref,
+            product_photo=product_photo, ad_format=ad_format,
+        )  # fmt: skip
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
     console.print(f"Run [bold]{state.id}[/] created.")
     print_state(orch, follow(orch, state.id, orch.run_until_blocked(state.id, stop_before=until)))
 
@@ -232,9 +271,39 @@ def accept(
 
 @app.command()
 def approve(run_id: str) -> None:
-    """Approve the storyboard keyframes and generate the clips."""
+    """Approve at the current gate: the storyboard keyframes, or the estimate of a whole-ad
+    generation (real money is spent only after this)."""
     orch = _orchestrator()
-    commands.approve_storyboard(orch.rt.storage, run_id)
+    if orch.rt.storage.runs.load(run_id).stage is Stage.AWAITING_GENERATION_APPROVAL:
+        commands.approve_generation(orch.rt.storage, run_id)
+    else:
+        commands.approve_storyboard(orch.rt.storage, run_id)
+    print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
+
+
+@app.command()
+def decline(
+    run_id: str, reason: Annotated[str, typer.Option(help="Why")] = "declined at the gate"
+) -> None:
+    """Decline the estimate of a whole-ad generation: nothing is spent."""
+    orch = _orchestrator()
+    print_state(orch, commands.decline_generation(orch.rt.storage, run_id, reason=reason))
+
+
+@app.command("accept-ad")
+def accept_ad(run_id: str, reason: Annotated[str, typer.Option(help="Why you accept it")]) -> None:
+    """Human override: accept a whole-ad generation the critic flagged (logged)."""
+    orch = _orchestrator()
+    print_state(orch, commands.accept_ad(orch.rt.storage, run_id, reason=reason))
+
+
+@app.command("regenerate-ad")
+def regenerate_ad(
+    run_id: str, reason: Annotated[str, typer.Option(help="Why a new generation")]
+) -> None:
+    """A new generation of the whole ad: estimated first, then it waits at the spend gate."""
+    orch = _orchestrator()
+    commands.regenerate_ad(orch.rt.storage, run_id, reason=reason)
     print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
 
 

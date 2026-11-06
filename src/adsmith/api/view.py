@@ -18,6 +18,7 @@ PIPELINE: list[tuple[str, str, str]] = [
     ("storyboard", "Storyboard", "اللوحة"),
     ("continuity", "Bible", "الاستمرارية"),
     ("prompt", "Prompts", "الأوامر"),
+    ("estimate", "Estimate", "التقدير"),
     ("keyframe", "Keyframes", "الإطارات"),
     ("generate", "Clips", "اللقطات"),
     ("qa", "QA", "الجودة"),
@@ -32,6 +33,7 @@ STAGE_KIND: dict[str, tuple[str, str]] = {
     "storyboard": ("llm", "LLM picks shots · code validates the grammar"),
     "continuity": ("llm", "LLM writes the bible · code lints wardrobe"),
     "prompt": ("llm", "LLM writes prompts · code lints them"),
+    "estimate": ("code", "provider prices the one generation · a human approves the spend"),
     "keyframe": ("mixed", "image model · LLM vision gate · code decides pass"),
     "generate": ("code", "video model · code picks takes and windows"),
     "qa": ("mixed", "LLM vision critic · code decides pass"),
@@ -45,6 +47,7 @@ _DATA_KEYS = (
 _GATE_POSITION = {
     Stage.AWAITING_CONCEPT_CHOICE: "select",
     Stage.AWAITING_STORYBOARD_APPROVAL: "keyframe",
+    Stage.AWAITING_GENERATION_APPROVAL: "estimate",
 }
 
 
@@ -307,6 +310,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
             "by_category": {k: round(v, 4) for k, v in b.by_category.items()},
             "simulated": state.config.media_provider == "mock",
         },
+        "generation": _generation(state),
         "gates": {"concept": state.config.interactive, "storyboard": state.config.interactive},
         "busy": stage not in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}
         and stage not in _GATE_POSITION,
@@ -325,4 +329,25 @@ def _product_reference(state: RunState) -> dict[str, Any] | None:
         "tries": pr.tries,
         "reasons": pr.verdict.fail_reasons if pr.verdict else [],
         "cost": round(pr.cost_usd, 3),
+    }
+
+
+def _generation(state: RunState) -> dict[str, Any] | None:
+    g = state.generation
+    if g is None:
+        return None
+    return {
+        "status": g.status,
+        "version": g.version,
+        "model": g.model,
+        "duration_s": g.duration_s,
+        "resolution": g.resolution,
+        "audio": g.generate_audio,
+        "est_usd": g.est_usd,
+        "approved_by": g.approved_by,
+        "prompt": g.prompt.text,
+        "video": media_url(g.artifact.path if g.artifact else None),
+        "score": g.qa.score if g.qa else None,
+        "reasons": g.qa.fail_reasons if g.qa else [],
+        "failure": g.failure.reason_user if g.failure else None,
     }

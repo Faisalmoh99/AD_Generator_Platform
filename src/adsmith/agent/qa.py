@@ -83,6 +83,13 @@ class MockCritic:
         )
         return verdict, []
 
+    async def review_ad(self, state: RunState) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """Mock media cannot be judged: the whole-ad generation passes (ADR-0023)."""
+        verdict = QAVerdict(
+            score=0.9, checks=_ALL_OK, frames_inspected=1, threshold=state.config.qa_threshold
+        )
+        return verdict, []
+
     async def review(self, state: RunState, scene: Scene) -> tuple[QAVerdict, list[LLMCallRecord]]:
         # The attempt that produced the clip under review (best-of-N reviews several candidates).
         clip = next(
@@ -217,6 +224,10 @@ class LLMCritic:
             LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
         )
         return res.value, res.calls
+
+    async def review_ad(self, state: RunState) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """The whole-ad critic is built in Phase D (rubric scores + the hard gate)."""
+        raise PermanentProviderError("the whole-ad vision critic is not built yet (Phase D)")
 
     async def review_product_reference(
         self, state: RunState, image: Artifact, prompt: str

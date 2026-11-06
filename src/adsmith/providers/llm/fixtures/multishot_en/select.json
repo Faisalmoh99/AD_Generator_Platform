@@ -1,0 +1,47 @@
+[
+  {
+    "output": {
+      "scores": [
+        {
+          "concept_number": 1,
+          "brief_fit": 9,
+          "producibility": 7,
+          "product_hero": 8,
+          "cultural_fit": 10,
+          "originality": 8,
+          "insight": 9,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "A real Gulf truth carries the ad; risk: the hand-over must read in one beat."
+        },
+        {
+          "concept_number": 2,
+          "brief_fit": 7,
+          "producibility": 6,
+          "product_hero": 8,
+          "cultural_fit": 7,
+          "originality": 7,
+          "insight": 6,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "Beautiful light, but the idea is thin and light-only motion is risky."
+        },
+        {
+          "concept_number": 3,
+          "brief_fit": 8,
+          "producibility": 6,
+          "product_hero": 7,
+          "cultural_fit": 9,
+          "originality": 7,
+          "insight": 8,
+          "single_shot_plausible": true,
+          "product_only_at_end": false,
+          "uses_category_cliche": false,
+          "rationale": "Strong milestone emotion; risk: several people and fast hand motion."
+        }
+      ]
+    }
+  }
+]

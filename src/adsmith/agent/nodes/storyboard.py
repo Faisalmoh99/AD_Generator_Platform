@@ -12,8 +12,8 @@ from adsmith.agent.nodes.common import (
     decision,
     flag_override_events,
     language_name,
+    profile_block_for,
     scene_duration_bounds,
-    video_profile_block,
 )
 from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
@@ -25,7 +25,7 @@ from adsmith.domain.storyboard import Storyboard, StoryboardDraft
 from adsmith.domain.vocabulary import VocabLibrary
 
 
-async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
+async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PLR0915
     assert state.brief is not None and state.concepts is not None
     concept = state.concepts.selected
     assert concept is not None
@@ -36,9 +36,10 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
     min_s, max_s, single_max = scene_duration_bounds(ctx.settings, video_model, fmt)
     duration = brief.duration_s
     montage = fmt is AdFormat.MONTAGE
+    whole = grammar.generation == "whole"  # multishot: the shots of ONE generation
     max_scenes = (
         min(grammar.max_shots, int(duration // min_s))
-        if montage
+        if montage or whole
         else max(2, min(6, int(duration // min_s)))
     )
 
@@ -52,6 +53,8 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
             )
         if montage:
             return _montage(draft)
+        if whole:
+            return _whole(draft)
         single = len(draft.scenes) == 1
         if single and draft.scenes[0].duration_s > single_max:
             raise ValueError(
@@ -106,6 +109,26 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
 
     vocab = ctx.settings.vocabulary.for_model(video_model)
 
+    def _whole(draft: StoryboardDraft) -> Storyboard:
+        """Multishot grammar (formats.toml): shot count, per-shot length, hero last; one beat per
+        shot; the product seen before the hero. No vocabulary: one generation renders every shot
+        from the real product photo, so there is no per-shot identity routing."""
+        problems = grammar_problems(draft.scenes, grammar)
+        problems += [
+            f"scene {i} subject_action {problem}"
+            for i, s in enumerate(draft.scenes, 1)
+            if (problem := multi_action_problem(s.shot.subject_action))
+        ]
+        problems += [f"scene {i} sets vocab: use null in this format" for i, s in
+                     enumerate(draft.scenes, 1) if s.vocab is not None]  # fmt: skip
+        if product := _presence(draft):
+            problems.append(product)
+        if problems:
+            raise ValueError("; ".join(problems))
+        return Storyboard.from_draft(
+            draft, concept_id=concept.id, target_duration_s=duration, fmt=fmt
+        )
+
     def _montage(draft: StoryboardDraft) -> Storyboard:
         """Montage grammar (formats.toml): counts, kept durations, hero last, people, camera, and
         one vocabulary entry per shot. The scene flags are set FROM the entry (ADR-0018), before
@@ -133,7 +156,7 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:
         min_scene=f"{min_s:g}",
         max_scene=f"{max_s:g}",
         single_max=f"{single_max:g}",
-        video_profile=video_profile_block(ctx.settings, video_model),
+        video_profile=profile_block_for(ctx.settings, state),
         max_scenes=str(max_scenes),
         format=fmt.value,
         format_block=format_block(ctx.settings.formats, fmt),

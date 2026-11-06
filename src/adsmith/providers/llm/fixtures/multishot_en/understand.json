@@ -1,0 +1,38 @@
+[
+  {
+    "output": {
+      "language": "en",
+      "dialect": "none",
+      "product": "luxury men's eau de parfum in an amber faceted bottle with a gold dome cap",
+      "product_category": "fragrance",
+      "brand_name": null,
+      "target_audience": "young Saudi men aged 20-32 who mark occasions with scent",
+      "tone": [
+        "warm",
+        "proud",
+        "cinematic"
+      ],
+      "visual_style": "warm low-key cinematography, amber and gold, real textures",
+      "duration_s": 12.0,
+      "aspect_ratio": null,
+      "requested_shots": null,
+      "requested_format": "none",
+      "physical_product": true,
+      "must_include": [
+        "the real bottle as the hero at the end"
+      ],
+      "must_avoid": [
+        "readable on-screen text inside the generated footage"
+      ],
+      "tagline": null,
+      "tagline_language": null,
+      "cultural_notes": [
+        "Scent is hospitality in the Gulf: it is offered to guests, not only worn."
+      ],
+      "assumptions": [
+        "No brand name was given, so the product stays wordless."
+      ],
+      "normalized_request_en": "A 12-second warm, proud ad for a luxury men's perfume made from the real product photo."
+    }
+  }
+]

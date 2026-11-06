@@ -56,3 +56,22 @@ identity = "optional"
 look = """cinematic scenes with a character and a setting; the product teased early and the hero at the end"""
 events = """one primary action per scene, filmable as one continuous shot"""
 risk_notes = ["the same face or object must look identical across separately generated scenes"]
+
+[formats.multishot]
+# ONE reference-to-video generation renders the whole ad (Seedance on Higgsfield, ADR-0023): the
+# storyboard's scenes are the numbered shots of a single prompt, the product comes from the real
+# product photo, and the model adds native sound. Chosen by code when a product photo is given.
+label = "Multi-shot ad from one generation"
+min_shots = 3
+max_shots = 6
+kept_s = [1.5, 6.0]
+hero_last = true
+generation = "whole"
+identity = "photo"
+dialogue = false
+look = """one coherent cinematic look across every shot (one grade, one lighting logic), built around the real product photo; the product is the same object in every shot"""
+events = """each shot is ONE clear beat: a physical event, a human gesture or a camera reveal; the story turns once before the product hero at the end"""
+risk_notes = [
+  "one generation: the model decides the exact cut points, so planned timecodes are approximate",
+  "small engraved emblems and any lettering on the product may drift or be invented",
+]

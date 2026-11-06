@@ -39,6 +39,7 @@ from adsmith.providers.media.base import (
     ImageJob,
     MediaLabel,
     MediaOutput,
+    ReferenceVideoJob,
     VideoCapabilities,
     VideoJob,
 )
@@ -375,4 +376,84 @@ class MockMusicProvider:
         )
         return MediaOutput(
             path=path, kind="audio", cost_usd=self.usd_per_track, duration_s=self.track_s
+        )
+
+
+class MockReferenceVideoProvider:
+    """Zero-key stand-in for a reference-to-video model (multishot, ADR-0023): ffmpeg animates
+    the reference photo with a slow push-in for the requested duration and adds a quiet tone, so
+    the audio path of assembly is exercised. The estimate is simulated at the catalog's
+    ``mock_usd_per_second`` (so the budget guard and the estimate gate behave as for real); the
+    "public url" is a local token that maps back to the file."""
+
+    name = "mock"
+
+    def __init__(
+        self,
+        *,
+        model: str,
+        usd_per_second: float,
+        max_prompt_chars: int,
+        latency_s: float,
+        sleep: Sleep,
+        long_side: int = 640,
+    ) -> None:
+        self.model, self.usd_per_second = model, usd_per_second
+        self.max_prompt_chars = max_prompt_chars
+        self._latency, self._sleep, self._long = latency_s, sleep, long_side
+        self._urls: dict[str, Path] = {}
+        self.calls = 0
+        self.estimates = 0
+        self.fail_with: AgentError | None = None  # tests: make the next generation fail
+
+    async def reference_url(self, path: Path) -> str:
+        digest = hashlib.sha256(await asyncio.to_thread(path.read_bytes)).hexdigest()[:16]
+        url = f"https://mock.adsmith.local/ref/{digest}{path.suffix.lower()}"
+        self._urls[url] = path
+        return url
+
+    async def estimate_usd(self, job: ReferenceVideoJob) -> float:
+        self.estimates += 1
+        return round(self.usd_per_second * job.duration_s, 6)
+
+    async def reference_to_video(self, job: ReferenceVideoJob, out_dir: Path) -> MediaOutput:
+        self.calls += 1
+        if job.est_usd is None:
+            raise PermanentProviderError("mock: refusing a job without an approved estimate")
+        await self._sleep(self._latency)
+        if self.fail_with is not None:
+            err, self.fail_with = self.fail_with, None
+            raise err
+        src = self._urls.get(job.image_urls[0]) if job.image_urls else None
+        if src is None:
+            raise PermanentProviderError("mock: unknown reference url (call reference_url first)")
+        short = int(self._long * 9 / 16) // 2 * 2
+        w, h = (short, self._long) if job.aspect_ratio in {"9:16", "3:4"} else (self._long, short)
+        frames = job.duration_s * FPS
+        lbl = job.label
+        out = out_dir / f"ad_v{lbl.scene_version}_a{lbl.attempt_no}_c{job.variant}.mp4"
+        tag = hashlib.sha256(f"{job.prompt}|{job.variant}|{lbl.scene_version}".encode()).hexdigest()
+        audio = (
+            ["-f", "lavfi", "-t", str(job.duration_s), "-i", "sine=frequency=220:sample_rate=48000"]
+            if job.generate_audio
+            else []
+        )
+        await _run(
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-loop", "1", "-i", str(src), *audio,
+            "-filter_complex",
+            f"[0:v]scale={w * 2}:{h * 2}:force_original_aspect_ratio=increase,"
+            f"crop={w * 2}:{h * 2},{_zoompan('push_in', frames, w, h)},format=yuv420p[v]",
+            "-map", "[v]", *(["-map", "1:a", "-c:a", "aac", "-b:a", "96k"] if audio else []),
+            "-frames:v", str(frames), "-r", str(FPS), "-c:v", "libx264", "-preset", "ultrafast",
+            "-metadata", f"comment=adsmith-mock-ad {tag[:16]}", "-shortest", str(out),
+        )  # fmt: skip
+        return MediaOutput(
+            path=out,
+            kind="video",
+            cost_usd=job.est_usd,
+            width=w,
+            height=h,
+            duration_s=float(job.duration_s),
+            meta={"request_id": f"mock-{tag[:12]}"},
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adsmith.agent.context import NodeContext
+from adsmith.agent.context import NodeContext, ad_endpoint
 from adsmith.agent.deltas import SetBrief
 from adsmith.agent.nodes.base import NodeResult
 from adsmith.agent.nodes.common import decision
@@ -10,7 +10,7 @@ from adsmith.config import LLMNode
 from adsmith.domain.brief import Brief, BriefDraft
 from adsmith.domain.dialect import corrected_dialect
 from adsmith.domain.enums import Dialect, Language, Stage
-from adsmith.domain.formats import resolve_format
+from adsmith.domain.formats import AdFormat, resolve_format
 from adsmith.domain.run import RunState
 from adsmith.domain.similarity import detect_language
 
@@ -68,8 +68,37 @@ async def understand(state: RunState, ctx: NodeContext) -> NodeResult:
         requested=brief.requested_ad_format,
         requested_shots=brief.requested_shots,
         physical_product=brief.physical_product,
+        forced=state.config.forced_format,
+        has_photo=state.product_photo is not None,
     )
-    brief = Brief.model_validate(brief.model_dump() | {"format": fmt})
+    update: dict[str, object] = {"format": fmt}
+    if fmt is AdFormat.MULTISHOT:
+        # One generation renders the whole ad: whole seconds, inside the model's range.
+        ep = ad_endpoint(ctx.settings, state.config.ad_model)
+        fitted = float(min(max(round(brief.duration_s), ep.min_duration_s), ep.max_duration_s))
+        if fitted != brief.duration_s:
+            events.append(
+                decision(
+                    ctx.run_id,
+                    Stage.UNDERSTAND,
+                    f"Duration {brief.duration_s:g}s → {fitted:g}s: one {ep.endpoint} generation "
+                    f"renders whole seconds from {ep.min_duration_s} to {ep.max_duration_s} s.",
+                )
+            )
+            update["duration_s"] = fitted
+        g = ctx.settings.formats.grammar(fmt)
+        asked = brief.requested_shots
+        if asked is not None and not g.min_shots <= asked <= g.max_shots:
+            events.append(
+                decision(
+                    ctx.run_id,
+                    Stage.UNDERSTAND,
+                    f"Requested {asked} shots, but one generation holds {g.min_shots}-"
+                    f"{g.max_shots}: the storyboard chooses the count in that range.",
+                )
+            )
+            update["requested_shots"] = None
+    brief = Brief.model_validate(brief.model_dump() | update)
     events.append(
         decision(
             ctx.run_id,

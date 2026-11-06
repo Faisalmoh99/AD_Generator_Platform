@@ -385,7 +385,11 @@ class HiggsfieldVideoProvider:
 
     def __init__(self, queue: HiggsfieldQueue, endpoint: HiggsfieldVideoEndpoint, probe: Probe):
         self.queue, self.endpoint, self.model = queue, endpoint, endpoint.endpoint
+        self.max_prompt_chars = endpoint.max_prompt_chars
         self._probe = probe
+
+    async def reference_url(self, path: Path) -> str:
+        return await self.queue.upload(path)
 
     def body(self, job: ReferenceVideoJob) -> dict[str, Any]:
         """The request body, validated against the verified schema BEFORE any HTTP call."""

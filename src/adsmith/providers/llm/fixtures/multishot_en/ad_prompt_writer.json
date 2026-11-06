@@ -1,0 +1,46 @@
+[
+  {
+    "output": {
+      "look": "Warm low-key film look: amber and gold against deep brown shadows, soft grain, practical lamps.",
+      "shots": [
+        {
+          "number": 1,
+          "start_s": 0,
+          "end_s": 3,
+          "action": "In an empty majlis a hand sets a small coffee cup on a brass tray; the amber bottle glows softly behind it.",
+          "camera": "close-up, 85mm, locked off, shallow focus",
+          "lighting": "warm lamp from the left, deep shadows",
+          "sound": "the soft clink of the cup, room tone"
+        },
+        {
+          "number": 2,
+          "start_s": 3,
+          "end_s": 6,
+          "action": "At the carved doorway the host in a white thobe turns back toward the last guest.",
+          "camera": "medium shot, slow dolly in",
+          "lighting": "tungsten light from above, warm rim",
+          "sound": "a low oud note begins"
+        },
+        {
+          "number": 3,
+          "start_s": 6,
+          "end_s": 9,
+          "action": "The host offers the bottle with both hands; the guest's hand reaches for it.",
+          "camera": "macro close-up, slow push-in",
+          "lighting": "warm key from the left, gold rim on the cap",
+          "sound": "strings swell under the oud"
+        },
+        {
+          "number": 4,
+          "start_s": 9,
+          "end_s": 12,
+          "action": "The bottle stands alone on the brass tray, the gold cap catching the last light.",
+          "camera": "medium close-up, slow push-in, lower fifth empty",
+          "lighting": "one warm key, thin gold rim",
+          "sound": "the music resolves on one held note"
+        }
+      ],
+      "audio": "Room tone opens into a single oud line that builds with strings and lands on a warm held note on the bottle."
+    }
+  }
+]

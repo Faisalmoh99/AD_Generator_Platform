@@ -97,6 +97,11 @@ def pack_json(state: RunState) -> dict[str, Any]:
             }
             for s in (sb.scenes if sb else [])
         ],
+        "whole_ad_generation": (
+            state.generation.model_dump(mode="json", exclude={"attempts", "history"})
+            if state.generation
+            else None
+        ),
     }
 
 
@@ -117,6 +122,17 @@ def pack_markdown(state: RunState) -> str:
     concept = state.concepts.selected if state.concepts else None
     if concept:
         out += [f"## {t['concept']}: {concept.title}", "", concept.logline, ""]
+    if state.generation is not None:
+        g = state.generation
+        est = f"${g.est_usd:.3f}" if g.est_usd is not None else "-"
+        out += [
+            f"## Whole-ad prompt ({g.model}, {g.duration_s}s {g.resolution}, estimate {est})",
+            "",
+            "```text",
+            g.prompt.text,
+            "```",
+            "",
+        ]
     if state.bible:
         out += [
             f"## {t['bible']} (v{state.bible.version})",
