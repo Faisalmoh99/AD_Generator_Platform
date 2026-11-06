@@ -5,7 +5,7 @@
         {
           "purpose": "hook",
           "description": "The majlis is empty; a small coffee cup is set down on a brass tray, the bottle glowing on the side table behind it.",
-          "duration_s": 3.0,
+          "duration_s": 2.0,
           "shot": {
             "shot_type": "close_up",
             "camera_movement": "static",
@@ -26,7 +26,7 @@
         {
           "purpose": "build",
           "description": "At the door, the host turns back toward the last guest.",
-          "duration_s": 3.0,
+          "duration_s": 2.0,
           "shot": {
             "shot_type": "medium",
             "camera_movement": "dolly_in",
@@ -47,7 +47,7 @@
         {
           "purpose": "reveal",
           "description": "He offers the bottle with both hands; the guest's hand reaches for it.",
-          "duration_s": 3.0,
+          "duration_s": 2.0,
           "shot": {
             "shot_type": "close_up",
             "camera_movement": "push_in",
@@ -68,7 +68,7 @@
         {
           "purpose": "product",
           "description": "The bottle alone on the brass tray, its gold cap catching the last light.",
-          "duration_s": 3.0,
+          "duration_s": 2.0,
           "shot": {
             "shot_type": "medium_close_up",
             "camera_movement": "push_in",

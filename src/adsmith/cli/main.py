@@ -116,6 +116,8 @@ def _print_generation(state: RunState) -> None:
     if g is None:
         return
     est = f"${g.est_usd:.3f}" if g.est_usd is not None else "not estimated"
+    if g.est_usd is not None and g.computed_usd is not None and g.computed_usd != g.est_usd:
+        est = f"price ${g.computed_usd:.3f}, reserve ${g.est_usd:.3f} (with margin)"
     appr = f", approved by {g.approved_by}" if g.approved_by else ""
     console.print(
         f"[bold]Whole ad[/] v{g.version} [cyan]{g.status}[/] · {g.model} · {g.duration_s}s "
@@ -123,6 +125,8 @@ def _print_generation(state: RunState) -> None:
         f"estimate {est}{appr}"
     )
     if state.stage is Stage.AWAITING_GENERATION_APPROVAL:
+        if g.price_basis:
+            console.print(f"[dim]Price: {g.price_basis}[/]")
         console.print(f"[bold]Prompt sent to the model:[/]\n{g.prompt.text}")
     if g.qa is not None:
         why = "; ".join(g.qa.fail_reasons) or "hard gate passed"

@@ -427,7 +427,7 @@ function renderBoard(v) {
   const atSpend = v.stage === "awaiting_generation_approval";
   $("#approve-wrap").classList.toggle("hidden", v.stage !== "awaiting_storyboard_approval" && !atSpend);
   $("#approve-text").textContent = atSpend && v.generation
-    ? `One generation of the whole ad is estimated at ${money(v.generation.est_usd || 0)} (${v.generation.model}, ${v.generation.duration_s}s ${v.generation.resolution}). Nothing is spent until you approve.`
+    ? `One generation of the whole ad is priced at ${money(v.generation.computed_usd ?? v.generation.est_usd ?? 0)}${v.generation.computed_usd != null && v.generation.computed_usd !== v.generation.est_usd ? `; ${money(v.generation.est_usd || 0)} is reserved with the safety margin` : ""} (${v.generation.model}, ${v.generation.duration_s}s ${v.generation.resolution}). Nothing is spent until you approve.`
     : "Keyframes are ready. Approve to start paid video generation.";
   $("#approve").textContent = atSpend ? `Approve ${money(v.generation?.est_usd || 0)}` : "Approve storyboard";
   renderGeneration(v);
@@ -484,7 +484,8 @@ function renderGeneration(v) {
   box.innerHTML = `<div class="gen-media">${g.video ? `<video src="${g.video}" controls playsinline preload="metadata"></video>` : `<div class="placeholder">not generated yet</div>`}</div>
     <div class="section-label">Whole ad · one generation <span class="chip s-${esc(g.status)}">${esc(g.status)}</span></div>
     ${row("model", `${esc(g.model)} · ${g.duration_s}s ${esc(g.resolution)} · audio ${g.audio ? "on" : "off"}`)}
-    ${row("estimate", g.est_usd != null ? money(g.est_usd) : "–")}
+    ${row("price", g.computed_usd != null ? money(g.computed_usd) : (g.est_usd != null ? money(g.est_usd) : "–"))}
+    ${row("reserved", g.est_usd != null ? money(g.est_usd) + (g.computed_usd != null && g.computed_usd !== g.est_usd ? " (with margin)" : "") : "–")}
     ${row("approved by", g.approved_by ? esc(g.approved_by) : "waiting for you")}
     ${row("hard gate", hard)}
     ${row("creative", creative)}

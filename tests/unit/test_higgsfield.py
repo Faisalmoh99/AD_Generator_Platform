@@ -288,8 +288,9 @@ async def test_estimate_is_parsed_and_reserves_nothing(tmp_path: Path) -> None:
     acct = account(tmp_path)
     fake = FakeHiggsfield()
     queue, _ = make_queue(fake, acct)
-    usd = await provider(tmp_path, queue).estimate_usd(job(est_usd=None))
-    assert usd == pytest.approx(1.80) and queue.estimates == 1 and queue.submits == 0
+    q = await provider(tmp_path, queue).quote(job(est_usd=None))
+    assert q.source == "estimate_api" and q.computed_usd == q.reserved_usd == pytest.approx(1.80)
+    assert queue.estimates == 1 and queue.submits == 0
     est = fake.requests[0]
     assert str(est.url) == f"{BASE}/estimate/{EP}"
     assert json.loads(est.content)["duration"] == 12
@@ -301,7 +302,101 @@ async def test_an_estimate_above_the_sanity_cap_is_refused(tmp_path: Path) -> No
     fake.estimate_usd = "18.00"  # 12 s × $1/s cap = $12
     queue, _ = make_queue(fake)
     with pytest.raises(BudgetExceededError, match="sanity cap"):
-        await provider(tmp_path, queue).estimate_usd(job(est_usd=None))
+        await provider(tmp_path, queue).quote(job(est_usd=None))
+
+
+# The exact body the live /estimate returned for Seedance 2.0 on 2026-11-06 (no "usd" key).
+LIVE_DESCRIPTION = {
+    "type": "description",
+    "pricing_description": (
+        "Token-metered pricing. Billable video tokens = ceil((input video seconds + generated "
+        "video seconds) × output width × output height × 24 fps / 1024). Image and audio "
+        "references do not count as video input. Per 1,000 video tokens: without video input — "
+        "480p/720p/1080p $0.014, 4K $0.008; with video input — 480p/720p/1080p $0.0084, 4K "
+        "$0.0048 (0.6× the standard rate). With video references, both input and generated video "
+        "durations are billable. Rates shown are before any applicable customer discount."
+    ),
+}
+
+
+def describe(fake: FakeHiggsfield, body: dict[str, Any] = LIVE_DESCRIPTION) -> None:
+    fake.faults["estimate"] = [httpx.Response(200, json=body)]
+
+
+async def test_a_pricing_description_is_priced_by_the_token_formula_plus_margin(
+    tmp_path: Path,
+) -> None:
+    acct = account(tmp_path)
+    fake = FakeHiggsfield()
+    describe(fake)
+    queue, _ = make_queue(fake, acct)
+    q = await provider(tmp_path, queue).quote(job(est_usd=None, duration_s=8))
+    # 720x1280 x 8 s x 24 fps / 1024 = 172,800 tokens x $0.014 / 1000 = $2.4192
+    assert q.source == "token_formula" and (q.width, q.height) == (720, 1280)
+    assert q.computed_usd == pytest.approx(2.4192)
+    assert q.reserved_usd == pytest.approx(2.4192 * 1.10)
+    assert "172,800 tokens" in q.basis and "+10% margin" in q.basis
+    assert acct.summary().reserved_usd == 0 and queue.submits == 0
+
+
+@pytest.mark.parametrize(
+    ("resolution", "aspect", "seconds", "size", "usd"),
+    [
+        ("720p", "9:16", 12, (720, 1280), 3.6288),
+        ("1080p", "9:16", 12, (1080, 1920), 8.1648),
+        ("480p", "9:16", 8, (480, 854), 1.07604),
+        ("720p", "16:9", 8, (1280, 720), 2.4192),
+        ("1080p", "16:9", 8, (1920, 1080), 5.4432),
+    ],
+)
+async def test_token_formula_per_resolution(
+    tmp_path: Path,
+    resolution: str,
+    aspect: str,
+    seconds: int,
+    size: tuple[int, int],
+    usd: float,
+) -> None:
+    fake = FakeHiggsfield()
+    describe(fake)
+    queue, _ = make_queue(fake)
+    q = await provider(tmp_path, queue).quote(
+        job(est_usd=None, resolution=resolution, aspect_ratio=aspect, duration_s=seconds)
+    )
+    assert (q.width, q.height) == size and q.computed_usd == pytest.approx(usd, abs=1e-3)
+
+
+async def test_a_description_that_no_longer_names_our_rates_is_refused(tmp_path: Path) -> None:
+    fake = FakeHiggsfield()
+    changed = LIVE_DESCRIPTION["pricing_description"].replace("$0.014", "$0.020")
+    describe(fake, {"type": "description", "pricing_description": changed})
+    queue, _ = make_queue(fake)
+    with pytest.raises(PermanentProviderError, match=r"no longer names \['\$0.014'\]"):
+        await provider(tmp_path, queue).quote(job(est_usd=None))
+
+
+async def test_a_description_without_configured_pricing_is_refused(tmp_path: Path) -> None:
+    fake = FakeHiggsfield()
+    describe(fake)
+    queue, _ = make_queue(fake)
+    with pytest.raises(PermanentProviderError, match="no token pricing is configured"):
+        await provider(tmp_path, queue, "seedance_25_ref").quote(job(est_usd=None))
+
+
+async def test_settles_at_the_price_and_logs_the_real_size_next_to_it(tmp_path: Path) -> None:
+    acct = account(tmp_path)
+    fake = FakeHiggsfield()
+    queue, _ = make_queue(fake, acct)
+    out = await provider(tmp_path, queue).reference_to_video(
+        job(est_usd=2.66112, computed_usd=2.4192, duration_s=8), tmp_path
+    )
+    assert out.cost_usd == pytest.approx(2.4192)
+    s = acct.summary()
+    assert s.settled_usd == pytest.approx(2.4192, abs=1e-3) and s.reserved_usd == 0
+    check = out.meta["price_check"]
+    assert check["assumed_size"] == "720x1280" and check["actual_size"] == "720x1280"
+    assert check["size_matches"] is True and check["computed_usd"] == pytest.approx(2.4192)
+    assert check["reserved_usd"] == pytest.approx(2.66112)
 
 
 async def test_upload_uses_the_presigned_url_without_the_key_and_is_cached(tmp_path: Path) -> None:

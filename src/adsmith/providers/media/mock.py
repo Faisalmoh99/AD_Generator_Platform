@@ -22,6 +22,7 @@ from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -39,10 +40,15 @@ from adsmith.providers.media.base import (
     ImageJob,
     MediaLabel,
     MediaOutput,
+    PriceQuote,
     ReferenceVideoJob,
     VideoCapabilities,
     VideoJob,
+    token_quote,
 )
+
+if TYPE_CHECKING:
+    from adsmith.config import HiggsfieldTokenPricing
 
 Sleep = Callable[[float], Awaitable[None]]
 FPS = 24
@@ -382,9 +388,10 @@ class MockMusicProvider:
 class MockReferenceVideoProvider:
     """Zero-key stand-in for a reference-to-video model (multishot, ADR-0023): ffmpeg animates
     the reference photo with a slow push-in for the requested duration and adds a quiet tone, so
-    the audio path of assembly is exercised. The estimate is simulated at the catalog's
-    ``mock_usd_per_second`` (so the budget guard and the estimate gate behave as for real); the
-    "public url" is a local token that maps back to the file."""
+    the audio path of assembly is exercised. The price uses the endpoint's token formula and
+    margin when the catalog has one (so the gate shows the same computed / reserved pair as a real
+    run), else the simulated ``mock_usd_per_second``; the "public url" is a local token that maps
+    back to the file."""
 
     name = "mock"
 
@@ -397,8 +404,9 @@ class MockReferenceVideoProvider:
         latency_s: float,
         sleep: Sleep,
         long_side: int = 640,
+        pricing: HiggsfieldTokenPricing | None = None,
     ) -> None:
-        self.model, self.usd_per_second = model, usd_per_second
+        self.model, self.usd_per_second, self.pricing = model, usd_per_second, pricing
         self.max_prompt_chars = max_prompt_chars
         self._latency, self._sleep, self._long = latency_s, sleep, long_side
         self._urls: dict[str, Path] = {}
@@ -412,9 +420,18 @@ class MockReferenceVideoProvider:
         self._urls[url] = path
         return url
 
-    async def estimate_usd(self, job: ReferenceVideoJob) -> float:
+    async def quote(self, job: ReferenceVideoJob) -> PriceQuote:
         self.estimates += 1
-        return round(self.usd_per_second * job.duration_s, 6)
+        if self.pricing is not None and job.resolution in self.pricing.usd_per_1k_tokens:
+            return token_quote(
+                self.pricing,
+                resolution=job.resolution,
+                aspect_ratio=job.aspect_ratio,
+                duration_s=job.duration_s,
+                source="mock",
+            )
+        usd = round(self.usd_per_second * job.duration_s, 6)
+        return PriceQuote(usd, usd, "mock", f"simulated ${self.usd_per_second:g}/s")
 
     async def reference_to_video(self, job: ReferenceVideoJob, out_dir: Path) -> MediaOutput:
         self.calls += 1
@@ -448,12 +465,21 @@ class MockReferenceVideoProvider:
             "-frames:v", str(frames), "-r", str(FPS), "-c:v", "libx264", "-preset", "ultrafast",
             "-metadata", f"comment=adsmith-mock-ad {tag[:16]}", "-shortest", str(out),
         )  # fmt: skip
+        cost = job.computed_usd if job.computed_usd is not None else job.est_usd
         return MediaOutput(
             path=out,
             kind="video",
-            cost_usd=job.est_usd,
+            cost_usd=cost,
             width=w,
             height=h,
             duration_s=float(job.duration_s),
-            meta={"request_id": f"mock-{tag[:12]}"},
+            meta={
+                "request_id": f"mock-{tag[:12]}",
+                "price_check": {
+                    "computed_usd": job.computed_usd,
+                    "reserved_usd": job.est_usd,
+                    "actual_size": f"{w}x{h}",
+                    "actual_duration_s": float(job.duration_s),
+                },
+            },
         )

@@ -13,7 +13,7 @@
         "cinematic"
       ],
       "visual_style": "warm low-key cinematography, amber and gold, real textures",
-      "duration_s": 12.0,
+      "duration_s": 8.0,
       "aspect_ratio": null,
       "requested_shots": null,
       "requested_format": "none",
@@ -32,7 +32,7 @@
       "assumptions": [
         "No brand name was given, so the product stays wordless."
       ],
-      "normalized_request_en": "A 12-second warm, proud ad for a luxury men's perfume made from the real product photo."
+      "normalized_request_en": "An 8-second warm, proud ad for a luxury men's perfume made from the real product photo."
     }
   }
 ]

@@ -46,7 +46,7 @@ STAGE_KIND: dict[str, tuple[str, str]] = {
 # Payload keys the UI's pipeline view reads (everything else stays server-side).
 _DATA_KEYS = (
     "phase", "gate", "score", "strategy", "from_vocab", "to_vocab", "winner", "cost_usd",
-    "est_usd", "identity", "vocab", "bpm", "kind", "node", "format", "saved_usd",
+    "est_usd", "computed_usd", "identity", "vocab", "bpm", "kind", "node", "format", "saved_usd",
 )  # fmt: skip
 _GATE_POSITION = {
     Stage.AWAITING_CONCEPT_CHOICE: "select",
@@ -354,6 +354,8 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "resolution": g.resolution,
         "audio": g.generate_audio,
         "est_usd": g.est_usd,
+        "computed_usd": g.computed_usd,
+        "price_basis": g.price_basis,
         "approved_by": g.approved_by,
         "prompt": g.prompt.text,
         "video": media_url(g.artifact.path if g.artifact else None),

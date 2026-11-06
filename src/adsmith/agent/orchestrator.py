@@ -19,7 +19,7 @@ import traceback
 from collections.abc import Sequence
 from pathlib import Path
 
-from adsmith.agent.context import AgentRuntime
+from adsmith.agent.context import AgentRuntime, ad_endpoint
 from adsmith.agent.deltas import apply_delta
 from adsmith.agent.export import write_production_pack
 from adsmith.agent.i18n import failure_message, stage_label
@@ -156,6 +156,12 @@ class Orchestrator:
             config = config.model_copy(update={"forced_format": ad_format})
         if ad_format is AdFormat.MULTISHOT and product_photo is None:
             raise ValueError("the multishot format is made from a product photo: give one")
+        whole = ad_format is AdFormat.MULTISHOT or (ad_format is None and product_photo is not None)
+        if whole and "target_duration_s" not in s.model_fields_set and config.ad_model:
+            # A multishot ad defaults to the endpoint's demo length (8 s), not the montage's 15 s;
+            # a duration in the request text still wins (the brief reads it).
+            ep = ad_endpoint(s, config.ad_model)
+            config = config.model_copy(update={"target_duration_s": float(ep.default_duration_s)})
         photo = None
         if product_photo is not None:
             if not product_photo.is_file():

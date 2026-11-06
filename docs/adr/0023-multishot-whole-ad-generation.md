@@ -13,7 +13,7 @@ nothing paid is regenerated automatically.
 
 ## Decision
 1. **A format, not a fork.** `multishot` joins `config/formats.toml` with `generation = "whole"`,
-   `identity = "photo"`, 3–6 shots of 1.5–6 s, hero last. `resolve_format` picks it by code when
+   `identity = "photo"`, 3–4 shots of 1.5–6 s (was 3–6; cut to 4 for the 8 s demo, 2026-11-06), hero last. `resolve_format` picks it by code when
    the run has a product photo (`--product-photo`), or when the operator forces it (`--format`).
    The storyboard's scenes stay the numbered shots, so every storyboard invariant and lint holds.
 2. **A run-level generation, not a scene.** `RunState.generation: AdGeneration` (prompt, model,

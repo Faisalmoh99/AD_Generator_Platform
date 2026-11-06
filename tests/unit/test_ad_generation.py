@@ -218,7 +218,7 @@ def test_a_photo_makes_the_run_multishot_unless_a_format_is_forced(settings: Set
     assert fmt is AdFormat.MONTAGE  # no photo: today's behaviour
     g = lib.grammar(AdFormat.MULTISHOT)
     assert (
-        g.generation == "whole" and g.identity == "photo" and (g.min_shots, g.max_shots) == (3, 6)
+        g.generation == "whole" and g.identity == "photo" and (g.min_shots, g.max_shots) == (3, 4)
     )
 
 

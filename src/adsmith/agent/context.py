@@ -263,6 +263,7 @@ class AgentRuntime:
                     latency_s=self.settings.mock_latency_s,
                     sleep=self.sleep,
                     long_side=run.config.media_long_side or self.settings.media_long_side,
+                    pricing=ep.pricing,
                 )
         return self._ad_providers[run.id]
 

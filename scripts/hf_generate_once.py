@@ -12,7 +12,7 @@ stops after the estimate (upload + estimate are still calls to Higgsfield). Ther
 skip the y/N question.
 
     ADSMITH_AD_PROVIDER=higgsfield uv run python scripts/hf_generate_once.py \\
-        --prompt-file ad_prompt.txt --photo assets/perfume.jpeg --duration 12 --resolution 720p
+        --prompt-file ad_prompt.txt --photo assets/perfume.jpeg --duration 8 --resolution 720p
     ADSMITH_AD_PROVIDER=higgsfield uv run python scripts/hf_generate_once.py --run <run_id>
 """
 
@@ -50,7 +50,7 @@ async def main() -> None:  # noqa: PLR0915
     src.add_argument("--resume", help="poll the job recorded in this .json (no new submit)")
     ap.add_argument("--photo", default="assets/perfume.jpeg")
     ap.add_argument("--model", default=None, help="catalog key (default: the catalog default)")
-    ap.add_argument("--duration", type=int, default=12)
+    ap.add_argument("--duration", type=int, default=8)
     ap.add_argument("--resolution", default="720p")
     ap.add_argument("--aspect", default="9:16")
     ap.add_argument("--audio", action=argparse.BooleanOptionalAction, default=True)
@@ -67,6 +67,7 @@ async def main() -> None:  # noqa: PLR0915
         record = json.loads(await asyncio.to_thread(Path(args.resume).read_text))
         prompt, image_urls = record["prompt"], tuple(record["image_urls"])
         model, est = record["model_key"], float(record["est_usd"])
+        computed = float(record.get("computed_usd", est))
         duration, resolution = int(record["duration"]), record["resolution"]
         aspect, audio = record["aspect"], bool(record["audio"])
         resume = RemoteRequest.model_validate(record["remote"])
@@ -86,7 +87,7 @@ async def main() -> None:  # noqa: PLR0915
             args.aspect,
             args.audio,
         )
-        resume, est = None, 0.0
+        resume, est, computed = None, 0.0, 0.0
         state_path = out_dir / f"{time.strftime('%Y%m%d-%H%M%S')}.json"
 
     provider = rt.higgsfield_video(model)
@@ -98,17 +99,19 @@ async def main() -> None:  # noqa: PLR0915
     if resume is None:
         body = provider.body(job)
         print("Request body:\n" + json.dumps(body, indent=2, ensure_ascii=False))
-        est = await provider.estimate_usd(job)
+        quote = await provider.quote(job)
+        est, computed = quote.reserved_usd, quote.computed_usd
         left = rt.hf_account().summary().remaining_usd
         sound = "on" if audio else "off"
         print(
-            f"\nEstimate: ${est:.3f} for {duration} s {resolution} {aspect}, audio {sound}, "
-            f"{provider.model}. Wallet headroom: ${left:.3f}."
+            f"\nPrice: ${computed:.3f}, reserved ${est:.3f} for {duration} s {resolution} "
+            f"{aspect}, audio {sound}, {provider.model}. Wallet headroom: ${left:.3f}.\n"
+            f"Basis: {quote.basis}"
         )
         if args.dry_run:
             print("Dry run: nothing submitted.")
             return
-        question = f"Submit ONE generation for ${est:.3f}? [y/N] "
+        question = f"Submit ONE generation (price ${computed:.3f}, reserve ${est:.3f})? [y/N] "
         answer = (await asyncio.to_thread(input, question)).strip().lower()
         if answer != "y":
             print("Not submitted.")
@@ -117,7 +120,8 @@ async def main() -> None:  # noqa: PLR0915
     def on_submitted(req: RemoteRequest) -> None:
         record = {
             "prompt": prompt, "image_urls": list(image_urls), "model_key": model,
-            "est_usd": est, "duration": duration, "resolution": resolution, "aspect": aspect,
+            "est_usd": est, "computed_usd": computed, "duration": duration,
+            "resolution": resolution, "aspect": aspect,
             "audio": audio, "remote": req.model_dump(mode="json"),
         }  # fmt: skip
         state_path.write_text(json.dumps(record, indent=2, ensure_ascii=False))
@@ -126,7 +130,7 @@ async def main() -> None:  # noqa: PLR0915
     job = ReferenceVideoJob(
         prompt=prompt, image_urls=image_urls, duration_s=duration, resolution=resolution,
         aspect_ratio=aspect, generate_audio=audio, label=label, est_usd=est,
-        remote=RemoteControl(resume=resume, on_submitted=on_submitted),
+        computed_usd=computed, remote=RemoteControl(resume=resume, on_submitted=on_submitted),
     )  # fmt: skip
     t0 = time.monotonic()
     out = await provider.reference_to_video(job, out_dir)
@@ -134,6 +138,7 @@ async def main() -> None:  # noqa: PLR0915
     out.path.replace(final)
     print(f"Done in {time.monotonic() - t0:.0f} s: {final} ({out.width}x{out.height}, "
           f"{out.duration_s:.2f} s), request {out.meta.get('request_id')}")  # fmt: skip
+    print(f"Price check: {json.dumps(out.meta.get('price_check'))}")
     summary = rt.hf_account().summary()
     print(f"Ledger: settled ${summary.settled_usd:.3f}, reserved ${summary.reserved_usd:.3f}, "
           f"headroom ${summary.remaining_usd:.3f} of ${summary.balance_usd:.2f}")  # fmt: skip

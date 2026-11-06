@@ -166,7 +166,7 @@ async def test_the_critic_sees_the_photo_and_three_frames_per_shot(tmp_path: Pat
     assert texts[0] == "Image 0: the real product photo (the reference)"
     assert sum(1 for t in texts if t.startswith("Image ") and " shot 4 at " in t) == 3
     body = "\n".join(texts)
-    assert "story_turn (Story and turn)" in body and "Shot 1 (0-3 s)" in body
+    assert "story_turn (Story and turn)" in body and "Shot 1 (0-2 s)" in body
 
 
 async def test_a_low_creative_score_warns_and_spends_nothing_more(tmp_path: Path) -> None:

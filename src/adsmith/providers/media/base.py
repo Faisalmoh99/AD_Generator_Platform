@@ -11,10 +11,13 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from adsmith.domain.enums import ScenePhase
 from adsmith.domain.generation import RemoteRequest
+
+if TYPE_CHECKING:
+    from adsmith.config import HiggsfieldTokenPricing
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +149,50 @@ class ReferenceVideoJob:
     est_usd: float | None = None
     remote: RemoteControl | None = None
     variant: int = 0  # best-of-N candidate index (the model has no seed: the key differs)
+    # The price before the safety margin (``est_usd`` is what is reserved). The wallet is settled
+    # at this amount after a successful generation; None = settle at ``est_usd``.
+    computed_usd: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class PriceQuote:
+    """What one generation will cost. ``computed_usd`` is the price itself (the account's own
+    number, or the token formula); ``reserved_usd`` = computed + the safety margin, the amount the
+    gate shows for approval and the wallet reserves. ``basis`` explains the number."""
+
+    computed_usd: float
+    reserved_usd: float
+    source: Literal["estimate_api", "token_formula", "mock"]
+    basis: str
+    width: int | None = None
+    height: int | None = None
+
+
+def token_quote(
+    pricing: HiggsfieldTokenPricing,
+    *,
+    resolution: str,
+    aspect_ratio: str,
+    duration_s: int,
+    source: Literal["token_formula", "mock"] = "token_formula",
+) -> PriceQuote:
+    """Price a generation from the token formula at the ASSUMED frame size, plus the margin."""
+    w, h = pricing.frame(resolution, aspect_ratio)
+    tokens = pricing.tokens(w, h, duration_s)
+    usd = round(pricing.usd(resolution, w, h, duration_s), 6)
+    rate = pricing.usd_per_1k_tokens[resolution]
+    basis = (
+        f"{w}x{h} (assumed) x {duration_s} s x {pricing.fps} fps / {pricing.tokens_divisor} = "
+        f"{tokens:,} tokens x ${rate:g}/1k = ${usd:.3f}; +{pricing.margin:.0%} margin"
+    )
+    return PriceQuote(
+        computed_usd=usd,
+        reserved_usd=round(usd * (1 + pricing.margin), 6),
+        source=source,
+        basis=basis,
+        width=w,
+        height=h,
+    )
 
 
 class ReferenceVideoProvider(Protocol):
@@ -159,7 +206,9 @@ class ReferenceVideoProvider(Protocol):
         """A url the model can read for a local reference image (public for real providers)."""
         ...
 
-    async def estimate_usd(self, job: ReferenceVideoJob) -> float: ...
+    async def quote(self, job: ReferenceVideoJob) -> PriceQuote:
+        """The price of exactly this job (no reservation, nothing generated)."""
+        ...
 
     async def reference_to_video(self, job: ReferenceVideoJob, out_dir: Path) -> MediaOutput: ...
 

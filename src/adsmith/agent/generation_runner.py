@@ -46,6 +46,7 @@ from adsmith.domain.scene import SceneFailure
 from adsmith.logging import get_logger
 from adsmith.providers.media.base import (
     MediaLabel,
+    PriceQuote,
     ReferenceVideoJob,
     ReferenceVideoProvider,
     RemoteControl,
@@ -72,6 +73,32 @@ def _ev(
     return AgentEvent.model_validate(
         {"run_id": run_id, "stage": stage, "type": type_, "summary": summary[:500],
          "level": level, "payload": payload}
+    )  # fmt: skip
+
+
+def _price_check_event(run_id: str, check: dict[str, object]) -> AgentEvent:
+    """The computed price next to the real output (ffprobe), so the frame-size assumption behind
+    the token formula can be checked against the console balance by hand."""
+    computed, actual = check.get("computed_usd"), check.get("actual_size")
+    parts = [
+        f"Price check: computed ${computed:.3f}" if isinstance(computed, float) else "Price check",
+        f"reserved ${check['reserved_usd']:.3f}" if isinstance(check.get("reserved_usd"), float)
+        else "",
+        f"output {actual} x {check.get('actual_duration_s')} s (ffprobe)",
+    ]  # fmt: skip
+    level: Literal["info", "warn"] = "info"
+    if "assumed_size" in check:
+        same = check.get("size_matches") is True
+        parts.append(
+            f"assumed {check['assumed_size']}: "
+            + ("matches" if same
+               else f"DIFFERS, ${check['usd_at_actual_size']:.3f} at the real size")
+        )  # fmt: skip
+        level = "info" if same else "warn"
+    parts.append("compare with the console balance")
+    return _ev(
+        run_id, Stage.GENERATE, EventType.DECISION, "; ".join(p for p in parts if p),
+        level=level, price_check=check,
     )  # fmt: skip
 
 
@@ -144,14 +171,15 @@ class AdGenerationRunner:
             return
         try:
             job = await self._job(state, gen, 1)
-            usd = await retry_transient(
-                functools.partial(self.provider.estimate_usd, job), sleep=self.sleep, rng=self.rng
+            quote = await retry_transient(
+                functools.partial(self.provider.quote, job), sleep=self.sleep, rng=self.rng
             )
         except AccountLockedError:
             raise
         except AgentError as exc:
             self._fail(run_id, Stage.ESTIMATE, exc.kind, f"estimate: {exc.message}")
             return
+        usd = quote.reserved_usd
         b = state.budget
         caps = [("run budget", b.remaining_usd)]
         if b.media_remaining_usd is not None:
@@ -160,26 +188,38 @@ class AdGenerationRunner:
             if usd > left + 1e-9:
                 self._fail(
                     run_id, Stage.ESTIMATE, FailureKind.BUDGET_EXCEEDED,
-                    f"the estimate ${usd:.3f} exceeds the remaining ${left:.3f} of the {name}; "
-                    "nothing was generated",
+                    f"the reservation ${usd:.3f} (price ${quote.computed_usd:.3f} + margin) "
+                    f"exceeds the remaining ${left:.3f} of the {name}; nothing was generated",
                 )  # fmt: skip
                 return
-        self._record_estimate(run_id, gen.version, usd, cached=False)
+        self._record_estimate(run_id, gen.version, quote, cached=False)
 
-    def _record_estimate(self, run_id: str, version: int, usd: float, *, cached: bool) -> None:
+    def _record_estimate(
+        self, run_id: str, version: int, quote: PriceQuote | float, *, cached: bool
+    ) -> None:
+        if not isinstance(quote, PriceQuote):
+            quote = PriceQuote(quote, quote, "mock", "cache hit")
+        usd = quote.reserved_usd
+
         def mutate(s: RunState) -> list[AgentEvent]:
             g = self._same(s, version)
-            g.set_estimate(usd)
+            g.set_estimate(usd, computed_usd=quote.computed_usd, basis=quote.basis)
             what = (
                 f"{g.duration_s}s {g.resolution} {g.aspect_ratio}, audio "
                 f"{'on' if g.generate_audio else 'off'}, {self.provider.model}"
             )
+            price = (
+                f"${usd:.3f}"
+                if abs(usd - quote.computed_usd) < 1e-9
+                else f"price ${quote.computed_usd:.3f}, reserved ${usd:.3f} (with margin)"
+            )
             events = [
                 _ev(
                     run_id, Stage.ESTIMATE, EventType.DECISION,
-                    f"Estimate: ${usd:.3f} for one generation ({what})"
+                    f"Estimate: {price} for one generation ({what})"
                     + (" — cache hit, $0" if cached else ""),
-                    est_usd=usd, model=self.provider.model, cached=cached,
+                    est_usd=usd, computed_usd=quote.computed_usd, price_source=quote.source,
+                    price_basis=quote.basis, model=self.provider.model, cached=cached,
                 )
             ]  # fmt: skip
             auto = s.config.ad_provider == "mock" and not s.config.interactive
@@ -265,7 +305,12 @@ class AdGenerationRunner:
 
         try:
             job = await self._job(state, gen, attempt_no)
-            job = replace(job, est_usd=est, remote=RemoteControl(resume, on_submitted))
+            job = replace(
+                job,
+                est_usd=est,
+                computed_usd=gen.computed_usd,
+                remote=RemoteControl(resume, on_submitted),
+            )
             out = await retry_transient(
                 functools.partial(
                     self.provider.reference_to_video,
@@ -287,7 +332,10 @@ class AdGenerationRunner:
             height=out.height, duration_s=out.duration_s, remote_url=out.remote_url, move=True,
         )  # fmt: skip
         self.storage.cache.put(key, art)
-        self._succeed(run_id, gen.version, attempt, art, out.cost_usd, reserved=True, cached=False)
+        self._succeed(
+            run_id, gen.version, attempt, art, out.cost_usd, reserved=True, cached=False,
+            price_check=out.meta.get("price_check"),
+        )  # fmt: skip
 
     def _succeed(
         self,
@@ -299,6 +347,7 @@ class AdGenerationRunner:
         *,
         reserved: bool,
         cached: bool,
+        price_check: object = None,
     ) -> None:
         def mutate(s: RunState) -> list[AgentEvent]:
             g = self._same(s, version)
@@ -318,7 +367,8 @@ class AdGenerationRunner:
                     f"Whole ad ready ({dur}, ${cost:.3f})" + (": cache hit, $0" if cached else ""),
                     attempt_id=attempt.id, cost_usd=cost, phase="clip",
                 )
-            ]  # fmt: skip
+            ] + ([_price_check_event(run_id, price_check)] if isinstance(price_check, dict)
+                 else [])  # fmt: skip
 
         self._update(run_id, mutate, "ad generated")
 

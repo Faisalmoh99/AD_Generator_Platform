@@ -51,7 +51,13 @@ from adsmith.agent.recovery.errors import (
 )
 from adsmith.config import HiggsfieldVideoEndpoint
 from adsmith.domain.generation import RemoteRequest
-from adsmith.providers.media.base import MediaOutput, ReferenceVideoJob, RemoteControl
+from adsmith.providers.media.base import (
+    MediaOutput,
+    PriceQuote,
+    ReferenceVideoJob,
+    RemoteControl,
+    token_quote,
+)
 from adsmith.storage.account import AccountLimitError, SpendAccount
 
 Sleep = Callable[[float], Awaitable[None]]
@@ -188,10 +194,17 @@ class HiggsfieldQueue:
             self.account.release(handle.spend_id, remote_id=handle.request_id)
 
     # ------------------------------------------------------------------------ free calls
-    async def estimate(self, endpoint: str, body: dict[str, Any]) -> float:
-        """The account's own price for exactly this body (no reservation, no generation)."""
+    async def estimate(self, endpoint: str, body: dict[str, Any]) -> float | str:
+        """The account's own answer for exactly this body (no reservation, no generation): a USD
+        number (``{"usd": "x.xx"}``, as documented) or, as observed for Seedance 2.0 on
+        2026-11-06, a pricing description (``{"type": "description", ...}``) returned as text."""
         data = await self._post_json(f"{self._base}/estimate/{endpoint}", body, step="estimate")
         self.estimates += 1
+        if "usd" not in data and data.get("type") == "description":
+            text = str(data.get("pricing_description") or "")
+            if not text:
+                raise PermanentProviderError(f"higgsfield estimate {endpoint}: empty description")
+            return text
         try:
             usd = float(str(data["usd"]))
         except (KeyError, ValueError) as exc:
@@ -430,10 +443,64 @@ class HiggsfieldVideoProvider:
                 f"${cap:.2f} (max_usd_per_second {self.endpoint.max_usd_per_second:g})"
             )
 
-    async def estimate_usd(self, job: ReferenceVideoJob) -> float:
-        usd = await self.queue.estimate(self.model, self.body(job))
-        self.check_estimate(usd, job.duration_s)
-        return usd
+    async def quote(self, job: ReferenceVideoJob) -> PriceQuote:
+        """Ask ``/estimate`` for exactly this body. A number is the account's own price (no margin:
+        nothing is assumed). A description is priced by the configured token formula plus the
+        margin, after checking the description still names the configured rates."""
+        answer = await self.queue.estimate(self.model, self.body(job))
+        if isinstance(answer, float):
+            q = PriceQuote(answer, answer, "estimate_api", f"/estimate returned ${answer:.3f}")
+        else:
+            q = self.quote_from_description(answer, job)
+        self.check_estimate(q.reserved_usd, job.duration_s)
+        return q
+
+    def quote_from_description(self, description: str, job: ReferenceVideoJob) -> PriceQuote:
+        pricing = self.endpoint.pricing
+        if pricing is None:
+            raise PermanentProviderError(
+                f"higgsfield estimate {self.model}: /estimate returned a description and no token "
+                f"pricing is configured for this endpoint: {description[:300]}"
+            )
+        flat = " ".join(description.split())
+        missing = [m for m in pricing.rate_markers() if m not in flat]
+        if missing:
+            raise PermanentProviderError(
+                f"higgsfield estimate {self.model}: the live pricing description no longer names "
+                f"{missing}; update [pricing] in config/models.toml. Description: {flat[:400]}"
+            )
+        if "token" not in flat.lower():
+            raise PermanentProviderError(
+                f"higgsfield estimate {self.model}: not a token-metered description: {flat[:300]}"
+            )
+        return token_quote(
+            pricing,
+            resolution=job.resolution,
+            aspect_ratio=job.aspect_ratio,
+            duration_s=job.duration_s,
+        )
+
+    def price_check(
+        self, job: ReferenceVideoJob, width: int, height: int, seconds: float
+    ) -> dict[str, object]:
+        """The computed price next to the real output size: did the frame assumption hold?"""
+        check: dict[str, object] = {
+            "computed_usd": job.computed_usd,
+            "reserved_usd": job.est_usd,
+            "actual_size": f"{width}x{height}",
+            "actual_duration_s": round(seconds, 3),
+        }
+        pricing = self.endpoint.pricing
+        if pricing is not None and job.resolution in pricing.short_side_px:
+            aw, ah = pricing.frame(job.resolution, job.aspect_ratio)
+            check |= {
+                "assumed_size": f"{aw}x{ah}",
+                "size_matches": (aw, ah) == (width, height),
+                "usd_at_actual_size": round(
+                    pricing.usd(job.resolution, width, height, job.duration_s), 6
+                ),
+            }
+        return check
 
     async def reference_to_video(self, job: ReferenceVideoJob, out_dir: Path) -> MediaOutput:
         if job.est_usd is None:
@@ -458,15 +525,20 @@ class HiggsfieldVideoProvider:
             raise PermanentProviderError(f"higgsfield {self.model}: no video in {result}")
         path = out_dir / f"ad_v{lbl.scene_version}_a{lbl.attempt_no}_c{job.variant}.mp4"
         await self.queue.download(str(url), path)
-        self.queue.settle(handle, job.est_usd)
+        cost = job.computed_usd if job.computed_usd is not None else job.est_usd
+        self.queue.settle(handle, cost)
         w, h, dur = await self._probe(path)
         return MediaOutput(
             path=path,
             kind="video",
-            cost_usd=job.est_usd,
+            cost_usd=cost,
             width=w,
             height=h,
             duration_s=dur,
             remote_url=str(url),
-            meta={"request_id": handle.request_id, "expires_at": result.get("expires_at")},
+            meta={
+                "request_id": handle.request_id,
+                "expires_at": result.get("expires_at"),
+                "price_check": self.price_check(job, w, h, dur),
+            },
         )

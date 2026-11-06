@@ -157,6 +157,45 @@ class FalCatalog(_Frozen):
     audio: FalAudioCatalog | None = None
 
 
+class HiggsfieldTokenPricing(_Frozen):
+    """Token-metered price, as the account's ``/estimate`` describes it when it returns a
+    description instead of a number. Billable tokens = ceil(seconds × width × height × fps /
+    tokens_divisor); price = tokens / 1000 × the resolution's rate. The output frame size is NOT
+    in the description: ``short_side_px`` is our assumption (checked against the real output
+    after a generation). ``margin`` is added on top for the reservation and the gate."""
+
+    usd_per_1k_tokens: dict[str, float]
+    fps: int = Field(ge=1)
+    tokens_divisor: int = Field(ge=1)
+    short_side_px: dict[str, int]
+    margin: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def _same_resolutions(self) -> Self:
+        if set(self.usd_per_1k_tokens) != set(self.short_side_px):
+            raise ValueError("usd_per_1k_tokens and short_side_px must list the same resolutions")
+        return self
+
+    def frame(self, resolution: str, aspect_ratio: str) -> tuple[int, int]:
+        """The assumed output (width, height): the short side from the resolution, the long side
+        from the aspect ratio, rounded to an even pixel count."""
+        short = self.short_side_px[resolution]
+        a, b = (int(x) for x in aspect_ratio.split(":"))
+        long_ = round(short * max(a, b) / min(a, b) / 2) * 2
+        return (long_, short) if a >= b else (short, long_)
+
+    def tokens(self, width: int, height: int, seconds: float) -> int:
+        return math.ceil(seconds * width * height * self.fps / self.tokens_divisor)
+
+    def usd(self, resolution: str, width: int, height: int, seconds: float) -> float:
+        return self.tokens(width, height, seconds) / 1000 * self.usd_per_1k_tokens[resolution]
+
+    def rate_markers(self) -> list[str]:
+        """Strings the live description must still contain for this config to be trusted."""
+        rates = sorted({f"${r:g}" for r in self.usd_per_1k_tokens.values()})
+        return [*rates, f"{self.fps} fps", f"/ {self.tokens_divisor}"]
+
+
 class HiggsfieldVideoEndpoint(_Frozen):
     """A Higgsfield reference-to-video endpoint (one multi-shot ad from reference images). Schema
     facts are verified against docs.higgsfield.ai (dates in models.toml). There is no published
@@ -179,6 +218,8 @@ class HiggsfieldVideoEndpoint(_Frozen):
     max_prompt_chars: int = Field(default=2500, ge=200)
     # Endpoint-specific request fields (verified against the schema), merged into the body.
     params: dict[str, int | float | str | bool] = Field(default_factory=dict)
+    # Token formula used when /estimate answers with a description (no number). None = unknown.
+    pricing: HiggsfieldTokenPricing | None = None
     profile: VideoProfile | None = None
 
     @model_validator(mode="after")
@@ -187,6 +228,10 @@ class HiggsfieldVideoEndpoint(_Frozen):
             raise ValueError("default_duration_s must lie in [min_duration_s, max_duration_s]")
         if self.default_resolution not in self.resolutions:
             raise ValueError("default_resolution must be one of resolutions")
+        if self.pricing is not None and not set(self.resolutions) <= set(
+            self.pricing.usd_per_1k_tokens
+        ):
+            raise ValueError("pricing must cover every resolution of the endpoint")
         return self
 
 

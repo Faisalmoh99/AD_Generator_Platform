@@ -58,3 +58,22 @@ Facts checked on docs.higgsfield.ai and the SDK source on 2026-11-06 (no call wa
 − The credit-refusal body of a generation endpoint is undocumented (402 assumed, plus markers);
   verified at the first real call. The prompt length limit is unknown until probed.
 − We settle at the estimate; if Higgsfield bills less, the ledger overstates spend (fail-safe).
+
+## Addendum (2026-11-06): /estimate returns a pricing description, not a number
+
+Observed on the first approved call: for Seedance 2.0, `POST /estimate/...` returned
+`{"type": "description", "pricing_description": "Token-metered pricing. Billable video tokens =
+ceil((input + generated video seconds) × width × height × 24 fps / 1024) ... $0.014 per 1,000
+tokens (480p/720p/1080p), $0.008 (4K) ... before any applicable customer discount"}`. The call was
+free (console balance unchanged at $5).
+
+- The formula lives in `config/models.toml` (`[...seedance_20_ref.pricing]`: rates, fps, divisor,
+  the ASSUMED short side per resolution, `margin = 0.10`). The provider prices a description with
+  it (`PriceQuote`: computed price, reserved = price × 1.10, basis text) and refuses if the live
+  description stops naming the configured rates, `24 fps` or `/ 1024` (config drift).
+- A numeric `{"usd": ...}` answer still works and is used as is (no margin: nothing assumed).
+- The gate shows both numbers; the wallet reserves the margin and settles at the computed price.
+- After a generation, a decision event logs the computed price next to the ffprobe size and
+  duration, and the price at the real size if it differs, to check the frame assumption against
+  the console by hand.
+- Seedance 2.5 has no observed pricing: a description for it is refused.

@@ -63,7 +63,7 @@ risk_notes = ["the same face or object must look identical across separately gen
 # product photo, and the model adds native sound. Chosen by code when a product photo is given.
 label = "Multi-shot ad from one generation"
 min_shots = 3
-max_shots = 6
+max_shots = 4  # the demo is 8 s at 720p: 3-4 shots of ~2-3 s (user, 2026-11-06; was 6)
 kept_s = [1.5, 6.0]
 hero_last = true
 generation = "whole"

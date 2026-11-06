@@ -970,3 +970,19 @@ honest status (no real Higgsfield generation yet, rubric not yet calibrated), AD
 **Tests:** + a studio view-model test for a whole-ad run at the spend gate. 686 passed, 2 skipped.
 **Cut:** nothing. Not done because it needs your approval (calls Higgsfield or Anthropic): the
 estimate table, the montage v2 calibration, a real planning run and the one real generation.
+
+## Fix: token-rate pricing + 8 s multishot target (2026-11-06)
+
+- **Built**: `/estimate` answered with a pricing description (no `usd`) on the first approved call
+  (free; balance still $5). The provider now prices it from `[pricing]` in `config/models.toml`
+  (+10% margin), shows price and reserve at every gate (CLI, studio, decisions report,
+  `hf_generate_once.py`), reserves the margin, settles at the price, and logs a price check
+  (computed vs ffprobe size) after a generation. `hf_estimate.py --matrix` is now local and free.
+- **Decisions (user)**: 720p, 8 s, 9:16, audio on; multishot defaults to the endpoint's 8 s
+  (`default_duration_s`) unless the request or `ADSMITH_TARGET_DURATION_S` says otherwise;
+  3–4 shots (`max_shots` 6 → 4). ADR-0022 addendum.
+- **Deviation**: `multishot_en` fixture moved to 8 s (4 × 2 s). The ideate v6 text still says
+  "3-6" for the concept's shot sketch (not bumped; the storyboard grammar enforces 3–4).
+- **Tests**: 697 passed, 2 skipped (+10: the live description verbatim, per-resolution formula,
+  drift refusal, no-pricing refusal, settle at price + price check, 8 s default).
+- **Next**: `--matrix` (local), calibration on montage v2 (Anthropic, approved).

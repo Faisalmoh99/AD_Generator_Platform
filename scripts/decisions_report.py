@@ -65,8 +65,9 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
     if g is not None:
         out.append(
             f"\n2b. WHOLE AD: {g.status} · v{g.version} · {g.model} {g.duration_s}s {g.resolution} "
-            f"· estimate {f'${g.est_usd:.3f}' if g.est_usd is not None else '-'} · approved by "
-            f"{g.approved_by or '-'}"
+            f"· estimate {f'${g.est_usd:.3f}' if g.est_usd is not None else '-'}"
+            + (f" (price ${g.computed_usd:.3f})" if g.computed_usd not in (None, g.est_usd) else "")
+            + f" · approved by {g.approved_by or '-'}"
         )
         for e in events:
             if e.stage in {Stage.ESTIMATE, Stage.QA} and e.type is EventType.DECISION:

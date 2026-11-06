@@ -67,7 +67,8 @@ def render_ad_prompt(draft: AdPromptDraft, *, duration_s: int, aspect_ratio: str
     code, so a prompt can never drop them."""
     orient = "vertical" if aspect_ratio in {"9:16", "3:4"} else "horizontal"
     lines = [
-        f"A {duration_s}-second {orient} {aspect_ratio} product film in {len(draft.shots)} shots, "
+        f"{'An' if str(duration_s).startswith('8') or duration_s in (11, 18) else 'A'} "
+        f"{duration_s}-second {orient} {aspect_ratio} product film in {len(draft.shots)} shots, "
         "hard cuts between shots.",
         "The product is exactly the one in the reference image: keep its shape, colours, cap and "
         "materials identical in every shot. No text, letters, numbers or logos anywhere.",
@@ -149,7 +150,11 @@ class AdGeneration(DomainModel):
     resolution: str
     aspect_ratio: str
     generate_audio: bool = True
+    # est_usd is the amount the human approves and the wallet reserves (computed + margin);
+    # computed_usd is the price itself, price_basis how it was obtained.
     est_usd: float | None = Field(default=None, ge=0)
+    computed_usd: float | None = Field(default=None, ge=0)
+    price_basis: str | None = Field(default=None, max_length=500)
     estimated_at: datetime | None = None
     approved_usd: float | None = Field(default=None, ge=0)
     approved_by: Literal["user", "auto_mock", "cache"] | None = None
@@ -190,9 +195,15 @@ class AdGeneration(DomainModel):
         if self.status not in allowed:
             raise IllegalAdTransitionError(f"ad generation is {self.status}, needs {allowed}")
 
-    def set_estimate(self, usd: float) -> None:
+    def set_estimate(
+        self, usd: float, *, computed_usd: float | None = None, basis: str | None = None
+    ) -> None:
+        """``usd`` is the amount to approve and reserve; ``computed_usd`` the price before the
+        safety margin (defaults to ``usd``: no margin)."""
         self._need("pending", "estimated")
         self.est_usd, self.estimated_at, self.status = usd, utcnow(), "estimated"
+        self.computed_usd = usd if computed_usd is None else computed_usd
+        self.price_basis = basis[:500] if basis else None
         self.approved_usd = self.approved_by = None
         self.check_invariants()
 
@@ -250,5 +261,6 @@ class AdGeneration(DomainModel):
         self.version += 1
         self.status, self.failure, self.artifact, self.qa = "pending", None, None, None
         self.est_usd = self.estimated_at = self.approved_usd = self.approved_by = None
+        self.computed_usd = self.price_basis = None
         self.accepted_by_human = None
         self.check_invariants()

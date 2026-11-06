@@ -33,7 +33,7 @@ from adsmith.providers.media.higgsfield import HiggsfieldQueue, HiggsfieldVideoP
 from adsmith.providers.media.mock import MockReferenceVideoProvider
 from tests.unit.test_higgsfield import FakeHiggsfield
 
-REQUEST = "Make a 12-second ad for my perfume from this photo."
+REQUEST = "Make an 8-second ad for my perfume from this photo."
 
 
 def photo(tmp_path: Path) -> Path:
@@ -86,16 +86,22 @@ async def test_auto_mock_run_reaches_done_with_its_own_audio(tmp_path: Path) -> 
     assert state.brief.format is AdFormat.MULTISHOT
     g = state.generation
     assert g is not None and g.status == "approved" and g.approved_by == "auto_mock"
-    assert g.est_usd == pytest.approx(0.3 * 12) and len(g.prompt.shots) == 4
-    assert g.prompt.text.startswith("A 12-second vertical 9:16 product film in 4 shots")
+    # 720x1280 x 8 s x 24 / 1024 = 172,800 tokens x $0.014/1k = $2.4192; +10% reserved
+    assert g.computed_usd == pytest.approx(2.4192) and len(g.prompt.shots) == 4
+    assert g.est_usd == pytest.approx(2.4192 * 1.1) and g.price_basis is not None
+    assert "172,800 tokens" in g.price_basis
+    assert g.prompt.text.startswith("An 8-second vertical 9:16 product film in 4 shots")
     assert "No text, letters" in g.prompt.text
     assert mock_provider(rt, state).calls == 1
     assert state.storyboard is not None
     assert all(sc.prompt is None and sc.keyframe is None for sc in state.storyboard.scenes)
     final = rt.storage.artifacts.run_dir(run.id) / "final.mp4"
     assert await has_audio(final)  # the generation's own sound is kept
-    assert state.final is not None and state.final.duration_s == pytest.approx(14.0, abs=0.15)
-    assert state.budget.by_category["video"] == pytest.approx(3.6)
+    assert state.final is not None and state.final.duration_s == pytest.approx(10.0, abs=0.15)
+    assert state.budget.by_category["video"] == pytest.approx(2.4192)  # settled at the price
+    check = [e for e in rt.storage.events.tail(run.id, limit=3000) if "price_check" in e.payload]
+    assert len(check) == 1 and check[0].summary.startswith("Price check: computed $2.419")
+    assert "output 180x320" in check[0].summary  # the real (mock) file size, from the provider
     assert state.budget.reserved_usd == 0
     pack = rt.storage.artifacts.run_dir(run.id) / "production_pack" / "storyboard.json"
     assert json.loads(pack.read_text())["whole_ad_generation"]["status"] == "approved"
@@ -111,10 +117,11 @@ async def test_interactive_run_waits_at_the_estimate_gate_then_generates(tmp_pat
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.AWAITING_GENERATION_APPROVAL
     g = state.generation
-    assert g is not None and g.est_usd == pytest.approx(3.6) and not g.approved
+    assert g is not None and g.est_usd == pytest.approx(2.66112) and not g.approved
     assert mock_provider(rt, state).calls == 0  # nothing generated before the approval
     assert state.budget.by_category.get("video", 0) == 0
-    assert any("Waiting for a human to approve $3.600" in m for m in events(rt, run.id))
+    assert any("Waiting for a human to approve $2.661" in m for m in events(rt, run.id))
+    assert any("price $2.419, reserved $2.661 (with margin)" in m for m in events(rt, run.id))
     commands.approve_generation(rt.storage, run.id)
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE and state.generation is not None
@@ -288,7 +295,7 @@ async def test_killed_during_the_generation_then_resumed_pays_once(tmp_path: Pat
         assert catalog is not None
 
         async def probe(_: Path) -> tuple[int, int, float]:
-            return 720, 1280, 12.0
+            return 720, 1280, 8.0
 
         ep = catalog.video.endpoints[catalog.video.default]
         rt.ad_provider_factory = lambda run: HiggsfieldVideoProvider(queue, ep, probe)
@@ -339,8 +346,9 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
     active = [p["stage"] for p in v["pipeline"] if p["state"] == "active"]
     assert active == ["estimate"]  # the spend gate sits on the estimate
     g = v["generation"]
-    assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(3.6)
-    assert g["prompt"].startswith("A 12-second") and g["approved_by"] is None
+    assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(2.4192 * 1.1)
+    assert g["computed_usd"] == pytest.approx(2.4192)
+    assert g["prompt"].startswith("An 8-second") and g["approved_by"] is None
     c = v["concepts"][0]
     assert (
         set(c["rubric"])
@@ -348,3 +356,17 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
         and c["product_role"]["role"] == "catalyst"
     )
     assert v["insights"] and v["insights"][0]["statement"].startswith("In the Gulf")
+
+
+def test_a_multishot_run_defaults_to_the_endpoint_length_not_the_montage_one(
+    tmp_path: Path,
+) -> None:
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run("An ad for my perfume.", interactive=False, product_photo=photo(tmp_path))
+    assert run.config.target_duration_s == 8.0  # the catalog's default_duration_s
+    plain = orch.create_run("An ad for my perfume.", interactive=False)
+    assert plain.config.target_duration_s == 15.0  # montage / narrative: unchanged
+    rt2 = runtime(settings(tmp_path / "b", target_duration_s=10.0))
+    again = Orchestrator(rt2).create_run("An ad.", interactive=False, product_photo=photo(tmp_path))
+    assert again.config.target_duration_s == 10.0  # an explicit setting wins

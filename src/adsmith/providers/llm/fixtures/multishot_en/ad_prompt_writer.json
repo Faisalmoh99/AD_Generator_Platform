@@ -6,7 +6,7 @@
         {
           "number": 1,
           "start_s": 0,
-          "end_s": 3,
+          "end_s": 2,
           "action": "In an empty majlis a hand sets a small coffee cup on a brass tray; the amber bottle glows softly behind it.",
           "camera": "close-up, 85mm, locked off, shallow focus",
           "lighting": "warm lamp from the left, deep shadows",
@@ -14,8 +14,8 @@
         },
         {
           "number": 2,
-          "start_s": 3,
-          "end_s": 6,
+          "start_s": 2,
+          "end_s": 4,
           "action": "At the carved doorway the host in a white thobe turns back toward the last guest.",
           "camera": "medium shot, slow dolly in",
           "lighting": "tungsten light from above, warm rim",
@@ -23,8 +23,8 @@
         },
         {
           "number": 3,
-          "start_s": 6,
-          "end_s": 9,
+          "start_s": 4,
+          "end_s": 6,
           "action": "The host offers the bottle with both hands; the guest's hand reaches for it.",
           "camera": "macro close-up, slow push-in",
           "lighting": "warm key from the left, gold rim on the cap",
@@ -32,8 +32,8 @@
         },
         {
           "number": 4,
-          "start_s": 9,
-          "end_s": 12,
+          "start_s": 6,
+          "end_s": 8,
           "action": "The bottle stands alone on the brass tray, the gold cap catching the last light.",
           "camera": "medium close-up, slow push-in, lower fifth empty",
           "lighting": "one warm key, thin gold rim",
