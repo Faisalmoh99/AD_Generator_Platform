@@ -4,42 +4,36 @@
       "scores": [
         {
           "concept_number": 1,
-          "brief_fit": 9,
-          "producibility": 9,
-          "product_hero": 9,
-          "cultural_fit": 8,
+          "insight": 8,
+          "hook": 8,
+          "story_turn": 7,
           "originality": 8,
-          "insight": 7,
-          "single_shot_plausible": true,
-          "product_only_at_end": false,
+          "cultural_meaning": 7,
+          "product_role": 8,
           "uses_category_cliche": false,
-          "rationale": "Pure physics around the product, exactly what the model renders well; risk: very dark frames."
+          "rationale": "Strongest idea: a real truth with a turn; risk: the turn must read in one beat."
         },
         {
           "concept_number": 2,
-          "brief_fit": 7,
-          "producibility": 7,
-          "product_hero": 6,
-          "cultural_fit": 7,
+          "insight": 7,
+          "hook": 7,
+          "story_turn": 6,
           "originality": 7,
-          "insight": 6,
-          "single_shot_plausible": true,
-          "product_only_at_end": false,
+          "cultural_meaning": 6,
+          "product_role": 6,
           "uses_category_cliche": false,
-          "rationale": "Strong mood, but rain over a city needs wide shots the model handles less well."
+          "rationale": "Beautiful material, but the idea is thin and has no turn."
         },
         {
           "concept_number": 3,
-          "brief_fit": 7,
-          "producibility": 7,
-          "product_hero": 7,
-          "cultural_fit": 9,
-          "originality": 7,
           "insight": 7,
-          "single_shot_plausible": true,
-          "product_only_at_end": false,
+          "hook": 6,
+          "story_turn": 6,
+          "originality": 7,
+          "cultural_meaning": 8,
+          "product_role": 6,
           "uses_category_cliche": false,
-          "rationale": "Culturally warm, but heat shimmer is a light-only effect the model often ignores."
+          "rationale": "A clear human truth and a warm story; risk: busier staging."
         }
       ]
     }

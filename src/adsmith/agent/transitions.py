@@ -74,7 +74,8 @@ def _after_assemble(s: RunState) -> Stage:
 
 
 TRANSITIONS: dict[Stage, Guard] = {
-    Stage.UNDERSTAND: lambda s: Stage.IDEATE,
+    Stage.UNDERSTAND: lambda s: Stage.INSIGHT,
+    Stage.INSIGHT: lambda s: Stage.IDEATE,
     Stage.IDEATE: lambda s: Stage.SELECT,
     Stage.SELECT: _after_select,
     Stage.STORYBOARD: lambda s: Stage.CONTINUITY,

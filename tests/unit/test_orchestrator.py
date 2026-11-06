@@ -30,7 +30,15 @@ def steps(name: str) -> list[dict[str, Any]]:
 
 
 def full_scripts(**over: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    names = ("understand", "ideate", "select", "storyboard", "continuity", "prompt_writer")
+    names = (
+        "understand",
+        "insight",
+        "ideate",
+        "select",
+        "storyboard",
+        "continuity",
+        "prompt_writer",
+    )
     return {n: steps(n) for n in names} | over
 
 
@@ -65,6 +73,10 @@ async def test_interactive_run_stops_at_concept_gate(settings: Settings) -> None
         "stage_started",
         "llm_call",
         "decision",
+        "stage_completed",  # insight
+        "stage_started",
+        "llm_call",
+        "decision",
         "stage_completed",  # ideate
         "stage_started",
         "llm_call",
@@ -75,9 +87,10 @@ async def test_interactive_run_stops_at_concept_gate(settings: Settings) -> None
     hist = orch.rt.storage.runs.history(run.id)
     assert [(h.state_version, h.stage) for h in hist] == [
         (1, Stage.UNDERSTAND),
-        (2, Stage.IDEATE),
-        (3, Stage.SELECT),
-        (4, Stage.AWAITING_CONCEPT_CHOICE),
+        (2, Stage.INSIGHT),
+        (3, Stage.IDEATE),
+        (4, Stage.SELECT),
+        (5, Stage.AWAITING_CONCEPT_CHOICE),
     ]
 
 
@@ -94,7 +107,7 @@ async def test_llm_cost_is_booked_and_matches_trace(settings: Settings) -> None:
         assert isinstance(cost, float)
         traced += cost
     assert state.budget.spent_usd == pytest.approx(traced) and traced > 0
-    assert len(state.budget.entries) == len(calls) == 3  # understand, ideate, select
+    assert len(state.budget.entries) == len(calls) == 4  # understand, insight, ideate, select
 
 
 async def test_choose_concept_then_continue(settings: Settings) -> None:
@@ -177,8 +190,8 @@ async def test_failed_calls_are_still_booked(settings: Settings) -> None:
     state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
     assert state.stage is Stage.ERRORED and state.error is not None
     assert state.error.kind is FailureKind.INVALID_OUTPUT
-    # understand (1 call) + ideate (1 + 2 repairs), all booked
-    assert len(state.budget.entries) == 1 + 1 + settings.llm_max_repairs
+    # understand (1 call) + insight (1) + ideate (1 + 2 repairs), all booked
+    assert len(state.budget.entries) == 1 + 1 + 1 + settings.llm_max_repairs
 
 
 async def test_arabic_failure_message_before_brief_exists(settings: Settings) -> None:

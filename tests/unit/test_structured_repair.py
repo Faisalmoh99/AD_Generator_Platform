@@ -16,7 +16,7 @@ from adsmith.agent.recovery.errors import (
 )
 from adsmith.config import LLMNode, Settings
 from adsmith.domain.brief import BriefDraft
-from adsmith.domain.concept import ConceptSetDraft
+from adsmith.domain.concept import CreativeConceptSetDraft
 from adsmith.domain.storyboard import Storyboard, StoryboardDraft
 from adsmith.providers.llm.base import AssistantMessage, TextPart, UserMessage
 from adsmith.providers.llm.scripted import FIXTURES_DIR
@@ -45,7 +45,7 @@ def render(h: Harness, name: str = "ideate") -> Any:
 
 async def test_valid_first_try(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"output": GOOD_CONCEPTS}])
-    res = await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    res = await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert len(res.value.concepts) == 3
     (call,) = res.calls
     assert (call.kind, call.outcome, call.attempt) == ("initial", "ok", 1)
@@ -55,7 +55,7 @@ async def test_valid_first_try(settings: Settings, tmp_path: Path) -> None:
 async def test_repair_appends_to_same_conversation(settings: Settings, tmp_path: Path) -> None:
     bad = '{"concepts": [{"title": "only one"}]}'
     h = harness(settings, tmp_path, ideate=[{"raw": bad}, {"output": GOOD_CONCEPTS}])
-    res = await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    res = await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert [c.outcome for c in res.calls] == ["invalid", "ok"]
     assert [c.kind for c in res.calls] == ["initial", "repair"]
 
@@ -74,7 +74,7 @@ async def test_domain_invariant_failure_is_repaired(settings: Settings, tmp_path
     dup = json.loads(json.dumps(GOOD_CONCEPTS))
     dup["concepts"][2] = dict(dup["concepts"][0], title="The Night Drive II")
     h = harness(settings, tmp_path, ideate=[{"output": dup}, {"output": GOOD_CONCEPTS}])
-    res = await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    res = await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert [c.outcome for c in res.calls] == ["invalid", "ok"]
     repair = h.provider.requests[1].messages[-1]
     assert "not distinct" in repair.parts[0].text  # type: ignore[union-attr]
@@ -99,7 +99,7 @@ async def test_convert_step_errors_feed_repair(settings: Settings, tmp_path: Pat
 async def test_repairs_exhausted_raises_with_all_calls(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"raw": "not json"}])
     with pytest.raises(InvalidLLMOutputError) as exc:
-        await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+        await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert len(exc.value.llm_calls) == 1 + settings.llm_max_repairs
     assert all(c.outcome == "invalid" for c in exc.value.llm_calls)
     assert exc.value.validation_errors and exc.value.raw == "not json"
@@ -108,14 +108,14 @@ async def test_repairs_exhausted_raises_with_all_calls(settings: Settings, tmp_p
 async def test_refusal_is_typed_and_booked(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"refusal": "cyber"}])
     with pytest.raises(ContentPolicyError) as exc:
-        await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+        await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert exc.value.category == "cyber"
     assert [c.outcome for c in exc.value.llm_calls] == ["refusal"]
 
 
 async def test_truncation_retries_with_more_tokens(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"truncated": True}, {"output": GOOD_CONCEPTS}])
-    res = await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    res = await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     first, second = h.provider.requests
     assert second.max_tokens == 2 * first.max_tokens
     assert len(second.messages) == 1  # cut-off output is not replayed
@@ -128,7 +128,7 @@ async def test_transient_errors_back_off_then_succeed(settings: Settings, tmp_pa
         tmp_path,
         ideate=[{"error": "transient"}, {"error": "transient"}, {"output": GOOD_CONCEPTS}],
     )
-    res = await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    res = await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert len(h.sleeps) == 2 and all(0 <= d <= 2.0 for d in h.sleeps)
     assert [c.kind for c in res.calls] == ["transient_retry", "transient_retry", "initial"]
     assert [c.outcome for c in res.calls] == ["error", "error", "ok"]
@@ -137,7 +137,7 @@ async def test_transient_errors_back_off_then_succeed(settings: Settings, tmp_pa
 async def test_transient_exhausted_carries_records(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"error": "transient"}])
     with pytest.raises(TransientProviderError) as exc:
-        await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+        await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert len(h.sleeps) == 3  # 4 attempts → 3 waits
     assert len(exc.value.llm_calls) == 4
 
@@ -145,7 +145,7 @@ async def test_transient_exhausted_carries_records(settings: Settings, tmp_path:
 async def test_permanent_error_is_not_retried(settings: Settings, tmp_path: Path) -> None:
     h = harness(settings, tmp_path, ideate=[{"error": "permanent"}])
     with pytest.raises(PermanentProviderError):
-        await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+        await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     assert h.sleeps == [] and h.provider.calls_for("ideate") == 1
 
 
@@ -153,7 +153,7 @@ async def test_request_shape_cache_and_fallback(settings: Settings, tmp_path: Pa
     h = harness(
         settings, tmp_path, ideate=[{"output": GOOD_CONCEPTS}], understand=[{"output": GOOD_BRIEF}]
     )
-    await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     await h.caller.call(LLMNode.UNDERSTAND, render(h, "understand"), BriefDraft)
     ideate_req, understand_req = h.provider.requests
 
@@ -170,7 +170,7 @@ async def test_request_shape_cache_and_fallback(settings: Settings, tmp_path: Pa
 async def test_prompt_cache_can_be_disabled(tmp_path: Path) -> None:
     s = Settings(data_dir=tmp_path / "d", llm_prompt_cache=False)
     h = harness(s, tmp_path, ideate=[{"output": GOOD_CONCEPTS}])
-    await h.caller.call(LLMNode.IDEATE, render(h), ConceptSetDraft)
+    await h.caller.call(LLMNode.IDEATE, render(h), CreativeConceptSetDraft)
     (req,) = h.provider.requests
     assert req.cache_system is False
     assert not any(p.cache for p in req.messages[0].parts if isinstance(p, TextPart))  # type: ignore[union-attr]

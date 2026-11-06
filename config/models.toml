@@ -12,6 +12,7 @@ default_profile = "balanced"
 
 [profiles.fast]
 understand     = { model = "claude-haiku-5-5",  effort = "low" }
+insight        = { model = "claude-sonnet-5-5", effort = "low" }
 ideate         = { model = "claude-sonnet-5-5", effort = "low" }
 select         = { model = "claude-haiku-5-5",  effort = "low" }
 storyboard     = { model = "claude-sonnet-5-5", effort = "low" }
@@ -27,6 +28,8 @@ endcard_copy   = { model = "claude-haiku-5-5",  effort = "low" }
 # understand: low (3.5 s median vs 5.7 s at medium, same brief quality). ideate: high on purpose,
 # because medium/low regressed to category clichés at ~21 s. Measurements in ADR-0007.
 understand     = { model = "claude-haiku-5-5",  effort = "low" }
+# insight: the truths the concepts stand on; high effort for the same reason as ideate.
+insight        = { model = "claude-sonnet-5-5", effort = "high" }
 ideate         = { model = "claude-sonnet-5-5", effort = "high" }
 select         = { model = "claude-sonnet-5-5", effort = "medium" }
 storyboard     = { model = "claude-sonnet-5-5", effort = "high" }
@@ -40,6 +43,7 @@ endcard_copy   = { model = "claude-haiku-5-5",  effort = "medium" }
 
 [profiles.quality]
 understand     = { model = "claude-sonnet-5-5", effort = "medium" }
+insight        = { model = "claude-opus-5-5",   effort = "high" }
 ideate         = { model = "claude-opus-5-5",   effort = "high" }
 select         = { model = "claude-sonnet-5-5", effort = "high" }
 storyboard     = { model = "claude-opus-5-5",   effort = "high" }

@@ -1,24 +1,35 @@
 [
   {
     "output": {
-      "category_cliches": [
-        "A shirtless model emerging from the sea",
-        "A woman drawn to the man after one spray",
-        "Gold liquid splashes and swirling smoke for luxury"
-      ],
       "concepts": [
         {
+          "insight_number": 1,
           "title": "Obsidian",
           "logline": "Darkness, metal and water: the bottle is discovered one hard edge of light at a time until it stands whole on wet rock.",
-          "narrative_arc": [
+          "insight": "Real confidence is quiet; it shows in details, not noise.",
+          "story": {
+            "setup": "darkness and brushed metal",
+            "turn": "cold water",
+            "payoff": "the reveal on wet rock"
+          },
+          "hook": {
+            "image": "A razor line of light crawling over a brushed metal cap",
+            "sound": "a deep metallic resonance",
+            "question": "What is hiding in the dark?"
+          },
+          "product_role": {
+            "role": "hero",
+            "line": "Every shot is a detail of the bottle; the montage is the bottle revealing itself."
+          },
+          "cultural_meaning": "Restraint and attention to detail, read as status in the Gulf.",
+          "originality_claim": "No splash, no smoke: light and water discover a still object.",
+          "emotional_driver": "Restrained power",
+          "differentiator": "Pure material and light; no story, no character until one hand at the end.",
+          "shot_sketch": [
             "darkness and brushed metal",
             "cold water",
             "the reveal on wet rock"
           ],
-          "visual_hook": "A razor line of light crawling over a brushed metal cap",
-          "insight": "Real confidence is quiet; it shows in details, not noise.",
-          "emotional_driver": "Restrained power",
-          "differentiator": "Pure material and light; no story, no character until one hand at the end.",
           "style_references": [
             "hard rim light",
             "macro lens",
@@ -28,17 +39,33 @@
           "estimated_scene_count": 9
         },
         {
+          "insight_number": 2,
           "title": "Night Rain",
           "logline": "Rain on a midnight terrace beads on cold glass while the city hum fades; one drop at a time builds to the scent.",
-          "narrative_arc": [
+          "insight": "The best nights start in the quiet minutes before you leave.",
+          "story": {
+            "setup": "rain begins",
+            "turn": "glass beads with water",
+            "payoff": "the city goes silent"
+          },
+          "hook": {
+            "image": "A single raindrop landing on a leaf in extreme slow motion",
+            "sound": "rain on glass and a fading city hum",
+            "question": "What is the night waiting for?"
+          },
+          "product_role": {
+            "role": "witness",
+            "line": "The bottle sits in the calm before the night, ready."
+          },
+          "cultural_meaning": "The late, quiet start of a Gulf evening.",
+          "originality_claim": "Weather and silence instead of party clichés.",
+          "emotional_driver": "Anticipation",
+          "differentiator": "Built around weather and the city at night instead of pure material.",
+          "shot_sketch": [
             "rain begins",
             "glass beads with water",
             "the city goes silent"
           ],
-          "visual_hook": "A single raindrop landing on a leaf in extreme slow motion",
-          "insight": "The best nights start in the quiet minutes before you leave.",
-          "emotional_driver": "Anticipation",
-          "differentiator": "Built around weather and the city at night instead of pure material.",
           "style_references": [
             "blue night palette",
             "slow motion water"
@@ -47,18 +74,34 @@
           "estimated_scene_count": 9
         },
         {
+          "insight_number": 3,
           "title": "Desert Ember",
           "logline": "Wind-carved sandstone and the last ember of a majlis fire glow behind the bottle as heat shimmers past it.",
-          "narrative_arc": [
+          "insight": "Heritage is warm; it is carried, not displayed.",
+          "story": {
+            "setup": "sandstone texture",
+            "turn": "heat shimmer",
+            "payoff": "the bottle in firelight"
+          },
+          "hook": {
+            "image": "An ember's glow sweeping over carved sandstone",
+            "sound": "the crackle of a dying ember",
+            "question": "Whose fire was this?"
+          },
+          "product_role": {
+            "role": "witness",
+            "line": "The bottle carries the warmth of the majlis fire."
+          },
+          "cultural_meaning": "Fire and scent as the carriers of family memory.",
+          "originality_claim": "Heritage shown as warmth, not as museum props.",
+          "emotional_driver": "Warm pride",
+          "differentiator": "Warm desert palette and heritage materials instead of cold water and metal.",
+          "shot_sketch": [
             "sandstone texture",
             "ember glow",
             "heat shimmer",
             "the bottle in firelight"
           ],
-          "visual_hook": "An ember's glow sweeping over carved sandstone",
-          "insight": "Heritage is warm; it is carried, not displayed.",
-          "emotional_driver": "Warm pride",
-          "differentiator": "Warm desert palette and heritage materials instead of cold water and metal.",
           "style_references": [
             "warm firelight",
             "sandstone macro"

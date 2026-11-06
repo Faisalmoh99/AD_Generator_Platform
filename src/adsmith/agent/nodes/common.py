@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from adsmith.config import FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
 from adsmith.domain.brief import Brief
-from adsmith.domain.concept import Concept
+from adsmith.domain.concept import Concept, InsightSet
 from adsmith.domain.enums import Language, Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.formats import AdFormat
@@ -45,16 +45,41 @@ def brief_block(b: Brief) -> str:
 
 def concept_block(c: Concept, number: int | None = None) -> str:
     head = f"Concept {number}: {c.title}" if number else f"Concept: {c.title}"
+    lines = [head, f"Logline: {c.logline}", f"Insight: {c.insight}"]
+    if c.story is not None:
+        lines.append(
+            f"Story: setup: {c.story.setup} | turn: {c.story.turn} | payoff: {c.story.payoff}"
+        )
+    else:
+        lines.append(f"Beats: {' → '.join(c.narrative_arc)}")
+    if c.hook is not None:
+        lines.append(
+            f"Hook (0-2 s): {c.hook.image} | sound: {c.hook.sound} | opens: {c.hook.question}"
+        )
+    else:
+        lines.append(f"Visual hook: {c.visual_hook}")
+    if c.product_role is not None:
+        lines.append(f"Product role: {c.product_role.role}: {c.product_role.line}")
+    if c.cultural_meaning:
+        lines.append(f"Cultural meaning: {c.cultural_meaning}")
+    if c.originality_claim:
+        lines.append(f"Why it is ownable: {c.originality_claim}")
+    if c.shot_sketch:
+        lines.append("Shots: " + " / ".join(c.shot_sketch))
+    lines += [
+        f"Emotional driver: {c.emotional_driver}",
+        f"Style: {', '.join(c.style_references) or '-'}",
+    ]
+    return "\n".join(lines)
+
+
+def insights_block(insights: InsightSet | None) -> str:
+    if insights is None or not insights.insights:
+        return "(none were given: find the human truth yourself and state it in insight)"
     return "\n".join(
-        [
-            head,
-            f"Logline: {c.logline}",
-            f"Beats: {' → '.join(c.narrative_arc)}",
-            f"Visual hook: {c.visual_hook}",
-            f"Insight: {c.insight}",
-            f"Emotional driver: {c.emotional_driver}",
-            f"Style: {', '.join(c.style_references) or '-'}",
-        ]
+        f"{i}. {x.statement}\n   tension: {x.tension}\n   evidence: {x.evidence}\n"
+        f"   for a Gulf viewer: {x.gulf_meaning}"
+        for i, x in enumerate(insights.insights, 1)
     )
 
 

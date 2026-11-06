@@ -19,7 +19,7 @@ import pytest
 
 from adsmith.agent.schemas import OUTPUT_SCHEMAS
 from adsmith.domain.brief import Brief, BriefDraft
-from adsmith.domain.concept import ConceptSet, ConceptSetDraft
+from adsmith.domain.concept import ConceptSet, CreativeConceptSetDraft, InsightSetDraft
 from adsmith.domain.continuity import ContinuityBible, ContinuityBibleDraft
 from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.domain.shot_lint import multi_action_problem, negative_contradictions
@@ -79,9 +79,14 @@ def test_scenario_is_coherent_through_domain_conversions(scenario: Path) -> None
         raw_request="fixture",
         default_aspect="9:16",
     )
-    concepts = ConceptSet.from_draft(
-        ConceptSetDraft.model_validate(_outputs(scenario, "ideate")[0])
+    found = InsightSetDraft.model_validate(_outputs(scenario, "insight")[0])
+    concepts = ConceptSet.from_creative(
+        CreativeConceptSetDraft.model_validate(_outputs(scenario, "ideate")[0]),
+        list(found.category_cliches),
     )
+    assert all(
+        c.insight_number and c.insight_number <= len(found.insights) for c in concepts.concepts
+    ), "a concept points at an insight that does not exist"
     storyboard = Storyboard.from_draft(
         StoryboardDraft.model_validate(_outputs(scenario, "storyboard")[0]),
         concept_id=concepts.concepts[0].id,

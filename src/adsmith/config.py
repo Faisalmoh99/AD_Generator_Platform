@@ -20,6 +20,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from adsmith.domain.culture import CultureLexicon
 from adsmith.domain.formats import FormatLibrary
+from adsmith.domain.rubric import Rubric
 from adsmith.domain.vocabulary import VocabLibrary
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -33,6 +34,7 @@ class LLMNode(StrEnum):
     """Every node that calls an LLM. Each must have a model in every profile."""
 
     UNDERSTAND = "understand"
+    INSIGHT = "insight"
     IDEATE = "ideate"
     SELECT = "select"
     STORYBOARD = "storyboard"
@@ -361,6 +363,12 @@ class Settings(BaseSettings):
         """Shot vocabulary for montage shots (config/shot_vocabulary.toml, ADR-0018)."""
         with (self.config_dir / "shot_vocabulary.toml").open("rb") as fh:
             return VocabLibrary.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def rubric(self) -> Rubric:
+        """The creative rubric for concepts and finished ads (config/rubric.toml, ADR-0024)."""
+        with (self.config_dir / "rubric.toml").open("rb") as fh:
+            return Rubric.model_validate(tomllib.load(fh))
 
     @cached_property
     def culture(self) -> CultureLexicon:

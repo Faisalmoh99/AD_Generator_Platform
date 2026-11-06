@@ -1,25 +1,36 @@
 [
   {
     "output": {
-      "category_cliches": [
-        "A model emerging from the sea at dusk",
-        "Slow-motion gold liquid splashing around the bottle",
-        "A woman drawn to a man after one spray"
-      ],
       "concepts": [
         {
+          "insight_number": 1,
           "title": "The Last Guest",
           "logline": "The majlis empties; the host keeps one gesture for the last guest: the bottle, offered with both hands.",
-          "narrative_arc": [
+          "insight": "In the Gulf, the scent you leave a guest with is the last word of your hospitality.",
+          "story": {
+            "setup": "the gathering ends",
+            "turn": "the host offers the scent",
+            "payoff": "the bottle as the memory of the night"
+          },
+          "hook": {
+            "image": "A coffee cup set down in silence as the room empties",
+            "sound": "the soft clink of a coffee cup in an empty room",
+            "question": "Why is the host still here after everyone left?"
+          },
+          "product_role": {
+            "role": "catalyst",
+            "line": "The bottle is the gesture that turns a goodbye into hospitality."
+          },
+          "cultural_meaning": "Perfuming the last guest is the closing ritual of Gulf hospitality.",
+          "originality_claim": "A perfume ad about giving scent, not wearing it.",
+          "emotional_driver": "Generosity and pride",
+          "differentiator": "A human story of hospitality, not a display of luxury.",
+          "shot_sketch": [
             "the gathering ends",
             "one guest lingers at the door",
             "the host offers the scent",
             "the bottle as the memory of the night"
           ],
-          "visual_hook": "A coffee cup set down in silence as the room empties",
-          "insight": "In the Gulf, the scent you leave a guest with is the last word of your hospitality.",
-          "emotional_driver": "Generosity and pride",
-          "differentiator": "A human story of hospitality, not a display of luxury.",
           "style_references": [
             "warm practical light",
             "slow dolly",
@@ -29,17 +40,33 @@
           "estimated_scene_count": 4
         },
         {
+          "insight_number": 2,
           "title": "Amber Hour",
           "logline": "Late sun pours through a mashrabiya and turns the bottle's facets into a lattice of gold on the wall.",
-          "narrative_arc": [
+          "insight": "A scent is worn like a time of day: some people carry the golden hour with them.",
+          "story": {
+            "setup": "light finds the lattice",
+            "turn": "the pattern crawls across the room",
+            "payoff": "the bottle holds the light"
+          },
+          "hook": {
+            "image": "A gold lattice of light sliding across a plaster wall",
+            "sound": "the creak of a wooden shutter",
+            "question": "What is the light about to reveal?"
+          },
+          "product_role": {
+            "role": "hero",
+            "line": "The bottle holds the golden hour inside its facets."
+          },
+          "cultural_meaning": "The light after asr through the mashrabiya.",
+          "originality_claim": "Light as a pattern on the wall instead of a flare on the glass.",
+          "emotional_driver": "Calm warmth",
+          "differentiator": "Pure light and pattern, no person.",
+          "shot_sketch": [
             "light finds the lattice",
             "the pattern crawls across the room",
             "the bottle holds the light"
           ],
-          "visual_hook": "A gold lattice of light sliding across a plaster wall",
-          "insight": "A scent is worn like a time of day: some people carry the golden hour with them.",
-          "emotional_driver": "Calm warmth",
-          "differentiator": "Pure light and pattern, no person.",
           "style_references": [
             "hard sunlight",
             "long shadows",
@@ -51,18 +78,34 @@
           "estimated_scene_count": 4
         },
         {
+          "insight_number": 3,
           "title": "Wedding Night Walk",
           "logline": "A groom's friends adjust his bisht in a corridor; the final touch before he walks out is the scent.",
-          "narrative_arc": [
+          "insight": "The last thing you put on before the biggest night is the one you remember.",
+          "story": {
+            "setup": "the corridor before the hall",
+            "turn": "the spray",
+            "payoff": "the doors open"
+          },
+          "hook": {
+            "image": "Many hands fixing one collar in a narrow corridor",
+            "sound": "many voices in a corridor, then silence",
+            "question": "What is the last thing they will give him?"
+          },
+          "product_role": {
+            "role": "reward",
+            "line": "The scent is the final touch his friends give before he walks out."
+          },
+          "cultural_meaning": "Brothers and friends preparing the groom, hand by hand.",
+          "originality_claim": "A wedding seen from the corridor, not the stage.",
+          "emotional_driver": "Brotherhood and anticipation",
+          "differentiator": "A milestone moment with a group, built on touch and anticipation.",
+          "shot_sketch": [
             "the corridor before the hall",
             "hands fix the bisht",
             "the spray",
             "the doors open"
           ],
-          "visual_hook": "Many hands fixing one collar in a narrow corridor",
-          "insight": "The last thing you put on before the biggest night is the one you remember.",
-          "emotional_driver": "Brotherhood and anticipation",
-          "differentiator": "A milestone moment with a group, built on touch and anticipation.",
           "style_references": [
             "tungsten corridor light",
             "handheld-feel gimbal",

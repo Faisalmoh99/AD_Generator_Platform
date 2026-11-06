@@ -15,6 +15,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from adsmith.domain.concept import Concept
 from adsmith.domain.enums import Language
 from adsmith.domain.run import RunState
 
@@ -66,6 +67,9 @@ def pack_json(state: RunState) -> dict[str, Any]:
         if concepts and concepts.selected
         else None,
         "category_cliches_avoided": list(concepts.category_cliches) if concepts else [],
+        "insights": [x.model_dump(mode="json") for x in state.insights.insights]
+        if state.insights
+        else [],
         "bible": state.bible.model_dump(mode="json") if state.bible else None,
         "total_duration_s": sb.total_duration_s if sb else None,
         "endcard": (
@@ -105,6 +109,23 @@ def pack_json(state: RunState) -> dict[str, Any]:
     }
 
 
+def _creative_lines(concept: Concept) -> list[str]:
+    """The creative layer of the chosen concept (ideate v6), if it has one."""
+    lines: list[str] = []
+    if concept.story is not None:
+        lines += [
+            f"- Insight: {concept.insight}",
+            f"- Story: {concept.story.setup} / {concept.story.turn} / {concept.story.payoff}",
+        ]
+    if concept.hook is not None:
+        lines.append(f"- Hook: {concept.hook.image} ({concept.hook.question})")
+    if concept.product_role is not None:
+        lines.append(f"- Product: {concept.product_role.role}: {concept.product_role.line}")
+    if concept.cultural_meaning:
+        lines.append(f"- Culture: {concept.cultural_meaning}")
+    return [*lines, ""] if lines else []
+
+
 def pack_markdown(state: RunState) -> str:
     lang = "ar" if state.language == Language.AR.value else "en"
     t = _LABELS[lang]
@@ -119,9 +140,14 @@ def pack_markdown(state: RunState) -> str:
             f"- {b.product} · {b.target_audience} · {b.duration_s:g}s · {b.aspect_ratio}",
             "",
         ]
+    if state.insights:
+        out += ["## Insights", ""]
+        out += [f"{i}. {x.statement}" for i, x in enumerate(state.insights.insights, 1)]
+        out.append("")
     concept = state.concepts.selected if state.concepts else None
     if concept:
         out += [f"## {t['concept']}: {concept.title}", "", concept.logline, ""]
+        out += _creative_lines(concept)
     if state.generation is not None:
         g = state.generation
         est = f"${g.est_usd:.3f}" if g.est_usd is not None else "-"

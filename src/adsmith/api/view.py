@@ -7,12 +7,14 @@ from typing import Any
 
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.rubric import RUBRIC_KEYS
 from adsmith.domain.run import RunState
 from adsmith.storage import Storage
 
 PIPELINE: list[tuple[str, str, str]] = [
     # (stage, English label, Arabic label)
     ("understand", "Brief", "الفهم"),
+    ("insight", "Insight", "البصيرة"),
     ("ideate", "Concepts", "الأفكار"),
     ("select", "Pick", "الاختيار"),
     ("storyboard", "Storyboard", "اللوحة"),
@@ -28,8 +30,9 @@ PIPELINE: list[tuple[str, str, str]] = [
 # stages is always code (agent/transitions.py).
 STAGE_KIND: dict[str, tuple[str, str]] = {
     "understand": ("llm", "LLM reads the request · code resolves the format"),
-    "ideate": ("llm", "LLM writes 3 concepts · code checks they differ"),
-    "select": ("mixed", "LLM scores · code weights and picks"),
+    "insight": ("llm", "LLM names the category clichés and the human truths"),
+    "ideate": ("llm", "LLM writes 3 concepts on the truths · code checks they differ"),
+    "select": ("mixed", "LLM scores the creative rubric · code weights and picks"),
     "storyboard": ("llm", "LLM picks shots · code validates the grammar"),
     "continuity": ("llm", "LLM writes the bible · code lints wardrobe"),
     "prompt": ("llm", "LLM writes prompts · code lints them"),
@@ -224,8 +227,13 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
                     "selected": c.id == state.concepts.selected_id,
                     "recommended": n == recommended,
                     "score": s.get("weighted"),
-                    "producibility": s.get("producibility"),
+                    "producibility": s.get("producibility"),  # runs judged before ADR-0024
                     "originality": s.get("originality"),
+                    "rubric": {k: s[k] for k in RUBRIC_KEYS if k in s},
+                    "story": c.story.model_dump() if c.story else None,
+                    "hook_question": c.hook.question if c.hook else None,
+                    "product_role": c.product_role.model_dump() if c.product_role else None,
+                    "cultural_meaning": c.cultural_meaning,
                     "cliche": s.get("uses_category_cliche"),
                     "single_shot": s.get("single_shot_plausible"),
                     "product_late": s.get("product_only_at_end"),
@@ -295,6 +303,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
         ),
         "concepts": concepts,
         "selection": state.concepts.selection_rationale if state.concepts else None,
+        "insights": [x.model_dump() for x in state.insights.insights] if state.insights else [],
         "selected_by": state.concepts.selected_by if state.concepts else None,
         "scenes": scenes,
         "blast": _blast(state, events),

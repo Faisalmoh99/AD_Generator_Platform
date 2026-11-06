@@ -3,43 +3,37 @@
     "output": {
       "scores": [
         {
-          "brief_fit": 8,
           "concept_number": 1,
-          "cultural_fit": 9,
           "insight": 8,
-          "originality": 6,
-          "producibility": 7,
-          "product_hero": 8,
-          "product_only_at_end": false,
-          "rationale": "أكبر نقاط القوة: لحظة إنسانية صادقة قبل الخروج، والقارورة تظهر في أول ثانيتين وفي النهاية، والزي الخليجي محتشم ومناسب. الخطر: الوجه القريب وتعديل الغترة أمام المرآة قد يربكان الذكاء الاصطناعي، والفكرة هادئة وقد تبدو مألوفة.",
-          "single_shot_plausible": true,
-          "uses_category_cliche": false
+          "hook": 7,
+          "story_turn": 7,
+          "originality": 7,
+          "cultural_meaning": 8,
+          "product_role": 7,
+          "uses_category_cliche": false,
+          "rationale": "فكرة قوية بحقيقة إنسانية ولحظة تحول؛ الخطر: أن تُقرأ اللحظة في ثانية واحدة."
         },
         {
-          "brief_fit": 6,
           "concept_number": 2,
-          "cultural_fit": 5,
-          "insight": 4,
-          "originality": 5,
-          "producibility": 8,
-          "product_hero": 6,
-          "product_only_at_end": false,
-          "rationale": "أكبر نقاط القوة: لقطات الماكرو سهلة التنفيذ وتمنح مظهرًا فاخرًا. الخطر: لا يظهر شاب ولا سياق ثقافي، والفكرة تعتمد على مشهد جمالي للمواد والسائل والدخان والإضاءة الذهبية حول القارورة، وهذا قريب من كليشيهات الفئة وبإدراك إنساني ضعيف.",
-          "single_shot_plausible": true,
-          "uses_category_cliche": true
+          "insight": 6,
+          "hook": 7,
+          "story_turn": 4,
+          "originality": 6,
+          "cultural_meaning": 5,
+          "product_role": 7,
+          "uses_category_cliche": false,
+          "rationale": "مواد جميلة لكن الفكرة رقيقة ولا تحول فيها."
         },
         {
-          "brief_fit": 8,
           "concept_number": 3,
-          "cultural_fit": 10,
           "insight": 9,
+          "hook": 9,
+          "story_turn": 8,
           "originality": 9,
-          "producibility": 6,
-          "product_hero": 7,
-          "product_only_at_end": false,
-          "rationale": "أكبر نقاط القوة: فكرة الحضور الذي يبقى بعد الغياب أصيلة ومحلية وغير مألوفة في فئة العطور، ومناسبة لجمهور الخليج. الخطر: القارورة تظهر جزئيًا فقط قبل النهاية، وبعض الحركات الدقيقة كتأرجح الغترة وتحرك الستارة والبخار قد يصعب ضبطها وإظهارها بشكل مقنع.",
-          "single_shot_plausible": true,
-          "uses_category_cliche": false
+          "cultural_meaning": 9,
+          "product_role": 8,
+          "uses_category_cliche": false,
+          "rationale": "أقوى الثلاثة: البطل غائب وأثره هو القصة، والثقافة هي المعنى؛ الخطر: أن يُقرأ الغياب بوضوح."
         }
       ]
     }

@@ -1,0 +1,31 @@
+[
+  {
+    "output": {
+      "category_cliches": [
+        "A shirtless model emerging from the sea",
+        "A woman drawn to the man after one spray",
+        "Gold liquid splashes and swirling smoke for luxury"
+      ],
+      "insights": [
+        {
+          "statement": "Real confidence is quiet; it shows in details, not noise.",
+          "tension": "Young men are told to be loud, but they admire the ones who never need to be.",
+          "evidence": "The respected cousin who barely speaks in the majlis, and whose watch, cuff and scent are perfect.",
+          "gulf_meaning": "In the Gulf, restraint and attention to detail read as status and good upbringing."
+        },
+        {
+          "statement": "The best nights start in the quiet minutes before you leave.",
+          "tension": "The night is loud, but its best part is the calm before it.",
+          "evidence": "The drive with no music, the rain on the windshield, the city lights before the party.",
+          "gulf_meaning": "Evenings out in Gulf cities start late and quietly, after maghrib."
+        },
+        {
+          "statement": "Heritage is warm; it is carried, not displayed.",
+          "tension": "Heritage is often shown in museums, but people live it in small warm gestures.",
+          "evidence": "The last ember of the majlis fire, the scent of oud on a grandfather's thobe.",
+          "gulf_meaning": "Scent and fire carry family memory in the Gulf home."
+        }
+      ]
+    }
+  }
+]

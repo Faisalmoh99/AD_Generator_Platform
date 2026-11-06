@@ -1,0 +1,47 @@
+# The creative rubric (ADR-0024): ONE set of criteria scores both the three concepts (select) and
+# the finished ad (the whole-ad critic). Weights sum to 1; code computes every weighted total.
+# Ease of execution is NOT a criterion: production limits reach the storyboard through the video
+# model's profile and the format grammar, and the critic's hard gate catches what fails on screen.
+cliche_penalty = 1.5   # subtracted when the judge flags a category cliché (ADR-0014)
+
+[criteria.insight]
+weight = 0.20
+label = "Insight"
+definition = "A real human truth the audience recognises about their life, the moment or the category; the idea rests on it."
+concept_question = "Does the concept rest on a real human truth the audience will recognise, beyond a striking visual?"
+video_question = "Does the finished film make that truth felt, or is it only a sequence of pretty images?"
+
+[criteria.hook]
+weight = 0.20
+label = "Hook"
+definition = "The first two seconds stop the scroll: an image or sound that opens a question the viewer wants answered."
+concept_question = "Would the first two seconds stop a viewer scrolling past, and do they open a question?"
+video_question = "Do the first two seconds of the film stop the scroll and open a question?"
+
+[criteria.story_turn]
+weight = 0.15
+label = "Story and turn"
+definition = "A setup, one turn that changes its meaning, and a payoff, even in a few seconds."
+concept_question = "Is there a setup, a turn that changes its meaning, and a payoff?"
+video_question = "Does the film have a setup, a turn and a payoff, in that order, that a viewer can follow?"
+
+[criteria.originality]
+weight = 0.15
+label = "Originality"
+definition = "Fresh and ownable: it does not lean on the category's templates or clichés."
+concept_question = "Is the core idea fresh and ownable, or a category template (the cliché list or any other)?"
+video_question = "Does the film feel ownable, or like any ad in the category?"
+
+[criteria.cultural_meaning]
+weight = 0.15
+label = "Culture as meaning"
+definition = "Culture carries the idea (a ritual, a value, a social truth of the market), not decoration (props and costumes added on top)."
+concept_question = "Is the culture the meaning of the idea, or only decoration on top of it?"
+video_question = "Does the culture in the film carry meaning, or is it set dressing?"
+
+[criteria.product_role]
+weight = 0.15
+label = "Product's role"
+definition = "The product has a necessary role in the story (hero, catalyst, reward or witness) and a clear, intentional hero moment."
+concept_question = "Does the product play a necessary role in the story and get a clear hero moment?"
+video_question = "Is the product necessary to what happens, and does it get a clear, faithful hero moment?"

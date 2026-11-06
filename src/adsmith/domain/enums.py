@@ -8,6 +8,7 @@ from enum import StrEnum
 
 class Stage(StrEnum):
     UNDERSTAND = "understand"
+    INSIGHT = "insight"  # the human truths the concepts stand on (creative layer, ADR-0024)
     IDEATE = "ideate"
     SELECT = "select"
     AWAITING_CONCEPT_CHOICE = "awaiting_concept_choice"

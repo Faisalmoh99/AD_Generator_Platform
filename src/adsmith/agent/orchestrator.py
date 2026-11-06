@@ -27,6 +27,7 @@ from adsmith.agent.nodes.assemble import assemble
 from adsmith.agent.nodes.base import Node, NodeResult
 from adsmith.agent.nodes.continuity import continuity
 from adsmith.agent.nodes.ideate import ideate
+from adsmith.agent.nodes.insight import insight
 from adsmith.agent.nodes.prompt import prompt
 from adsmith.agent.nodes.select import select
 from adsmith.agent.nodes.storyboard import storyboard
@@ -51,6 +52,7 @@ log = get_logger(__name__)
 # Stages whose node exists. The run loop stops at a stage with no registered node.
 NODES: dict[Stage, Node] = {
     Stage.UNDERSTAND: understand,
+    Stage.INSIGHT: insight,
     Stage.IDEATE: ideate,
     Stage.SELECT: select,
     Stage.STORYBOARD: storyboard,

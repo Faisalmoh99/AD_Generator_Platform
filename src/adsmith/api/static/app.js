@@ -370,8 +370,10 @@ function renderConcepts(v) {
     : sel ? (v.selected_by === "user" ? `You picked 0${sel.number}${rec ? ` · the judge recommended 0${rec.number}` : ""}` : `Code picked 0${sel.number} · the LLM scored, code weighted`) : "";
   $("#concepts").innerHTML = v.concepts.map((c) => {
     const flags = [];
+    for (const [k, v] of Object.entries(c.rubric || {})) flags.push(`<span class="flag ${v >= 8 ? "good" : v <= 4 ? "bad" : ""}">${k.replace("_", " ")} ${v}</span>`);
+    if (c.product_role) flags.push(`<span class="flag">product: ${c.product_role.role}</span>`);
     if (c.producibility != null) flags.push(`<span class="flag ${c.producibility >= 7 ? "good" : c.producibility <= 4 ? "bad" : ""}">producibility ${c.producibility}</span>`);
-    if (c.originality != null) flags.push(`<span class="flag ${c.originality >= 7 ? "good" : ""}">originality ${c.originality}</span>`);
+    if (c.originality != null && !c.rubric?.originality) flags.push(`<span class="flag ${c.originality >= 7 ? "good" : ""}">originality ${c.originality}</span>`);
     if (c.cliche === true) flags.push(`<span class="flag bad">cliché</span>`);
     if (c.cliche === false) flags.push(`<span class="flag">no cliché</span>`);
     if (c.single_shot === false) flags.push(`<span class="flag bad">needs an edit</span>`);

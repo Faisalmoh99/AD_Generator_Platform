@@ -7,6 +7,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from adsmith.domain.base import DomainModel, new_id
+from adsmith.domain.rubric import RUBRIC_KEYS, Rubric
 from adsmith.domain.similarity import DISTINCTNESS_THRESHOLD, join_fields, too_similar_pairs
 
 UserText = Annotated[str, Field(min_length=1, max_length=240)]
@@ -81,8 +82,134 @@ class ConceptSetDraft(DomainModel):
         return self
 
 
+# ------------------------------------------------------------------------------ creative layer
+# Phase C (ADR-0024): an insight stage names the truths first; each concept stands on one of them
+# and carries a story with a turn, a hook for the first two seconds, the product's role and the
+# cultural meaning. The LLM schemas have no optional fields on purpose (Anthropic's structured
+# output rejected a schema as "too complex" with extra nullable fields, STOP 1).
+LongText = Annotated[str, Field(min_length=1, max_length=400)]
+
+
+class InsightDraft(DomainModel):
+    statement: UserText = Field(
+        description="The human truth, in one sentence the audience would recognise as theirs."
+    )
+    tension: UserText = Field(description="What makes it uncomfortable, funny or moving: the gap.")
+    evidence: UserText = Field(
+        description="Where it shows in real life for this audience (a habit, a ritual, a moment)."
+    )
+    gulf_meaning: UserText = Field(
+        description="What it means for a Saudi/Gulf viewer specifically, beyond decoration."
+    )
+
+
+class InsightSetDraft(DomainModel):
+    """``insight`` output. ``category_cliches`` first (schema order = generation order), so the
+    templates to avoid are named before the truths are written."""
+
+    category_cliches: list[Cliche] = Field(min_length=3, max_length=5)
+    insights: list[InsightDraft] = Field(min_length=3, max_length=5)
+
+
+class InsightSet(InsightSetDraft):
+    pass
+
+
+class Story(DomainModel):
+    setup: UserText
+    turn: UserText = Field(description="The one moment that changes the meaning of the setup.")
+    payoff: UserText = Field(description="Where it lands, on the product.")
+
+
+class Hook(DomainModel):
+    image: UserText = Field(description="What the viewer sees in the first two seconds.")
+    sound: Annotated[str, Field(min_length=1, max_length=160)] = Field(
+        description="What the viewer hears in the first two seconds."
+    )
+    question: UserText = Field(description="The question it opens in the viewer's mind.")
+
+
+ProductRoleKind = Literal["hero", "catalyst", "reward", "witness"]
+
+
+class ProductRole(DomainModel):
+    role: ProductRoleKind = Field(
+        description="hero: the story is about it; catalyst: it makes the turn happen; reward: "
+        "it is what the story earns; witness: it is present at the moment that matters."
+    )
+    line: UserText = Field(description="Why the story needs the product, in one sentence.")
+
+
+class CreativeConceptDraft(DomainModel):
+    """One concept from ``ideate`` v6 (user-facing text in the user's language)."""
+
+    insight_number: int = Field(ge=1, le=5, description="Which insight (1-based) it stands on.")
+    title: Annotated[str, Field(min_length=1, max_length=80)]
+    logline: UserText
+    insight: UserText = Field(description="That insight, said in this concept's own terms.")
+    story: Story
+    hook: Hook
+    product_role: ProductRole
+    cultural_meaning: UserText = Field(
+        description="How the culture carries the idea's meaning (a ritual, a value), not props."
+    )
+    originality_claim: UserText = Field(
+        description="Why this is not a category template: what a viewer has not seen before."
+    )
+    emotional_driver: Annotated[str, Field(min_length=1, max_length=120)]
+    differentiator: UserText = Field(description="Why this concept differs from the other two.")
+    shot_sketch: list[Annotated[str, Field(min_length=1, max_length=240)]] = Field(
+        min_length=3, max_length=6, description="3-6 one-line shots, in order."
+    )
+    style_references: list[Annotated[str, Field(max_length=80)]] = Field(
+        default_factory=list, max_length=6
+    )
+    risk_notes: list[UserText] = Field(default_factory=list, max_length=5)
+    estimated_scene_count: int = Field(ge=1, le=12)
+
+    def to_concept(self) -> Concept:
+        return Concept(
+            title=self.title,
+            logline=self.logline,
+            narrative_arc=[self.story.setup, self.story.turn, self.story.payoff],
+            visual_hook=self.hook.image,
+            insight=self.insight,
+            emotional_driver=self.emotional_driver,
+            differentiator=self.differentiator,
+            style_references=list(self.style_references),
+            risk_notes=list(self.risk_notes),
+            estimated_scene_count=self.estimated_scene_count,
+            insight_number=self.insight_number,
+            story=self.story,
+            hook=self.hook,
+            product_role=self.product_role,
+            cultural_meaning=self.cultural_meaning,
+            originality_claim=self.originality_claim,
+            shot_sketch=list(self.shot_sketch),
+        )
+
+
+class CreativeConceptSetDraft(DomainModel):
+    """``ideate`` v6 output: exactly three concepts, distinct (checked here → schema repair)."""
+
+    concepts: list[CreativeConceptDraft] = Field(min_length=CONCEPT_COUNT, max_length=CONCEPT_COUNT)
+
+    @model_validator(mode="after")
+    def _distinct(self) -> Self:
+        _check_distinct([c.to_concept() for c in self.concepts])
+        return self
+
+
 class Concept(ConceptDraft):
     id: str = Field(default_factory=lambda: new_id("cpt"))
+    # The creative layer (ideate v6). None for concepts made before it (they still load).
+    insight_number: int | None = Field(default=None, ge=1, le=5)
+    story: Story | None = None
+    hook: Hook | None = None
+    product_role: ProductRole | None = None
+    cultural_meaning: str | None = Field(default=None, max_length=400)
+    originality_claim: str | None = Field(default=None, max_length=400)
+    shot_sketch: list[str] = Field(default_factory=list, max_length=6)
 
 
 class ConceptSet(DomainModel):
@@ -98,6 +225,10 @@ class ConceptSet(DomainModel):
             concepts=[Concept(**c.model_dump()) for c in draft.concepts],
             category_cliches=list(draft.category_cliches),
         )
+
+    @classmethod
+    def from_creative(cls, draft: CreativeConceptSetDraft, cliches: list[str]) -> ConceptSet:
+        return cls(concepts=[c.to_concept() for c in draft.concepts], category_cliches=cliches)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -122,52 +253,30 @@ class ConceptSet(DomainModel):
 
 
 # ------------------------------------------------------------------------------ auto-selection
-JUDGE_WEIGHTS: dict[str, float] = {
-    "brief_fit": 0.20,
-    "originality": 0.20,  # fresh idea vs. the category clichés listed at ideation
-    "insight": 0.15,  # a real human truth, not just a striking visual (M4c)
-    "producibility": 0.20,  # can current video models render it well in ≤15 s?
-    "product_hero": 0.15,
-    "cultural_fit": 0.10,
-}
-# Fixed deductions when the judge itself flags a problem, so a flagged concept can't win on its
-# other strengths alone (ADR-0014).
-CLICHE_PENALTY = 1.5
-IMPLAUSIBLE_SHOT_PENALTY = 1.5
-PRODUCT_LATE_PENALTY = 1.0  # most social viewers skip before the end
+# The judge scores the six rubric criteria (config/rubric.toml, ADR-0024); code weights them and
+# subtracts the cliché penalty, then picks the winner. Ease of execution is not a criterion.
 Score = Annotated[int, Field(ge=1, le=10)]
 
 
 class ConceptScore(DomainModel):
     concept_number: int = Field(ge=1, le=CONCEPT_COUNT, description="1, 2 or 3, in given order")
-    brief_fit: Score
-    producibility: Score
-    product_hero: Score
-    cultural_fit: Score
-    originality: Score
     insight: Score
-    single_shot_plausible: bool = Field(
-        description="True only if every beat can be filmed as one continuous shot per scene. "
-        "Scale tricks, transformations and reveals that need an edit make this false."
-    )
-    product_only_at_end: bool = Field(
-        description="True if the product is neither shown nor teased before the final beat."
-    )
+    hook: Score
+    story_turn: Score
+    originality: Score
+    cultural_meaning: Score
+    product_role: Score
     uses_category_cliche: bool = Field(
         description="True if the concept's core idea or main visual relies on a category cliché "
         "(listed or otherwise)."
     )
     rationale: Annotated[str, Field(min_length=1, max_length=400)]
 
-    def weighted(self) -> float:
-        total: float = sum(float(getattr(self, k)) * w for k, w in JUDGE_WEIGHTS.items())
-        if self.uses_category_cliche:
-            total -= CLICHE_PENALTY
-        if not self.single_shot_plausible:
-            total -= IMPLAUSIBLE_SHOT_PENALTY
-        if self.product_only_at_end:
-            total -= PRODUCT_LATE_PENALTY
-        return round(total, 4)
+    def rubric_scores(self) -> dict[str, float]:
+        return {k: float(getattr(self, k)) for k in RUBRIC_KEYS}
+
+    def weighted(self, rubric: Rubric) -> float:
+        return rubric.weighted(self.rubric_scores(), cliche=self.uses_category_cliche)
 
 
 class ConceptJudgementDraft(DomainModel):
@@ -182,9 +291,9 @@ class ConceptJudgementDraft(DomainModel):
             raise ValueError(f"need exactly one score for each concept 1..3, got {numbers}")
         return self
 
-    def winner(self) -> ConceptScore:
-        """Highest weighted score; ties: brief fit, then originality, then lowest number."""
+    def winner(self, rubric: Rubric) -> ConceptScore:
+        """Highest weighted score; ties: insight, then hook, then the lowest number."""
         return max(
             self.scores,
-            key=lambda s: (s.weighted(), s.brief_fit, s.originality, -s.concept_number),
+            key=lambda s: (s.weighted(rubric), s.insight, s.hook, -s.concept_number),
         )

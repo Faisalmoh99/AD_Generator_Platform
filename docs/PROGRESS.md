@@ -919,3 +919,22 @@ critic reviews whole ads.
 **Tests:** 45 new (`tests/unit/test_ad_generation.py`, `tests/integration/test_multishot_pipeline.py`,
 incl. kill-during-generation → resume pays once on a fake Higgsfield server); version-pinned
 storyboard tests moved to v8. 664 passed, 2 skipped.
+
+## Phase C: the creative layer (2026-11-06)
+**Built (ADR-0024):** `Stage.INSIGHT` (`insight` v1): category clichés, then 3–5 human truths
+(tension, real-life evidence, meaning for a Gulf viewer). `ideate` v6: each concept stands on
+one insight (checked by code), with a story (setup / turn / payoff), a hook (image, sound and the
+question it opens in 0–2 s; the hook is folded into ideate as agreed), the product's role (hero |
+catalyst | reward | witness), culture as meaning, an originality claim and a shot sketch.
+`config/rubric.toml` + `domain/rubric.py`: six criteria with the agreed weights (insight .20, hook
+.20, story_turn .15, originality .15, cultural_meaning .15, product_role .15), cliché penalty 1.5,
+a concept question and a video question per criterion. `select` v6 scores the rubric; code
+weights and picks; ease of execution is no longer a criterion and the video profile is no longer
+shown to the judge. Studio concept cards show the six scores and the product's role; the
+Production Pack lists the insights and the chosen concept's story, hook, role and culture.
+**Fixtures:** `insight.json` added and `ideate.json` / `select.json` moved to the new schemas in
+all four scenarios (Arabic text for `perfume_ar`), each scenario keeping its original winner.
+**Schema probe (local, no call):** every new LLM schema transforms; the largest has 2 optional
+fields (the brief, which works in production, has 10). The first real planning run confirms it.
+**Tests:** judge tests rewritten for the rubric (+ insight-anchoring and repair cases); tests that
+count LLM calls grew by the insight call; 678 passed, 2 skipped.

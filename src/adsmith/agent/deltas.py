@@ -14,7 +14,7 @@ from pydantic import Field
 from adsmith.domain.ad import AdGeneration
 from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
-from adsmith.domain.concept import ConceptSet
+from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.generation import Artifact
@@ -28,6 +28,11 @@ from adsmith.storage.repo import StaleWriteError
 class SetBrief(DomainModel):
     kind: Literal["set_brief"] = "set_brief"
     brief: Brief
+
+
+class SetInsights(DomainModel):
+    kind: Literal["set_insights"] = "set_insights"
+    insights: InsightSet
 
 
 class SetConcepts(DomainModel):
@@ -91,6 +96,7 @@ class FailScenes(DomainModel):
 
 Delta = Annotated[
     SetBrief
+    | SetInsights
     | SetConcepts
     | SelectConcept
     | SetStoryboard
@@ -152,10 +158,12 @@ def _select(state: RunState, delta: SelectConcept) -> None:
     state.concepts.select(delta.concept_id, delta.by, delta.rationale)
 
 
-def apply_delta(state: RunState, delta: Delta) -> None:
+def apply_delta(state: RunState, delta: Delta) -> None:  # noqa: PLR0912 - one branch per delta
     match delta:
         case SetBrief():
             state.brief = delta.brief
+        case SetInsights():
+            state.insights = delta.insights
         case SetConcepts():
             state.concepts = delta.concepts
         case SelectConcept():

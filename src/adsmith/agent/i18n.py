@@ -6,6 +6,7 @@ from adsmith.domain.enums import FailureKind, Language, Stage
 
 _STAGE: dict[Stage, tuple[str, str]] = {
     Stage.UNDERSTAND: ("understanding the request", "فهم الطلب"),
+    Stage.INSIGHT: ("finding the insight", "استخراج البصيرة"),
     Stage.IDEATE: ("proposing concepts", "اقتراح الأفكار"),
     Stage.SELECT: ("selecting a concept", "اختيار الفكرة"),
     Stage.STORYBOARD: ("building the storyboard", "بناء القصة المصورة"),

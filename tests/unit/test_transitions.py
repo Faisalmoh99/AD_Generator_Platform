@@ -20,7 +20,8 @@ def run(interactive: bool = True) -> RunState:
 @pytest.mark.parametrize(
     ("completed", "expected"),
     [
-        (Stage.UNDERSTAND, Stage.IDEATE),
+        (Stage.UNDERSTAND, Stage.INSIGHT),
+        (Stage.INSIGHT, Stage.IDEATE),
         (Stage.STORYBOARD, Stage.CONTINUITY),
         (Stage.CONTINUITY, Stage.PROMPT),
         (Stage.PROMPT, Stage.KEYFRAME),

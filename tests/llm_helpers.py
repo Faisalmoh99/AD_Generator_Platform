@@ -30,7 +30,7 @@ Task: {{{{ task }}}}
 def make_prompt_library(root: Path) -> PromptLibrary:
     shutil.copytree(PROJECT_ROOT / "prompts" / "schema_repair", root / "schema_repair")
     for name, schema in [
-        ("ideate", "ConceptSetDraft"),
+        ("ideate", "CreativeConceptSetDraft"),
         ("understand", "BriefDraft"),
         ("storyboard", "StoryboardDraft"),
     ]:

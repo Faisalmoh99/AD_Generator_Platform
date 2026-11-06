@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from adsmith.domain.brief import Brief, BriefDraft
-from adsmith.domain.concept import ConceptSet, ConceptSetDraft
+from adsmith.domain.concept import ConceptDraft, ConceptSet, ConceptSetDraft
 from adsmith.domain.continuity import ProductSpec, wordless_label_problems
 from adsmith.domain.edit import ScenePatchDraft, SceneRef, ShotSpecPatch
 from adsmith.domain.enums import BibleSection, Dialect, FailureKind, Language, Stage, TimeOfDay
@@ -67,9 +67,7 @@ def test_concept_set_requires_exactly_three() -> None:
 
 def test_near_duplicate_concepts_rejected_with_actionable_message() -> None:
     cs = make_concept_set()
-    draft = cs.model_dump()["concepts"]
-    for c in draft:
-        c.pop("id")
+    draft = [c.model_dump(include=set(ConceptDraft.model_fields)) for c in cs.concepts]
     # Turn concept 3 into a light paraphrase of concept 1.
     sentences = [s.strip() for s in EN_NIGHT_DRIVE_LIGHT_PARAPHRASE.split(".") if s.strip()]
     draft[2] |= {

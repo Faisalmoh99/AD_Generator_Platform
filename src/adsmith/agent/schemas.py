@@ -7,7 +7,11 @@ from pydantic import BaseModel
 
 from adsmith.domain.ad import AdPromptDraft
 from adsmith.domain.brief import BriefDraft
-from adsmith.domain.concept import ConceptJudgementDraft, ConceptSetDraft
+from adsmith.domain.concept import (
+    ConceptJudgementDraft,
+    CreativeConceptSetDraft,
+    InsightSetDraft,
+)
 from adsmith.domain.continuity import ContinuityBibleDraft
 from adsmith.domain.edit import ConflictReport, ScenePatchDraft
 from adsmith.domain.endcard import EndCardCopyDraft
@@ -19,7 +23,8 @@ from adsmith.domain.storyboard import StoryboardDraft
 # their schemas here when they are built.
 OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "understand": BriefDraft,
-    "ideate": ConceptSetDraft,
+    "insight": InsightSetDraft,
+    "ideate": CreativeConceptSetDraft,
     "select": ConceptJudgementDraft,
     "storyboard": StoryboardDraft,
     "continuity": ContinuityBibleDraft,

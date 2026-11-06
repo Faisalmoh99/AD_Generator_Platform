@@ -68,11 +68,17 @@ async def test_video_profile_is_injected_into_planning_prompts(settings: Setting
     orch, provider = make_orch(settings, full_scripts())
     run = orch.create_run(REQUEST, interactive=False)
     await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)
-    for template in ("ideate", "select", "storyboard"):
+
+    def text(template: str) -> str:
         req = next(r for r in provider.requests if r.template.startswith(f"{template}@"))
-        text = "\n".join(p.text for m in req.messages for p in getattr(m, "parts", ()))
-        assert "<video_model_profile>" in text and "Renders badly:" in text, template
-        assert "one continuous take up to 15 s" in text, template
+        return "\n".join(p.text for m in req.messages for p in getattr(m, "parts", ()))
+
+    for template in ("ideate", "storyboard"):
+        assert "<video_model_profile>" in text(template), template
+        assert "Renders badly:" in text(template), template
+        assert "one continuous take up to 15 s" in text(template), template
+    # The judge scores the idea only (ADR-0024): ease of execution is not in its rubric.
+    assert "<video_model_profile>" not in text("select") and "<rubric>" in text("select")
 
 
 def test_single_take_product_presence_rules() -> None:

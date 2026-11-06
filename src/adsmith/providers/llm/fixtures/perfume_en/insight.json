@@ -1,0 +1,32 @@
+[
+  {
+    "output": {
+      "category_cliches": [
+        "A shirtless model emerging from the sea or a shower",
+        "Slow-motion bottle spinning against a black void",
+        "A woman irresistibly drawn to the man after one spray",
+        "Gold liquid splashes and swirling smoke for 'luxury'"
+      ],
+      "insights": [
+        {
+          "statement": "Young men feel most themselves in the quiet minutes before they walk into the room.",
+          "tension": "They look confident at the party, but the confidence is assembled alone, minutes before.",
+          "evidence": "The last look in the car mirror, the deep breath before the door.",
+          "gulf_meaning": "Before a wedding or a gathering, the private ritual of getting ready is part of the occasion itself."
+        },
+        {
+          "statement": "A scent is felt before it is understood; people remember its texture, not its notes.",
+          "tension": "Nobody can name the notes, yet everyone can say how a scent feels.",
+          "evidence": "People describe perfume as warm, heavy or clean, never by its ingredients.",
+          "gulf_meaning": "In the Gulf, oud and bakhoor are described by how they fill a room, not by what they contain."
+        },
+        {
+          "statement": "The things that make a man are handed down, not bought.",
+          "tension": "Young men want to be self-made, but the gestures that make them come from an elder.",
+          "evidence": "A father teaching his son to wear the ghutra, an uncle's first gift of oud.",
+          "gulf_meaning": "Manhood in the Gulf is passed on in the majlis, from the older generation to the younger."
+        }
+      ]
+    }
+  }
+]

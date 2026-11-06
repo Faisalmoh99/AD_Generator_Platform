@@ -21,7 +21,7 @@ from adsmith.domain.ad import AdGeneration
 from adsmith.domain.base import DomainModel, new_id, utcnow
 from adsmith.domain.brief import AspectRatio, Brief
 from adsmith.domain.budget import BudgetLedger
-from adsmith.domain.concept import ConceptSet
+from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.edit import ScenePatch
 from adsmith.domain.endcard import EndCardCopy
@@ -79,7 +79,7 @@ class RunError(DomainModel):
 
 # Data each stage needs before it can run. Ordered pipeline → cumulative requirements.
 _NEEDS_BRIEF = frozenset(set(Stage) - {Stage.UNDERSTAND, Stage.ERRORED})
-_NEEDS_CONCEPTS = _NEEDS_BRIEF - {Stage.IDEATE}
+_NEEDS_CONCEPTS = _NEEDS_BRIEF - {Stage.INSIGHT, Stage.IDEATE}
 _NEEDS_SELECTION = _NEEDS_CONCEPTS - {Stage.SELECT, Stage.AWAITING_CONCEPT_CHOICE}
 _NEEDS_STORYBOARD = _NEEDS_SELECTION - {Stage.STORYBOARD}
 _NEEDS_BIBLE = _NEEDS_STORYBOARD - {Stage.CONTINUITY}
@@ -125,6 +125,7 @@ class RunState(DomainModel):
     config: RunConfig
     request: str = Field(min_length=1, max_length=4000)
     brief: Brief | None = None
+    insights: InsightSet | None = None  # None for runs made before the insight stage
     concepts: ConceptSet | None = None
     storyboard: Storyboard | None = None
     bible: ContinuityBible | None = None

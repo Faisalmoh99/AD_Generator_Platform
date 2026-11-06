@@ -1,26 +1,36 @@
 [
   {
     "output": {
-      "category_cliches": [
-        "A shirtless model emerging from the sea or a shower",
-        "Slow-motion bottle spinning against a black void",
-        "A woman irresistibly drawn to the man after one spray",
-        "Gold liquid splashes and swirling smoke for 'luxury'"
-      ],
       "concepts": [
         {
+          "insight_number": 1,
           "title": "The Night Drive",
           "logline": "A young man drives alone through the empty city at night, neon reflections sliding over his face, until he stops, sprays the perfume and steps into the party.",
-          "narrative_arc": [
+          "insight": "Young men feel most themselves in the quiet minutes before they walk into the room.",
+          "story": {
+            "setup": "He drives through the city at night",
+            "turn": "He sprays the perfume",
+            "payoff": "He enters the party"
+          },
+          "hook": {
+            "image": "Neon reflections gliding over a black car window",
+            "sound": "the hum of tyres on wet asphalt",
+            "question": "Where is he going, alone, at this hour?"
+          },
+          "product_role": {
+            "role": "catalyst",
+            "line": "The spray is the moment his doubt turns into confidence before he walks in."
+          },
+          "cultural_meaning": "The quiet ritual of getting ready before a night that matters, which every young Gulf man knows.",
+          "originality_claim": "A perfume ad about the minutes before, not the entrance itself.",
+          "emotional_driver": "Confidence and freedom",
+          "differentiator": "A grounded, narrative concept built on one character's journey.",
+          "shot_sketch": [
             "He drives through the city at night",
             "Reflections slide across the glass",
             "He sprays the perfume",
             "He enters the party"
           ],
-          "visual_hook": "Neon reflections gliding over a black car window",
-          "insight": "Young men feel most themselves in the quiet minutes before they walk into the room.",
-          "emotional_driver": "Confidence and freedom",
-          "differentiator": "A grounded, narrative concept built on one character's journey.",
           "style_references": [
             "anamorphic night photography",
             "neon practicals",
@@ -32,18 +42,34 @@
           "estimated_scene_count": 4
         },
         {
+          "insight_number": 2,
           "title": "Elemental",
           "logline": "An abstract sensory journey: black smoke, liquid gold and cracked desert stone swirl and form the bottle, translating the scent notes into texture.",
-          "narrative_arc": [
+          "insight": "A scent is felt before it is understood; people remember its texture, not its notes.",
+          "story": {
+            "setup": "Smoke rises in darkness",
+            "turn": "Desert stone cracks",
+            "payoff": "The bottle forms from the elements"
+          },
+          "hook": {
+            "image": "Liquid gold pouring in extreme slow motion",
+            "sound": "a low rumble and the hiss of pouring liquid",
+            "question": "What is forming out of the dark?"
+          },
+          "product_role": {
+            "role": "hero",
+            "line": "The elements exist only to become the bottle."
+          },
+          "cultural_meaning": "The materials echo the desert and the oud tradition without showing a person.",
+          "originality_claim": "Materials that assemble into the bottle instead of splashing around it.",
+          "emotional_driver": "Sensory luxury",
+          "differentiator": "No people at all: the scent itself is the protagonist.",
+          "shot_sketch": [
             "Smoke rises in darkness",
             "Gold liquid pours and swirls",
             "Desert stone cracks",
             "The bottle forms from the elements"
           ],
-          "visual_hook": "Liquid gold pouring in extreme slow motion",
-          "insight": "A scent is felt before it is understood; people remember its texture, not its notes.",
-          "emotional_driver": "Sensory luxury",
-          "differentiator": "No people at all: the scent itself is the protagonist.",
           "style_references": [
             "macro photography",
             "high-speed liquid simulation look",
@@ -53,18 +79,34 @@
           "estimated_scene_count": 4
         },
         {
+          "insight_number": 3,
           "title": "The Tailor",
           "logline": "In a heritage tailoring atelier, an older master fits a young man for his first bespoke suit; the final touch is the perfume, passed on like a legacy.",
-          "narrative_arc": [
+          "insight": "The things that make a man are handed down, not bought.",
+          "story": {
+            "setup": "Measuring tape and fabric",
+            "turn": "He hands him the bottle",
+            "payoff": "The young man walks out transformed"
+          },
+          "hook": {
+            "image": "Hands adjusting a collar in warm window light",
+            "sound": "the snip of tailor's scissors",
+            "question": "Who is this young man getting ready for?"
+          },
+          "product_role": {
+            "role": "reward",
+            "line": "The bottle is what the master hands down at the end, the mark of a man ready."
+          },
+          "cultural_meaning": "The elder-to-younger handing down of manhood, as in the majlis.",
+          "originality_claim": "The perfume as an inheritance passed by a mentor, not a seduction tool.",
+          "emotional_driver": "Belonging and legacy",
+          "differentiator": "An intergenerational, warm daytime story instead of a nocturnal one.",
+          "shot_sketch": [
             "Measuring tape and fabric",
             "The master adjusts the jacket",
             "He hands him the bottle",
             "The young man walks out transformed"
           ],
-          "visual_hook": "Hands adjusting a collar in warm window light",
-          "insight": "The things that make a man are handed down, not bought.",
-          "emotional_driver": "Belonging and legacy",
-          "differentiator": "An intergenerational, warm daytime story instead of a nocturnal one.",
           "style_references": [
             "warm window light",
             "period craftsmanship details"
