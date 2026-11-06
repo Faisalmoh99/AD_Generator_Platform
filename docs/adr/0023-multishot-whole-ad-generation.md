@@ -86,3 +86,13 @@ critic (its frame windows follow the human shots) and assembly are otherwise unc
   key. `qa_ad_critic` v2 receives them after the product photo, labelled as props: a prop is
   never compared with the product; a prop that looks like the product (or the product shown in
   the prop's place) is a major "product" issue.
+
+## Addendum (2026-11-07): human retime edit
+
+`adsmith retime <run> --window A-B --trim C-D --factor F --method mci|blend --output NAME`
+records a `RetimeEdit` on the generation (frame-aligned; code checks the slowed window adds
+exactly the frames the trim removes, the trim follows the window, no overlaps) and logs
+"human edit: retime". The run re-assembles: the video is retimed by segment (ffmpeg
+`minterpolate` mci or blend on the window), the audio stream is copied untouched, the film keeps
+its length and every timestamp after the trim; the output goes to NAME next to `final.mp4`
+(earlier finals are kept). A new generation drops the edits. No generation, no spend.

@@ -23,6 +23,7 @@ from adsmith.agent.deltas import Delta, SetEndCard, SetFinal
 from adsmith.agent.nodes.base import NodeResult
 from adsmith.agent.nodes.common import brief_block, concept_block, decision, language_name
 from adsmith.config import LLMNode
+from adsmith.domain.ad import retime_frames
 from adsmith.domain.endcard import EndCardCopy, EndCardCopyDraft, real_brand_in
 from adsmith.domain.enums import Language, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
@@ -279,12 +280,24 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
     work: Path = ctx.artifacts.scratch_dir(ctx.run_id) / "assemble"
     await asyncio.to_thread(work.mkdir, parents=True, exist_ok=True)
     clip_s = min(float(g.duration_s), g.artifact.duration_s or float(g.duration_s))
-    seg = await ffmpeg.normalise_clip_av(
-        ctx.artifacts.resolve(g.artifact), work / "ad.mp4", seconds=clip_s, width=w, height=h
-    )
+    source = ctx.artifacts.resolve(g.artifact)
+    events: list[AgentEvent] = []
+    if g.retimes:  # human edits (ADR-0023 addendum): same length, audio untouched
+        fps = await ffmpeg.frame_rate(source)
+        spans = sorted((*retime_frames(e, fps), e.method, e.factor) for e in g.retimes)
+        source = await ffmpeg.retime_video(source, work / "retimed.mp4", spans, fps=fps)
+        events.append(
+            decision(
+                ctx.run_id, Stage.ASSEMBLE,
+                "Applied " + "; ".join(
+                    f"retime {e.window_start_s:g}-{e.window_end_s:g}s x{e.factor:g} ({e.method}), "
+                    f"trim {e.trim_start_s:g}-{e.trim_end_s:g}s" for e in g.retimes
+                ) + "; length and audio unchanged",
+            )
+        )  # fmt: skip
+    seg = await ffmpeg.normalise_clip_av(source, work / "ad.mp4", seconds=clip_s, width=w, height=h)
     parts, expected = [seg], clip_s
     deltas: list[Delta] = []
-    events: list[AgentEvent] = []
     calls: list[LLMCallRecord] = []
     if cfg.endcard and cfg.endcard_s > 0:
         copy, calls = await endcard_copy(state, ctx)
@@ -315,7 +328,7 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
                 brand=copy.brand_name, tagline=copy.tagline, placeholder=copy.is_placeholder,
             )
         )  # fmt: skip
-    out = ctx.artifacts.run_dir(ctx.run_id) / "final.mp4"
+    out = ctx.artifacts.run_dir(ctx.run_id) / g.final_name
     await ffmpeg.concat(parts, out, work)
     actual = await ffmpeg.duration_of(out)
     ok = abs(actual - expected) <= DURATION_TOLERANCE_S
@@ -337,7 +350,7 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
         decision(
             ctx.run_id, Stage.ASSEMBLE,
             f"Assembled the whole-ad generation + end card with its own audio, {actual:.1f}s → "
-            f"final.mp4{note}",
+            f"{g.final_name}{note}",
         ),
     )  # fmt: skip
     deltas.append(SetFinal(final=final))

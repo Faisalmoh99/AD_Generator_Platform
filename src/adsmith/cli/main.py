@@ -387,6 +387,48 @@ def settle_actual(
     print_state(orch, state)
 
 
+def _span(text: str) -> tuple[float, float]:
+    a, sep, b = text.partition("-")
+    if not sep:
+        raise typer.BadParameter(f"{text!r}: use START-END in seconds, e.g. 3.875-4.375")
+    return float(a), float(b)
+
+
+@app.command()
+def retime(
+    run_id: str,
+    window: Annotated[str, typer.Option(help="Seconds to slow, START-END (generation time)")],
+    trim: Annotated[str, typer.Option(help="Seconds to remove to keep the length, START-END")],
+    factor: Annotated[float, typer.Option(help="Slow-down factor")] = 2.5,
+    method: Annotated[str, typer.Option(help="mci (motion interpolation) or blend")] = "mci",
+    output: Annotated[str, typer.Option(help="File name next to final.mp4")] = "final_v2.mp4",
+) -> None:
+    """Human edit on a finished whole ad: slow a window, trim a later stretch, re-assemble."""
+    from adsmith.domain.ad import RetimeEdit  # noqa: PLC0415
+    from adsmith.media import ffmpeg  # noqa: PLC0415
+
+    orch = _orchestrator()
+    g = orch.rt.storage.runs.load(run_id).generation
+    if g is None or g.artifact is None:
+        raise typer.BadParameter("this run has no generated whole ad")
+    src = orch.rt.storage.artifacts.resolve(g.artifact)
+    fps = asyncio.run(ffmpeg.frame_rate(src))
+    frames = asyncio.run(ffmpeg.frame_count(src))
+    (ws, we), (ts, te) = _span(window), _span(trim)
+    if method not in {"mci", "blend"}:
+        raise typer.BadParameter("--method is mci or blend")
+    edit = RetimeEdit(
+        window_start_s=ws, window_end_s=we, factor=factor, trim_start_s=ts, trim_end_s=te,
+        method="mci" if method == "mci" else "blend",
+    )  # fmt: skip
+    try:
+        commands.retime_ad(orch.rt.storage, run_id, [edit], fps=fps, frames=frames, output=output)
+    except commands.CommandRejectedError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(2) from exc
+    print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
+
+
 @app.command("accept-ad")
 def accept_ad(run_id: str, reason: Annotated[str, typer.Option(help="Why you accept it")]) -> None:
     """Human override: accept a whole-ad generation the critic flagged (logged)."""

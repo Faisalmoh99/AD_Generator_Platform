@@ -1000,3 +1000,16 @@ estimate table, the montage v2 calibration, a real planning run and the one real
   multishot final keeps the generation size; `--ref-image` prop references in order (cache key,
   critic v2 checks props as props); 9 s via `ADSMITH_TARGET_DURATION_S`. ADR-0023 addendum.
 - **Tests**: 720 passed, 2 skipped (+12 in `tests/integration/test_try2_changes.py`).
+
+## Retime edit for try 2 (2026-11-07)
+
+- **Built**: `RetimeEdit` + `adsmith retime` (ADR-0023 addendum): slow a window, trim a later
+  static stretch of the same length, audio copied untouched, output to a new file.
+- **Applied**: try 2 (`run_01M6RYP42HB0GBFFYBAY09SGCW`), smoke-to-bottle morph at 3.875-4.375 s
+  slowed 2.5x (mci), trim 4.375-5.125 s (shot 4 starts at 5.375 s, not ~6.0 s) → `final_v2.mp4`.
+  Observed charges booked: try 1 $2.06, try 2 $2.44 (console $0.50).
+- **Known limitation**: the whole-ad critic samples 3 frames per planned shot (20/50/80 % of the
+  shot's window), so it can miss short events: it reported shot 3's transformation as "not
+  delivered" although the morph is there, in ~0.5 s between two sample points. Not fixed yet
+  (denser sampling or motion-triggered frames would catch it).
+- **Tests**: 729 passed, 2 skipped (+9 in `tests/integration/test_retime.py`).

@@ -11,9 +11,11 @@ from pydantic import JsonValue
 from adsmith.agent.transitions import GATE_EXITS
 from adsmith.domain.ad import (
     HumanPrompt,
+    RetimeEdit,
     human_prompt_problems,
     parse_prompt_shots,
     prompt_diff_summary,
+    retime_problems,
 )
 from adsmith.domain.enums import FailureKind, Language, SceneStatus, Stage, StaleFrom
 from adsmith.domain.events import AgentEvent, EventType
@@ -706,3 +708,58 @@ def settle_actual(
         ]  # fmt: skip
 
     return storage.runs.update(run_id, mutate, reason="observed charge").state
+
+
+def retime_ad(
+    storage: Storage,
+    run_id: str,
+    edits: list[RetimeEdit],
+    *,
+    fps: float,
+    frames: int,
+    output: str = "final_v2.mp4",
+) -> RunState:
+    """Human edit on a finished whole ad: slow a window and trim a later stretch of the same
+    length, applied at assembly (no generation, no spend). The run re-assembles into ``output``;
+    earlier finals stay on disk. ``fps``/``frames`` are the generated video's (probed by the
+    caller)."""
+    if not edits:
+        raise CommandRejectedError("give at least one retime edit")
+    problems = retime_problems(edits, fps=fps, frames=frames)
+    if problems:
+        raise CommandRejectedError("retime not accepted: " + "; ".join(problems))
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if g is None or g.artifact is None:
+            raise CommandRejectedError("this run has no generated whole ad to edit")
+        if s.stage not in {Stage.DONE, Stage.DONE_PARTIAL}:
+            raise CommandRejectedError(f"run is at {s.stage}; retime a finished run")
+        try:
+            g.final_name = output
+            g.retimes = list(edits)
+            g.check_invariants()
+        except ValueError as exc:
+            raise CommandRejectedError(str(exc)) from exc
+        s.stage = Stage.ASSEMBLE
+        desc = "; ".join(
+            f"slow {e.window_start_s:g}-{e.window_end_s:g}s x{e.factor:g} ({e.method}), "
+            f"trim {e.trim_start_s:g}-{e.trim_end_s:g}s"
+            for e in edits
+        )
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.ASSEMBLE,
+                type=EventType.DECISION,
+                summary=f"human edit: retime ({desc}); same length, audio untouched → {output}",
+                payload={
+                    "human": True,
+                    "retimes": [e.model_dump() for e in edits],
+                    "output": output,
+                    "fps": fps,
+                },
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="human retime").state

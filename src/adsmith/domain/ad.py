@@ -18,6 +18,7 @@ costs a full ad, so it goes back through the estimate gate by a human command (w
 
 from __future__ import annotations
 
+import itertools
 import re
 from datetime import datetime
 from typing import Annotated, Literal, Self
@@ -218,6 +219,56 @@ def prompt_diff_summary(old: str, new: str) -> str:
     return "; ".join(bits)
 
 
+# ----------------------------------------------------------------------------- retime edits
+RetimeMethod = Literal["blend", "mci"]
+
+
+class RetimeEdit(DomainModel):
+    """A human edit applied at assembly: slow ``window`` by ``factor`` and remove ``trim`` (a
+    later, static stretch of the same shot) so the film keeps its length and every timestamp
+    after the trim stays where it was. The generation's audio is never touched."""
+
+    window_start_s: float = Field(ge=0)
+    window_end_s: float = Field(gt=0)
+    factor: float = Field(gt=1, le=4)
+    trim_start_s: float = Field(ge=0)
+    trim_end_s: float = Field(gt=0)
+    method: RetimeMethod = "blend"
+
+
+def retime_frames(e: RetimeEdit, fps: float) -> tuple[int, int, int, int, int]:
+    """(window start, window end, trim start, trim end, frames the slowed window lasts), as frame
+    indices on the source (ends exclusive)."""
+    ws, we = round(e.window_start_s * fps), round(e.window_end_s * fps)
+    ts, te = round(e.trim_start_s * fps), round(e.trim_end_s * fps)
+    return ws, we, ts, te, round((we - ws) * e.factor)
+
+
+def retime_problems(edits: list[RetimeEdit], *, fps: float, frames: int) -> list[str]:
+    """Deterministic checks: inside the clip, the trim after its window, no overlaps, and the
+    frames added by slowing equal the frames trimmed (the length is unchanged)."""
+    problems: list[str] = []
+    spans: list[tuple[int, int]] = []
+    for i, e in enumerate(edits, start=1):
+        ws, we, ts, te, slowed = retime_frames(e, fps)
+        if not 0 <= ws < we <= frames or not 0 <= ts < te <= frames:
+            problems.append(f"edit {i}: windows must lie inside the clip (0-{frames / fps:.3f} s)")
+            continue
+        if ts < we:
+            problems.append(f"edit {i}: the trim must start at or after the slowed window's end")
+        added, removed = slowed - (we - ws), te - ts
+        if added != removed:
+            problems.append(
+                f"edit {i}: slowing adds {added} frames ({added / fps:.3f} s) but the trim removes "
+                f"{removed} ({removed / fps:.3f} s): they must match to keep the length"
+            )
+        spans.append((ws, te))
+    spans.sort()
+    if any(a[1] > b[0] for a, b in itertools.pairwise(spans)):
+        problems.append("edits overlap")
+    return problems
+
+
 AdStatus = Literal[
     "pending", "estimated", "generating", "qa_review", "approved", "flagged", "failed"
 ]
@@ -264,6 +315,9 @@ class AdGeneration(DomainModel):
     accepted_by_human: str | None = Field(default=None, max_length=500)
     # Set when a human replaced the model-written prompt at the gate: sent verbatim instead.
     human_prompt: HumanPrompt | None = None
+    # Human retime edits applied at assembly, and the file name the assembly writes.
+    retimes: list[RetimeEdit] = Field(default_factory=list, max_length=8)
+    final_name: str = Field(default="final.mp4", pattern=r"^[A-Za-z0-9_.-]+\.mp4$")
     failure: SceneFailure | None = None
     version: int = Field(default=1, ge=1)
     history: list[AdGenerationVersion] = Field(default_factory=list)
@@ -378,4 +432,5 @@ class AdGeneration(DomainModel):
         self.est_usd = self.estimated_at = self.approved_usd = self.approved_by = None
         self.computed_usd = self.price_basis = None
         self.accepted_by_human = None
+        self.retimes, self.final_name = [], "final.mp4"  # edits belong to the old video
         self.check_invariants()

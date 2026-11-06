@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from pathlib import Path
 
 from adsmith.agent.recovery.errors import PermanentProviderError
@@ -151,3 +152,88 @@ async def with_silence(video: Path, out: Path, *, seconds: float) -> Path:
         str(out),
     )  # fmt: skip
     return out
+
+
+# ------------------------------------------------------------------------ human retime edits
+def _slow_filter(method: str, fps: float) -> str:
+    """Slow-motion frame synthesis: motion-compensated interpolation, or frame blending."""
+    if method == "mci":
+        return f"minterpolate=fps={fps:g}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1"
+    return f"minterpolate=fps={fps:g}:mi_mode=blend"
+
+
+def retime_graph(
+    spans: Sequence[tuple[int, int, int, int, int, str, float]], *, frames: int, fps: float
+) -> tuple[str, int]:
+    """The filter graph for retime edits given as frame spans (window start, window end, trim
+    start, trim end, slowed length, method, factor), sorted. Returns (graph, output frames)."""
+    parts: list[str] = []
+    labels: list[str] = []
+    total = 0
+
+    def keep(a: int, b: int) -> None:
+        nonlocal total
+        if b > a:
+            lab = f"s{len(labels)}"
+            parts.append(f"[0:v]trim=start_frame={a}:end_frame={b},setpts=PTS-STARTPTS[{lab}]")
+            labels.append(lab)
+            total += b - a
+
+    cursor = 0
+    for ws, we, ts, te, slowed, method, factor in spans:
+        keep(cursor, ws)
+        lab = f"s{len(labels)}"
+        parts.append(
+            f"[0:v]trim=start_frame={ws}:end_frame={we},setpts=PTS-STARTPTS,"
+            f"setpts={factor:g}*PTS,{_slow_filter(method, fps)},"
+            f"tpad=stop_mode=clone:stop_duration=1,trim=end_frame={slowed},"
+            f"setpts=PTS-STARTPTS[{lab}]"
+        )
+        labels.append(lab)
+        total += slowed
+        keep(we, ts)
+        cursor = te
+    keep(cursor, frames)
+    joined = "".join(f"[{lab}]" for lab in labels)
+    parts.append(f"{joined}concat=n={len(labels)}:v=1:a=0,format=yuv420p[v]")
+    return ";".join(parts), total
+
+
+async def retime_video(
+    src: Path, out: Path, spans: Sequence[tuple[int, int, int, int, int, str, float]], *, fps: float
+) -> Path:
+    """Apply retime edits to the video stream; the audio stream is copied untouched."""
+    frames = await frame_count(src)
+    graph, total = retime_graph(spans, frames=frames, fps=fps)
+    audio = ["-map", "0:a:0", "-c:a", "copy"] if await has_audio(src) else []
+    await run(
+        "-i", str(src), "-filter_complex", graph, "-map", "[v]", *audio,
+        "-r", f"{fps:g}", "-frames:v", str(total), "-c:v", "libx264", "-preset", "veryfast",
+        "-crf", "16", str(out),
+    )  # fmt: skip
+    return out
+
+
+async def frame_count(path: Path) -> int:
+    proc = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries",
+        "stream=nb_read_packets", "-of", "csv=p=0", str(path),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    out, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"ffprobe {path.name}: {err.decode(errors='replace')[-300:]}")
+    return int(out.strip())
+
+
+async def frame_rate(path: Path) -> float:
+    proc = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+        "stream=r_frame_rate", "-of", "csv=p=0", str(path),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    out, err = await proc.communicate()
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"ffprobe {path.name}: {err.decode(errors='replace')[-300:]}")
+    num, _, den = out.decode().strip().partition("/")
+    return float(num) / float(den or 1)
