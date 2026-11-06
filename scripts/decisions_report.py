@@ -36,6 +36,11 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
             f"{st.brief.duration_s:g}s, {st.brief.language.value}/{st.brief.dialect.value}"
         )
 
+    # 1b. insights (creative layer, ADR-0024)
+    if st.insights is not None:
+        out.append("\n1b. INSIGHTS")
+        out += [f"  {i}. {x.statement}" for i, x in enumerate(st.insights.insights, 1)]
+
     # 2. concepts
     if st.concepts is not None:
         sel = next((e for e in events if e.stage is Stage.SELECT and "scores" in e.payload), None)
@@ -48,8 +53,32 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
         for n, c in enumerate(st.concepts.concepts, 1):
             mark = "*" if c.id == st.concepts.selected_id else " "
             out.append(f"  {mark} {n}. {c.title} · {scores.get(n, float('nan')):.2f} · {c.logline}")
+            if c.story is not None and c.hook is not None and c.product_role is not None:
+                out.append(f"      insight {c.insight_number}: {c.insight}")
+                out.append(f"      turn: {c.story.turn} · hook opens: {c.hook.question}")
+                out.append(f"      product: {c.product_role.role} · culture: {c.cultural_meaning}")
         if st.concepts.selection_rationale:
             out.append(f"    why: {st.concepts.selection_rationale}")
+
+    # 2b. the whole-ad generation (multishot, ADR-0023 / ADR-0025)
+    g = st.generation
+    if g is not None:
+        out.append(
+            f"\n2b. WHOLE AD: {g.status} · v{g.version} · {g.model} {g.duration_s}s {g.resolution} "
+            f"· estimate {f'${g.est_usd:.3f}' if g.est_usd is not None else '-'} · approved by "
+            f"{g.approved_by or '-'}"
+        )
+        for e in events:
+            if e.stage in {Stage.ESTIMATE, Stage.QA} and e.type is EventType.DECISION:
+                out.append(f"  {e.summary[:400]}")
+        if g.qa is not None:
+            out.append(
+                f"  hard gate: {'PASS' if g.qa.passed else 'FAIL'} {g.qa.fail_reasons or ''}"
+            )
+        if g.accepted_by_human:
+            out.append(f"  HUMAN accepted: {g.accepted_by_human}")
+        if g.failure:
+            out.append(f"  failed: {g.failure.reason_debug[:300]}")
 
     # 3. product reference
     pr = st.product_reference

@@ -315,3 +315,13 @@ textarea:focus, #edit:focus { border-color: var(--accent); }
   .concepts, .teaser-row { grid-template-columns: 1fr; }
   .final, .g-card { grid-template-columns: 1fr; }
 }
+
+/* whole-ad generation (multishot): one video, its estimate, approval and the critic's verdict */
+.gen-panel { display: grid; grid-template-columns: 150px 1fr; gap: 6px 16px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 12px; background: var(--raise); }
+.gen-panel .gen-media { grid-row: span 8; }
+.gen-panel .gen-media video { width: 150px; max-height: 268px; border-radius: 2px; background: #000; }
+.gen-panel .gen-row { display: flex; justify-content: space-between; gap: 12px; font: 11.5px var(--mono); color: var(--muted); }
+.gen-panel .gen-row b { color: var(--text); font-weight: 500; }
+.gen-panel .flags { display: flex; flex-wrap: wrap; gap: 4px; }
+.gen-panel .desc { color: var(--muted); font-size: 12.5px; }
+.gen-panel details pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; margin: 6px 0 0; }

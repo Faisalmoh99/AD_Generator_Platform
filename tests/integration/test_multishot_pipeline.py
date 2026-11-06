@@ -321,3 +321,30 @@ async def test_killed_during_the_generation_then_resumed_pays_once(tmp_path: Pat
         e.type is EventType.DECISION and "interrupted whole-ad generation" in e.summary
         for e in rt2.storage.events.tail(run.id, limit=2000)
     )
+
+
+async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: Path) -> None:
+    from adsmith.api.view import run_view  # noqa: PLC0415
+
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=True, product_photo=photo(tmp_path))
+    await orch.run_until_blocked(run.id)
+    commands.choose_concept(rt.storage, run.id, 1)
+    state = await orch.run_until_blocked(run.id)
+    v = run_view(state, rt.storage)
+    stages = [p["stage"] for p in v["pipeline"]]
+    assert stages.index("insight") == stages.index("understand") + 1
+    assert stages.index("estimate") == stages.index("prompt") + 1
+    active = [p["stage"] for p in v["pipeline"] if p["state"] == "active"]
+    assert active == ["estimate"]  # the spend gate sits on the estimate
+    g = v["generation"]
+    assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(3.6)
+    assert g["prompt"].startswith("A 12-second") and g["approved_by"] is None
+    c = v["concepts"][0]
+    assert (
+        set(c["rubric"])
+        == {"insight", "hook", "story_turn", "originality", "cultural_meaning", "product_role"}
+        and c["product_role"]["role"] == "catalyst"
+    )
+    assert v["insights"] and v["insights"][0]["statement"].startswith("In the Gulf")

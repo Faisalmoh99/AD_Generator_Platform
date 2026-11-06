@@ -955,3 +955,18 @@ expected outcome (hard pass, creative low) and "report before tuning" otherwise.
 score warns and spends nothing more; a minor product issue is made hard and flags the ad;
 inconsistent verdicts are repaired; 13 images reach the critic; the verdict survives a snapshot
 round trip. 685 passed, 2 skipped.
+
+## Phase E: tests, report, studio, docs (2026-11-06)
+**Built:** studio support for whole-ad runs: gate markers placed by stage name (the two new
+stages had shifted the hard-coded positions), a spend gate on the estimate with an
+"Approve $X" button and the estimate in plain words, the scene→QA loop drawn only for
+scene-based runs, a whole-ad panel (video, model, estimate, who approved, hard gate, creative
+score, six scores, warnings, the prompt sent), shot cards labelled "shot N of one generation",
+final stats "one generation · status". Checked in Chrome on a zero-key run served from a scratch
+folder (spend gate → Approve clicked in the UI → done; no console errors). Decisions report:
+insights, each concept's insight/turn/hook question/product role/culture, the whole-ad estimate,
+approval, gate and creative review. README: the creative layer and one-generation section,
+honest status (no real Higgsfield generation yet, rubric not yet calibrated), ADR links.
+**Tests:** + a studio view-model test for a whole-ad run at the spend gate. 686 passed, 2 skipped.
+**Cut:** nothing. Not done because it needs your approval (calls Higgsfield or Anthropic): the
+estimate table, the montage v2 calibration, a real planning run and the one real generation.

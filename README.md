@@ -51,6 +51,43 @@ Other commands: `choose`, `approve`, `edit`, `retry`, `resume [--from-version N]
 
 ---
 
+## The creative layer and one-generation ads (new)
+
+The first version was an engineering proof: it could make an ad reliably, but the ads were
+templates. Two things changed (ADR-0022 to ADR-0025):
+
+1. **Ideas before shots.** A new `insight` stage names the category's clichés and 3–5 human
+   truths. Each of the three concepts stands on one truth and carries a story with a turn, a hook
+   (what you see and hear in the first two seconds, and the question it opens), the product's role
+   (hero, catalyst, reward or witness) and culture as meaning, not decoration. The judge scores six
+   criteria from `config/rubric.toml` (insight, hook, story and turn, originality, culture as
+   meaning, product's role); code weights them and picks. Ease of execution is no longer scored.
+2. **One generation per ad.** With a real product photo the run uses the `multishot` format: the
+   storyboard becomes ONE numbered-shot prompt (camera, lighting and sound per shot) rendered by a
+   single Seedance reference-to-video generation on Higgsfield, with native sound. The 8-clip
+   montage and narrative paths are unchanged when there is no photo.
+
+```bash
+# zero keys: scripted LLM + a mock reference-to-video model (real files, with sound)
+uv run adsmith run "Make a 12-second ad for my perfume" --product-photo my_photo.png --auto
+# real: Higgsfield prices the generation first; the run stops at the spend gate
+ADSMITH_LLM_PROVIDER=anthropic ADSMITH_AD_PROVIDER=higgsfield \
+  uv run adsmith run "<request>" --product-photo assets/perfume.jpeg --auto
+uv run adsmith approve <run>        # or: adsmith decline <run>
+```
+
+Money rules: the provider's own `/estimate` prices exactly the request; a run's budget or wallet
+that cannot cover it refuses before any spend; **real money always waits for a human at the spend
+gate**, even with `--auto`. The request id is persisted at submit, so a crash resumes by polling and
+never pays twice. The whole-ad critic sees the photo and three frames per shot: the hard gate
+(product identity, no text, brand safety, alcohol look) decides pass/flag by code, and the six
+rubric scores give a creative score that only **warns** below 6.5. Nothing is regenerated
+automatically: `adsmith accept-ad` or `adsmith regenerate-ad` (back through the spend gate).
+
+Status: built and tested on zero keys and a fake Higgsfield server. No real Higgsfield generation
+has been made yet, and the critic's rubric has not yet been calibrated on a real ad
+(`scripts/calibrate_ad_critic.py` is ready for montage v2).
+
 ## The brain
 
 **The LLM reasons inside nodes; it never picks the next stage.** Stages and transitions are a
@@ -222,10 +259,18 @@ I spent about $18 of real fal credit; these lessons changed the design.
 - Per-shot product identity routing and a cultural wardrobe lexicon. [0019](docs/adr/0019-identity-routing-and-wardrobe-lexicon.md)
 - Peak-motion window, beat-cut assembly, best-of-2 on key shots. [0020](docs/adr/0020-peak-window-beat-cut-key-shot-takes.md)
 - Macro crops from the packshot, vocabulary fallback, generated music. [0021](docs/adr/0021-macro-crop-vocab-fallback-generated-music.md)
+- Higgsfield over REST (no SDK retries), estimate first, idempotent submits. [0022](docs/adr/0022-higgsfield-over-rest.md)
+- One generation per ad (multishot) behind a human spend gate. [0023](docs/adr/0023-multishot-whole-ad-generation.md)
+- Insight first, concepts with a story and a hook, rubric selection. [0024](docs/adr/0024-creative-layer-insight-and-rubric.md)
+- Whole-ad critic: the hard gate decides, the creative rubric warns. [0025](docs/adr/0025-whole-ad-critic-rubric-warn-only.md)
 
 ## Limitations and "with more time"
 
 Where it stands honestly:
+- **One-generation ads are not proven on real output yet.** The Higgsfield path is tested only on
+  a fake server; prices are unpublished (the estimate is the price); the model chooses its own cut
+  points, so planned timecodes are approximate; the critic cannot hear the soundtrack; edits on a
+  one-generation ad are rejected (regenerate the whole ad instead).
 - **The critic misses fine material changes.** In montage v2 the droplets shot turned the cap into
   clear crystal and the keyframe gate passed it (0.78); the cap's shade also drifts between shots.
   The product reference image locks the shape, not every material detail.
@@ -257,5 +302,5 @@ config/                 models.toml (models, prices, profiles), chaos.toml, real
 docs/                   PLAN · PROGRESS · ADRs · MORE_TIME · DEMO_SCRIPT · screenshots · media
 ```
 
-`make check` = ruff + ruff format + **mypy --strict** + pytest: **585 tests** (plus 2 live tests
+`make check` = ruff + ruff format + **mypy --strict** + pytest: **686 tests** (plus 2 live tests
 that run with `--live`). Recovery paths, edits, the wallet, crash/resume and the API all have tests.

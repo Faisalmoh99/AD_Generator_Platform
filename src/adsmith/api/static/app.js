@@ -173,18 +173,25 @@ function drawGraph(v) {
   el("path", { d: "M0,0 L8,4 L0,8 z", class: "marker" }, mk);
   const n = v.pipeline.length, w = 82, h = 40, y = 14, gap = (1000 - 20 - n * w) / (n - 1);
   const x = (i) => 10 + i * (w + gap);
-  const awaiting = { awaiting_concept_choice: 2, awaiting_storyboard_approval: 6 }[v.stage];
+  const idx = (key) => v.pipeline.findIndex((p) => p.stage === key);
+  const awaiting = { awaiting_concept_choice: idx("select"), awaiting_storyboard_approval: idx("keyframe"), awaiting_generation_approval: idx("estimate") }[v.stage];
   v.pipeline.forEach((p, i) => {
     if (i < n - 1) {
       el("line", { x1: x(i) + w, y1: y + h / 2, x2: x(i + 1) - 2, y2: y + h / 2, class: `edge ${p.state === "done" ? "done" : ""}`, "marker-end": "url(#arrow)" }, svg);
     }
   });
   // human gates (interactive runs only stop there)
-  [[2, "concept", "awaiting_concept_choice"], [6, "storyboard", "awaiting_storyboard_approval"]].forEach(([i, key, st]) => {
+  const gen = v.generation;
+  const gates = [[idx("select"), "concept", "awaiting_concept_choice", v.interactive]];
+  if (gen) gates.push([idx("estimate"), "spend", "awaiting_generation_approval", !gen.approved_by || gen.approved_by === "user"]);
+  else gates.push([idx("keyframe"), "storyboard", "awaiting_storyboard_approval", v.interactive]);
+  gates.forEach(([i, key, st, human]) => {
+    if (i < 0) return;
     const cx = x(i) + w + gap / 2, cy = y + h / 2, on = v.stage === st;
-    const g = el("g", { "data-tip": `Human gate · ${key}: ${v.interactive ? "the run waits here for you" : "skipped (auto run)"}` }, svg);
+    const tip = key === "spend" ? "Human gate · spend: real money waits for your approval of the estimate" : `Human gate · ${key}: ${human ? "the run waits here for you" : "skipped (auto run)"}`;
+    const g = el("g", { "data-tip": tip }, svg);
     el("rect", { x: cx - 4.5, y: cy - 4.5, width: 9, height: 9, transform: `rotate(45 ${cx} ${cy})`, class: `gate ${on ? "on" : ""}` }, g);
-    el("text", { x: cx, y: y + h + 16, "text-anchor": "middle", class: "gate-label" }, g).textContent = v.interactive ? "you" : "auto";
+    el("text", { x: cx, y: y + h + 16, "text-anchor": "middle", class: "gate-label" }, g).textContent = human ? "you" : "auto";
   });
   v.pipeline.forEach((p, i) => {
     const active = p.state === "active" || i === awaiting;
@@ -194,9 +201,11 @@ function drawGraph(v) {
     el("text", { x: x(i) + w / 2, y: y + 31, "text-anchor": "middle", class: "kind" }, g).textContent = KIND_LABEL[p.kind] || "";
   });
   // the one loop in the table: qa → generate while any scene still has work
-  const gx = x(7) + w / 2, qx = x(8) + w / 2, by = y + h;
-  el("path", { d: `M${qx},${by + 2} C${qx},${by + 34} ${gx},${by + 34} ${gx},${by + 4}`, class: "loop", "marker-end": "url(#arrow)" }, svg);
-  el("text", { x: (gx + qx) / 2, y: by + 44, "text-anchor": "middle", class: "loop-label" }, svg).textContent = "until every scene settles";
+  if (!gen) {
+    const gx = x(idx("generate")) + w / 2, qx = x(idx("qa")) + w / 2, by = y + h;
+    el("path", { d: `M${qx},${by + 2} C${qx},${by + 34} ${gx},${by + 34} ${gx},${by + 4}`, class: "loop", "marker-end": "url(#arrow)" }, svg);
+    el("text", { x: (gx + qx) / 2, y: by + 44, "text-anchor": "middle", class: "loop-label" }, svg).textContent = "until every scene settles";
+  }
   const end = { done: "done", done_partial: "done · partial", errored: "errored" }[v.stage];
   if (end) el("text", { x: x(n - 1) + w / 2, y: y + h + 16, "text-anchor": "middle", class: "gate-label" }, svg).textContent = `→ ${end}`;
 }
@@ -415,7 +424,13 @@ function renderBoard(v) {
   const editable = ["done", "done_partial", "awaiting_storyboard_approval", "errored"].includes(v.stage) && !v.busy;
   $("#edit").disabled = !editable; $("#edit-go").disabled = !editable;
   $("#edit").placeholder = editable ? "Edit the ad in plain words…  خل المشهد الثاني أبطأ" : "Edits open when the run is finished";
-  $("#approve-wrap").classList.toggle("hidden", v.stage !== "awaiting_storyboard_approval");
+  const atSpend = v.stage === "awaiting_generation_approval";
+  $("#approve-wrap").classList.toggle("hidden", v.stage !== "awaiting_storyboard_approval" && !atSpend);
+  $("#approve-text").textContent = atSpend && v.generation
+    ? `One generation of the whole ad is estimated at ${money(v.generation.est_usd || 0)} (${v.generation.model}, ${v.generation.duration_s}s ${v.generation.resolution}). Nothing is spent until you approve.`
+    : "Keyframes are ready. Approve to start paid video generation.";
+  $("#approve").textContent = atSpend ? `Approve ${money(v.generation?.est_usd || 0)}` : "Approve storyboard";
+  renderGeneration(v);
   if (showBlast) {
     const parts = Object.entries(blast.affected).map(([o, d]) => `S${o} <b>${d}</b>`).join(" · ");
     const untouched = blast.untouched.length ? ` · untouched ${blast.untouched.map((o) => "S" + o).join(", ")} <b>$0</b>` : "";
@@ -434,7 +449,7 @@ function renderBoard(v) {
     card.dataset.id = s.id;
     const media = s.keyframe
       ? `<img src="${s.keyframe}" alt="">${s.clip ? `<video src="${s.clip}" muted loop playsinline preload="metadata"></video>` : ""}`
-      : `<div class="placeholder">${s.status === "generating" ? "rendering" : "keyframe pending"}</div>`;
+      : `<div class="placeholder">${v.generation ? `shot ${s.order} of one generation` : s.status === "generating" ? "rendering" : "keyframe pending"}</div>`;
     const tag = depth ? `<div class="blast-tag ${depth}">${depth === "clip" ? "new clip · keyframe kept" : depth === "keyframe" ? "new keyframe + clip" : "new prompt · keyframe · clip"}</div>`
       : untouched ? `<div class="blast-tag untouched">untouched · $0</div>` : "";
     card.innerHTML = `<div class="media">${media}<div class="top"><span class="order">S${s.order}</span><span class="chip s-${s.status}">${STATUS_LABEL[s.status] || s.status}</span></div>${tag}</div>
@@ -457,6 +472,29 @@ function renderBoard(v) {
   board.onclick = (ev) => { const n = ev.target.dataset.retry; if (n) act("retry", { scene: Number(n) }); };
 }
 
+function renderGeneration(v) {
+  const box = $("#generation");
+  const g = v.generation;
+  box.classList.toggle("hidden", !g);
+  if (!g) return;
+  const scores = Object.entries(g.rubric || {}).map(([k, n]) => `<span class="flag ${n >= 8 ? "good" : n <= 4 ? "bad" : ""}">${esc(k.replace("_", " "))} ${n}</span>`).join("");
+  const row = (k, val) => `<div class="gen-row"><span>${k}</span><b>${val}</b></div>`;
+  const hard = g.score == null ? "–" : g.reasons.length ? `FAILED (${esc(g.reasons.join("; "))})` : `passed · ${g.score.toFixed(2)}`;
+  const creative = g.creative_score == null ? "–" : `${g.creative_score.toFixed(2)}/10${g.warnings.length ? " · WARN" : ""}`;
+  box.innerHTML = `<div class="gen-media">${g.video ? `<video src="${g.video}" controls playsinline preload="metadata"></video>` : `<div class="placeholder">not generated yet</div>`}</div>
+    <div class="section-label">Whole ad · one generation <span class="chip s-${esc(g.status)}">${esc(g.status)}</span></div>
+    ${row("model", `${esc(g.model)} · ${g.duration_s}s ${esc(g.resolution)} · audio ${g.audio ? "on" : "off"}`)}
+    ${row("estimate", g.est_usd != null ? money(g.est_usd) : "–")}
+    ${row("approved by", g.approved_by ? esc(g.approved_by) : "waiting for you")}
+    ${row("hard gate", hard)}
+    ${row("creative", creative)}
+    ${scores ? `<div class="flags">${scores}</div>` : ""}
+    ${g.warnings.length ? `<div class="desc">${esc(g.warnings.join(" · "))}</div>` : ""}
+    ${g.creative_note ? `<div class="desc" dir="auto">${esc(g.creative_note)}</div>` : ""}
+    ${g.failure ? `<div class="fail" dir="auto">${esc(g.failure)}</div>` : ""}
+    <details><summary>Prompt sent to the model</summary><pre>${esc(g.prompt)}</pre></details>`;
+}
+
 function renderFinal(v) {
   $("#final-wrap").classList.toggle("hidden", !v.final);
   if (!v.final) return;
@@ -466,7 +504,7 @@ function renderFinal(v) {
   const b = v.budget, c = b.by_category;
   $("#final-stats").innerHTML = [
     ["Duration", `${(v.final_duration || 0).toFixed(1)}s`],
-    ["Scenes", `${approved}/${v.scenes.length} approved`],
+    v.generation ? ["Whole ad", `one generation · ${v.generation.status}`] : ["Scenes", `${approved}/${v.scenes.length} approved`],
     ["Media spend", money((c.image || 0) + (c.video || 0) + (c.audio || 0))],
     ["LLM spend", money(c.llm || 0)],
   ].map(([k, val]) => `<div class="stat"><div class="k">${k}</div><div class="v">${val}</div></div>`).join("");

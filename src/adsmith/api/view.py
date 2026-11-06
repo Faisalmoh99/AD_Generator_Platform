@@ -7,6 +7,7 @@ from typing import Any
 
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.qa import AdVerdict
 from adsmith.domain.rubric import RUBRIC_KEYS
 from adsmith.domain.run import RunState
 from adsmith.storage import Storage
@@ -358,5 +359,9 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "video": media_url(g.artifact.path if g.artifact else None),
         "score": g.qa.score if g.qa else None,
         "reasons": g.qa.fail_reasons if g.qa else [],
+        "creative_score": g.qa.creative_score if isinstance(g.qa, AdVerdict) else None,
+        "rubric": g.qa.rubric.model_dump() if isinstance(g.qa, AdVerdict) else {},
+        "warnings": g.qa.warnings if isinstance(g.qa, AdVerdict) else [],
+        "creative_note": g.qa.creative_note if isinstance(g.qa, AdVerdict) else None,
         "failure": g.failure.reason_user if g.failure else None,
     }
