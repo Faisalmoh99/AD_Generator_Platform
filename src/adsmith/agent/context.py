@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.structured import StructuredCaller
 from adsmith.config import FalImageEndpoint, FalVideoEndpoint, Settings
-from adsmith.domain.run import RunState
+from adsmith.domain.run import RunConfig, RunState
 from adsmith.providers.llm.base import LLMProvider
 from adsmith.providers.llm.scripted import ScriptedLLMProvider
 from adsmith.storage import ArtifactStore, Storage
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from adsmith.providers.media.base import MusicProvider, VideoCapabilities
     from adsmith.providers.media.chaos import ChaosPolicy
     from adsmith.providers.media.fal import FalQueue
+    from adsmith.providers.media.higgsfield import HiggsfieldQueue, HiggsfieldVideoProvider
     from adsmith.providers.media.mock import MockMusicProvider
     from adsmith.storage.account import SpendAccount
 
@@ -50,6 +51,8 @@ class AgentRuntime:
     media_factory: Callable[[RunState], MediaGateway] | None = None  # tests / demos
     _account: SpendAccount | None = None
     _fal_queue: FalQueue | None = None
+    _hf_account: SpendAccount | None = None
+    _hf_q: HiggsfieldQueue | None = None
     _mock_music: MockMusicProvider | None = None
 
     @classmethod
@@ -181,6 +184,65 @@ class AgentRuntime:
                 self.settings.account_db, balance_usd=self.settings.fal_balance_usd
             )
         return self._account
+
+    def hf_account(self) -> SpendAccount:
+        """The Higgsfield wallet ledger: same SQLite file as fal, its own provider rows and its
+        own ceiling (``ADSMITH_HF_BALANCE_USD``). Refuses to exist without a ceiling."""
+        if self._hf_account is None:
+            from adsmith.storage.account import SpendAccount  # noqa: PLC0415
+
+            if self.settings.hf_balance_usd is None:
+                raise RuntimeError(
+                    "set ADSMITH_HF_BALANCE_USD (the prepaid Higgsfield balance) before real spend"
+                )
+            self._hf_account = SpendAccount(
+                self.settings.account_db,
+                balance_usd=self.settings.hf_balance_usd,
+                provider="higgsfield",
+            )
+        return self._hf_account
+
+    def hf_queue(self) -> HiggsfieldQueue:
+        from adsmith.providers.media.higgsfield import HiggsfieldQueue  # noqa: PLC0415
+
+        s = self.settings
+        catalog = s.catalog.higgsfield
+        if s.hf_key is None or catalog is None:
+            raise RuntimeError("HF_KEY and a [higgsfield] catalog section are required")
+        if self._hf_q is None:
+            self._hf_q = HiggsfieldQueue(
+                s.hf_key.get_secret_value(),
+                base_url=catalog.base_url,
+                account=self.hf_account(),
+                poll_interval_s=s.hf_poll_interval_s,
+                max_poll_interval_s=s.hf_max_poll_interval_s,
+                timeout_s=s.hf_timeout_s,
+                sleep=self.sleep,
+                rng=self.rng,
+            )
+        return self._hf_q
+
+    def higgsfield_video(self, model_key: str | None = None) -> HiggsfieldVideoProvider:
+        """The Higgsfield reference-to-video provider for a catalog key (default: the setting,
+        then the catalog default)."""
+        from adsmith.media.frames import probe_video  # noqa: PLC0415
+        from adsmith.providers.media.higgsfield import HiggsfieldVideoProvider  # noqa: PLC0415
+
+        catalog = self.settings.catalog.higgsfield
+        if catalog is None:
+            raise RuntimeError("config/models.toml has no [higgsfield] section")
+        key = model_key or self.settings.hf_video_model or catalog.video.default
+        return HiggsfieldVideoProvider(self.hf_queue(), catalog.video.endpoints[key], probe_video)
+
+    def media_remaining_usd(self, run_config: RunConfig) -> float | None:
+        """What is left of the prepaid wallets this run's paid media draws on (None = no real
+        media provider: only the run budget applies)."""
+        left: float | None = None
+        if run_config.media_provider == "fal":
+            left = self.fal_account().summary().remaining_usd
+        if run_config.ad_provider == "higgsfield":
+            left = (left or 0.0) + self.hf_account().summary().remaining_usd
+        return left
 
     def _fal_media(
         self,

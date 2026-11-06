@@ -871,3 +871,27 @@ board with hover clips, edits + blast radius, retry, final + pack, trace filters
 Verified with `scripts/ui_studio_review.py` (Playwright, installed Chrome, no console errors):
 `docs/screenshots/ui/01_landing … 11_laptop.png`.
 **Tests:** 584 passed, 2 skipped.
+
+## Phase A: Higgsfield provider over REST + the safety-net script (2026-11-06)
+Context: interview feedback "an engineering proof, no creativity in the video"; plan in
+`~/.claude/plans/…` (A → B → C → D → E). Phase A adds Higgsfield next to fal (ADR-0022).
+**Built:** `providers/media/higgsfield.py`: `HiggsfieldQueue` (REST with httpx, not the SDK: the
+SDK retries the paid submit with no idempotency key) = upload (presigned PUT, no key sent there,
+cached 50 min), estimate, submit with `Idempotency-Key`, documented polling (2 s ×1.5 to 10 s,
+jitter), download; terminal states `failed`/`canceled`/`nsfw` released (not charged); in-flight
+resume, persisted-request resume (404 → resubmitted once, `failed` → not), ambiguous submit
+timeout reuses the same key and reservation; circuit breaker on a credit refusal.
+`HiggsfieldVideoProvider` validates the Seedance body before any HTTP, refuses a job without an
+approved estimate, reserves exactly that estimate, refuses estimates above a sanity cap.
+`ReferenceVideoJob` / `ReferenceVideoProvider` protocol; `classify_higgsfield_http`.
+Catalog `[higgsfield]` with Seedance 2.0 and 2.5 reference-to-video (schemas verified on the docs
+2026-11-06; no published prices: the estimate is the price). Settings `ADSMITH_AD_PROVIDER`
+(mock | higgsfield, separate from the scene media provider), `HF_KEY` (SecretStr, never logged),
+`ADSMITH_HF_BALANCE_USD` (own rows in the wallet ledger); a run's media cap sums the wallets it
+uses. Scripts (not run: they call Higgsfield): `scripts/hf_estimate.py` (one estimate by default,
+`--matrix` for the 2.0 vs 2.5 table, `--prompt-limit`), `scripts/hf_generate_once.py` (upload →
+body + estimate → explicit y/N → one submit; request id saved for `--resume`). `assets/` ignored.
+**Deviation:** the product photo is `assets/perfume.jpeg` (not `.png`).
+**Note:** `scripts/live_one_clip.py` (untracked, not mine) fails `ruff`; the gate was checked with
+it excluded and it is not committed.
+**Tests:** 34 new (`tests/unit/test_higgsfield.py`); 619 passed, 2 skipped (live).

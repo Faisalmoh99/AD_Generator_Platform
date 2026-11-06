@@ -41,6 +41,7 @@ class RunConfig(DomainModel):
     seed: int = 7
     llm_provider: Literal["scripted", "anthropic", "openai"] = "scripted"
     media_provider: Literal["mock", "fal"] = "mock"
+    ad_provider: Literal["mock", "higgsfield"] = "mock"  # whole-ad generations (ADR-0022)
     model_profile: Literal["fast", "balanced", "quality"] = "balanced"
     qa_mode: Literal["mock", "llm"] = "mock"
     qa_threshold: float = Field(default=0.7, ge=0, le=1)

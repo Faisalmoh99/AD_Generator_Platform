@@ -266,3 +266,64 @@ endpoint = "fal-ai/veo3.1/fast/image-to-video"
 adapter = "veo"
 usd_per_second = 0.10
 allowed_durations_s = [4, 6, 8]
+
+# ---------------------------------------------------------------- Higgsfield (ADR-0022)
+# Verified 2026-11-06 against docs.higgsfield.ai (models/seedance-2/reference-to-video,
+# models/seedance-2-5/reference-to-video, concepts/requests, billing-and-retention, file-uploads,
+# idempotency, polling, rate-limits). Nothing from memory.
+# - Called over REST with httpx, NOT the higgsfield-client SDK: the SDK retries every request
+#   (including the paid submit) 3x on 408/429/5xx with no idempotency key and no public switch.
+# - Submit: POST {base_url}/{endpoint} → {status: queued, request_id, status_url, cancel_url};
+#   poll status_url → queued | in_progress | completed | failed | nsfw | canceled; the video is
+#   at video.url in the completed status body. failed and nsfw are NOT charged. Outputs are
+#   deleted 7 days after the request finishes (we download at once). Idempotency-Key supported.
+# - Inputs must be PUBLIC urls (asset:// rejected): POST /files/generate-upload-url, then PUT.
+# - No published price for either model: every job is priced by POST /estimate/{endpoint} with
+#   the same body ({"usd": "x.xx"}). The docs do not state that estimates are free.
+#   max_usd_per_second is only a sanity cap against a misread estimate.
+# - No seed and no negative prompt in either schema. Prompt length limit: not documented.
+[higgsfield]
+base_url = "https://api.higgsfield.ai"
+
+[higgsfield.video]
+default = "seedance_20_ref"
+
+[higgsfield.video.endpoints.seedance_20_ref]
+# image_urls 1-9, video_urls <= 3, audio_urls <= 3 (we send images only); duration int 4-15
+# (default 5); resolution 480p|720p|1080p|4k (default 720p); aspect 16:9|4:3|1:1|3:4|9:16|21:9
+# (default 16:9); generate_audio default true. Never mix image_urls with image_url/end_image_url.
+endpoint = "bytedance/seedance-2.0/reference-to-video"
+min_duration_s = 4
+max_duration_s = 15
+default_duration_s = 12
+resolutions = ["480p", "720p", "1080p", "4k"]
+default_resolution = "720p"
+aspect_ratios = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+max_images = 9
+max_usd_per_second = 1.0
+
+[higgsfield.video.endpoints.seedance_20_ref.profile]
+max_single_shot_s = 15
+strengths = [
+  "one generation holds several numbered shots with cuts, camera moves and native audio [expected]",
+  "the product stays close to the reference photo across every shot of the generation [expected]",
+  "physical events around a still product: liquids, mist, light on glass and metal [expected]",
+]
+weaknesses = [
+  "the cut points do not follow the planned timecodes exactly [expected]",
+  "readable text, logos and small engraved emblems drift or get invented [expected]",
+  "no seed: a re-generation is a new roll, never the same video [observed in the schema]",
+]
+
+[higgsfield.video.endpoints.seedance_25_ref]
+# Differences from 2.0: duration int 4-30; no 4k; image_urls up to 30 (50 references in total);
+# audio-only references allowed; extra field bitrate_mode standard|high (default high).
+endpoint = "bytedance/seedance-2.5/reference-to-video"
+min_duration_s = 4
+max_duration_s = 30
+default_duration_s = 12
+resolutions = ["480p", "720p", "1080p"]
+default_resolution = "720p"
+aspect_ratios = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+max_images = 30
+max_usd_per_second = 1.0

@@ -10,7 +10,7 @@ import pytest
 
 from adsmith.config import Settings
 
-_KEY_VARS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "FAL_KEY")
+_KEY_VARS = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "FAL_KEY", "HF_KEY")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:

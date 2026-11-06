@@ -155,12 +155,57 @@ class FalCatalog(_Frozen):
     audio: FalAudioCatalog | None = None
 
 
+class HiggsfieldVideoEndpoint(_Frozen):
+    """A Higgsfield reference-to-video endpoint (one multi-shot ad from reference images). Schema
+    facts are verified against docs.higgsfield.ai (dates in models.toml). There is no published
+    price: every job is priced by the account's own ``/estimate`` call, and
+    ``max_usd_per_second`` is only a sanity cap that refuses a misread estimate."""
+
+    endpoint: str
+    min_duration_s: int = Field(ge=1)
+    max_duration_s: int = Field(ge=1, le=60)
+    default_duration_s: int = Field(ge=1)
+    resolutions: list[str] = Field(min_length=1)
+    default_resolution: str
+    aspect_ratios: list[str] = Field(min_length=1)
+    max_images: int = Field(ge=1, le=50)
+    max_usd_per_second: float = Field(gt=0)
+    # Endpoint-specific request fields (verified against the schema), merged into the body.
+    params: dict[str, int | float | str | bool] = Field(default_factory=dict)
+    profile: VideoProfile | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if not self.min_duration_s <= self.default_duration_s <= self.max_duration_s:
+            raise ValueError("default_duration_s must lie in [min_duration_s, max_duration_s]")
+        if self.default_resolution not in self.resolutions:
+            raise ValueError("default_resolution must be one of resolutions")
+        return self
+
+
+class HiggsfieldVideoCatalog(_Frozen):
+    default: str
+    endpoints: dict[str, HiggsfieldVideoEndpoint]
+
+
+class HiggsfieldCatalog(_Frozen):
+    base_url: str
+    video: HiggsfieldVideoCatalog
+
+    @model_validator(mode="after")
+    def _default_exists(self) -> Self:
+        if self.video.default not in self.video.endpoints:
+            raise ValueError("higgsfield.video.default not in endpoints")
+        return self
+
+
 class ModelCatalog(_Frozen):
     default_profile: ProfileName
     profiles: dict[ProfileName, dict[LLMNode, NodeModel]]
     openai: OpenAIModels
     llm_models: dict[str, LLMModelSpec]
     fal: FalCatalog
+    higgsfield: HiggsfieldCatalog | None = None
 
     @model_validator(mode="after")
     def _complete(self) -> Self:
@@ -222,11 +267,17 @@ class Settings(BaseSettings):
     scripted_scenario: str | None = None  # default: perfume_<request language>
     fal_video_model: str | None = None
     fal_image_model: str | None = None
+    # Who renders a whole-ad generation (the multishot format): mock (zero keys) or Higgsfield.
+    # Separate from media_provider, which serves the per-scene keyframe/clip path (ADR-0022).
+    ad_provider: Literal["mock", "higgsfield"] = "mock"
+    hf_video_model: str | None = None  # catalog key under [higgsfield.video.endpoints]
 
     # secrets (standard names, no prefix)
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     openai_api_key: SecretStr | None = Field(default=None, validation_alias="OPENAI_API_KEY")
     fal_key: SecretStr | None = Field(default=None, validation_alias="FAL_KEY")
+    # "key-id:key-secret". Never logged, printed or put in an error message.
+    hf_key: SecretStr | None = Field(default=None, validation_alias="HF_KEY")
 
     # run behaviour
     aspect_ratio: AspectRatio = "9:16"
@@ -265,6 +316,11 @@ class Settings(BaseSettings):
     fal_balance_usd: float | None = Field(default=None, ge=0)
     fal_poll_interval_s: float = Field(default=2.0, gt=0)
     fal_timeout_s: float = Field(default=900.0, gt=0)
+    # Hard ceiling for ALL real Higgsfield spend (own row set in the account ledger).
+    hf_balance_usd: float | None = Field(default=None, ge=0)
+    hf_poll_interval_s: float = Field(default=2.0, gt=0)  # docs: start at 2 s ...
+    hf_max_poll_interval_s: float = Field(default=10.0, gt=0)  # ... back off to 10 s, jitter
+    hf_timeout_s: float = Field(default=1800.0, gt=0)
 
     # paths
     data_dir: Path = PROJECT_ROOT / "data"
@@ -336,5 +392,11 @@ class Settings(BaseSettings):
         if self.media_provider == "fal" and self.fal_balance_usd is None:
             raise ValueError(
                 "ADSMITH_MEDIA_PROVIDER=fal requires ADSMITH_FAL_BALANCE_USD (prepaid ceiling)"
+            )
+        if self.ad_provider == "higgsfield" and self.hf_key is None:
+            raise ValueError("ADSMITH_AD_PROVIDER=higgsfield requires HF_KEY")
+        if self.ad_provider == "higgsfield" and self.hf_balance_usd is None:
+            raise ValueError(
+                "ADSMITH_AD_PROVIDER=higgsfield requires ADSMITH_HF_BALANCE_USD (prepaid ceiling)"
             )
         return self

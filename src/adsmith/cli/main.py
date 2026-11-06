@@ -206,14 +206,10 @@ def resume(
 def budget(
     run_id: str, usd: Annotated[float, typer.Argument(help="New spend cap for this run (USD).")]
 ) -> None:
-    """Set a run's spend cap. For fal runs it is clamped to the prepaid wallet's headroom."""
+    """Set a run's spend cap. With real media it is clamped to the prepaid wallets' headroom."""
     orch = _orchestrator()
     state = orch.rt.storage.runs.load(run_id)
-    headroom = (
-        orch.rt.fal_account().summary().remaining_usd
-        if state.config.media_provider == "fal"
-        else None
-    )
+    headroom = orch.rt.media_remaining_usd(state.config)
     state = commands.set_budget(orch.rt.storage, run_id, usd, wallet_remaining_usd=headroom)
     console.print(
         f"Run [bold]{run_id}[/] budget: ${state.budget.limit_usd:.2f} "

@@ -92,3 +92,35 @@ def classify_fal_http(
     if status in {401, 403}:
         return PermanentProviderError(f"{msg} (check FAL_KEY)")
     return PermanentProviderError(msg)
+
+
+# Higgsfield (docs.higgsfield.ai, read 2026-11-06). Errors are JSON with ``code`` and sometimes
+# ``retryable``: a full account queue is 429 ``account_queue_full`` with Retry-After; admission
+# control is 503 ``admission_control_unavailable``. The exact body of a credit refusal on a
+# generation endpoint is NOT documented (the agent API uses 402): matched by markers and verified
+# at the first real call.
+_HF_PAYMENT_REQUIRED = 402
+_HF_CREDIT_MARKERS = ("insufficient", "credits", "balance", "top up")
+_HF_POLICY_MARKERS = ("nsfw", "content_policy", "policy", "safety", "moderation", "flagged")
+
+
+def classify_higgsfield_http(  # noqa: PLR0911 - flat mapping
+    status: int, body: str, headers: object = None, *, endpoint: str = ""
+) -> AgentError:
+    """Map a Higgsfield HTTP error (upload, estimate, submit or status) onto the taxonomy."""
+    snippet = body[:600]
+    msg = f"higgsfield {endpoint}: HTTP {status}: {snippet}"
+    lowered = body.lower()
+    if status == _TOO_MANY_REQUESTS:
+        return RateLimitedError(msg, retry_after_s=_retry_after(headers))
+    if status >= _SERVER_ERROR or status in {_REQUEST_TIMEOUT, _CONFLICT}:
+        return TransientProviderError(msg)
+    if status == _HF_PAYMENT_REQUIRED or any(m in lowered for m in _HF_CREDIT_MARKERS):
+        return AccountLockedError(f"{msg} (the Higgsfield account has no usable balance)")
+    if any(m in lowered for m in _HF_POLICY_MARKERS):
+        return ContentPolicyError(msg, category="higgsfield_safety")
+    if '"retryable": true' in lowered or '"retryable":true' in lowered:
+        return TransientProviderError(msg)
+    if status in {401, 403}:
+        return PermanentProviderError(f"{msg} (check HF_KEY)")
+    return PermanentProviderError(msg)

@@ -129,6 +129,36 @@ class VideoProvider(Protocol):
     async def image_to_video(self, job: VideoJob, out_dir: Path) -> MediaOutput: ...
 
 
+@dataclass(frozen=True, slots=True)
+class ReferenceVideoJob:
+    """One whole ad from reference images (Seedance reference-to-video, Phase A): the prompt
+    carries the numbered shots; ``image_urls`` are PUBLIC urls made by the provider's own upload;
+    ``est_usd`` is the provider's own estimate for exactly this body, approved by the human and
+    reserved in the wallet before the submit. A job without an estimate is never submitted."""
+
+    prompt: str
+    image_urls: tuple[str, ...]
+    duration_s: int
+    resolution: str
+    aspect_ratio: str
+    generate_audio: bool
+    label: MediaLabel
+    est_usd: float | None = None
+    remote: RemoteControl | None = None
+    variant: int = 0  # best-of-N candidate index (the model has no seed: the key differs)
+
+
+class ReferenceVideoProvider(Protocol):
+    """Reference images + one prompt → one multi-shot video with native audio."""
+
+    name: str
+    model: str
+
+    async def estimate_usd(self, job: ReferenceVideoJob) -> float: ...
+
+    async def reference_to_video(self, job: ReferenceVideoJob, out_dir: Path) -> MediaOutput: ...
+
+
 def frame_size(aspect_ratio: str, *, long_side: int) -> tuple[int, int]:
     short = int(long_side * 9 / 16) // 2 * 2
     return {"9:16": (short, long_side), "16:9": (long_side, short), "1:1": (short, short)}[

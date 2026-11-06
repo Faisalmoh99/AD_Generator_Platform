@@ -75,6 +75,7 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         seed=settings.chaos_config.seed,
         llm_provider=settings.llm_provider,
         media_provider=settings.media_provider,
+        ad_provider=settings.ad_provider,
         model_profile=settings.active_profile,
         qa_mode=settings.resolved_qa_mode(),
         qa_threshold=settings.qa_threshold,
@@ -136,12 +137,13 @@ class Orchestrator:
             config = config.model_copy(update={"clip_candidates": max(2, config.clip_candidates)})
         limit = s.budget_usd
         media_limit: float | None = None
-        if config.media_provider == "fal":
-            # Never let one run reserve more media than what is left of the prepaid wallet. LLM
-            # calls are billed by another provider, so only image + video count against it.
-            media_limit = min(limit, self.rt.fal_account().summary().remaining_usd)
+        wallets = self.rt.media_remaining_usd(config)
+        if wallets is not None:
+            # Never let one run reserve more media than what is left of the prepaid wallets (fal,
+            # Higgsfield). LLM calls are billed by another provider, so only media counts.
+            media_limit = min(limit, wallets)
             if media_limit <= 0:
-                raise RuntimeError("the fal account balance is exhausted (see the account ledger)")
+                raise RuntimeError("the media account balance is exhausted (see the ledger)")
         state = RunState(
             config=config,
             request=request,
