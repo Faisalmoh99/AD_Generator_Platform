@@ -145,3 +145,28 @@ def test_cli_prompt_file_no_approve_reprices_and_stops(
     assert "written by a human creative director" in res.output
     bad = CliRunner().invoke(app, ["approve", run_id, "--no-approve"])
     assert bad.exit_code != 0  # --no-approve without a prompt file is refused
+
+
+async def test_the_critic_judges_against_the_human_shot_list(tmp_path: Path) -> None:
+    from adsmith.providers.llm.scripted import ScriptedLLMProvider  # noqa: PLC0415
+    from tests.integration.test_ad_critic import verdict_output  # noqa: PLC0415
+
+    orch = Orchestrator(runtime(settings(tmp_path, qa_mode="llm")))
+    llm = orch.rt._provider_override
+    assert isinstance(llm, ScriptedLLMProvider)
+    llm.override("qa_ad_critic", [{"output": verdict_output()}])
+    run = orch.create_run(REQUEST, interactive=True, product_photo=photo(tmp_path))
+    await orch.run_until_blocked(run.id)
+    commands.choose_concept(orch.rt.storage, run.id, 1)
+    await orch.run_until_blocked(run.id)
+    commands.replace_generation_prompt(orch.rt.storage, run.id, HUMAN, max_chars=2500)
+    await orch.run_until_blocked(run.id)
+    commands.approve_generation(orch.rt.storage, run.id)
+    state = await orch.run_until_blocked(run.id)
+    assert state.stage is Stage.DONE
+    req = next(r for r in llm.requests if r.template.startswith("qa_ad_critic@"))
+    msg = req.messages[0]
+    assert hasattr(msg, "parts")
+    body = "\n".join(p.text for p in msg.parts if hasattr(p, "text"))
+    assert "written by a human creative director" in body
+    assert "raises her hand to knock" in body and HUMAN in body

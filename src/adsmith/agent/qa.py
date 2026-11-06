@@ -251,6 +251,7 @@ class LLMCritic:
             reference=reference,
             prompt_text=g.prompt_text,
             duration_s=video_s,
+            storyboard_text=human_storyboard_block(g),
         )
         return verdict, calls
 
@@ -263,6 +264,7 @@ class LLMCritic:
         reference: Path | None,
         prompt_text: str,
         duration_s: float,
+        storyboard_text: str | None = None,
     ) -> tuple[AdVerdict, list[LLMCallRecord]]:
         """Review any finished ad: the hard checks (code decides ``passed``), a note per shot and
         the six rubric scores (code computes the creative total). Also used to calibrate the
@@ -292,7 +294,7 @@ class LLMCritic:
         rubric = self.ctx.settings.rubric
         rendered = self.ctx.prompts.get("qa_ad_critic").render(
             concept=concept_block(concept) if concept else "(none)",
-            storyboard=storyboard_block(state.storyboard),
+            storyboard=storyboard_text or storyboard_block(state.storyboard),
             ad_prompt=prompt_text,
             product_checklist="\n".join(f"- {i}" for i in state.bible.product.checklist()),
             rubric=rubric.prompt_block("video"),
@@ -477,6 +479,19 @@ class ShotWindow:
     start_s: float
     end_s: float
     plan: str
+
+
+def human_storyboard_block(g: AdGeneration) -> str | None:
+    """When a human creative director replaced the prompt, the shot list the film is judged
+    against is the human's, not the model's storyboard (else following the human would read as
+    a missed spec)."""
+    if g.human_prompt is None:
+        return None
+    lines = ["Shot list written by a human creative director (replaces the model's storyboard):"]
+    lines += [
+        f"Shot {s.number} ({s.start_s:g}-{s.end_s:g} s): {s.action}" for s in g.human_prompt.shots
+    ]
+    return "\n".join(lines)
 
 
 def ad_shot_windows(g: AdGeneration, video_s: float) -> list[ShotWindow]:
