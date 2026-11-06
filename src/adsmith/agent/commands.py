@@ -598,21 +598,56 @@ def replace_generation_prompt(
                 },
             )
         ]  # fmt: skip
-        if endcard_tagline is not None and s.brief is not None:
-            tag = endcard_tagline.strip()
-            lang = Language.AR if any("؀" <= ch <= "ۿ" for ch in tag) else Language.EN
-            old_tag = s.brief.tagline
-            s.brief = s.brief.model_copy(update={"tagline": tag, "tagline_language": lang})
-            s.endcard = None  # re-made at assembly with the human tagline
-            events.append(
-                AgentEvent(
-                    run_id=s.id,
-                    stage=Stage.AWAITING_GENERATION_APPROVAL,
-                    type=EventType.DECISION,
-                    summary=f"HUMAN creative direction: end-card tagline set to «{tag}»",
-                    payload={"human": True, "tagline": tag, "previous": old_tag},
-                )
-            )
+        events += _endcard_direction(s, brand=None, tagline=endcard_tagline)
         return events
 
     return storage.runs.update(run_id, mutate, reason="human prompt").state
+
+
+def _endcard_direction(s: RunState, *, brand: str | None, tagline: str | None) -> list[AgentEvent]:
+    """Human end-card copy goes into the brief (it is the client's own, not a placeholder); the
+    end card is re-made at assembly from it."""
+    if s.brief is None:
+        raise CommandRejectedError("the run has no brief yet")
+    events: list[AgentEvent] = []
+    for field, value in (("brand_name", brand), ("tagline", tagline)):
+        if value is None:
+            continue
+        text = " ".join(value.split())
+        if not text:
+            raise CommandRejectedError(f"the end-card {field} is empty")
+        update: dict[str, object] = {field: text}
+        if field == "tagline":
+            arabic = any("\u0600" <= ch <= "\u06ff" for ch in text)
+            update["tagline_language"] = Language.AR if arabic else Language.EN
+        old = getattr(s.brief, field)
+        s.brief = s.brief.model_copy(update=update)
+        s.brief = s.brief.model_validate(s.brief.model_dump())  # length limits
+        label = "brand name" if field == "brand_name" else "tagline"
+        events.append(
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"HUMAN creative direction: end-card {label} set to «{text}»",
+                payload={"human": True, field: text, "previous": old},
+            )
+        )
+    if events:
+        s.endcard = None  # re-made at assembly from the brief
+    return events
+
+
+def set_endcard(
+    storage: Storage, run_id: str, *, brand: str | None = None, tagline: str | None = None
+) -> RunState:
+    """Human end-card copy (brand name and/or tagline) before the ad is assembled."""
+    if brand is None and tagline is None:
+        raise CommandRejectedError("give a brand name or a tagline")
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        if s.final is not None or s.stage in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}:
+            raise CommandRejectedError(f"run is at {s.stage}: the end card is already made")
+        return _endcard_direction(s, brand=brand, tagline=tagline)
+
+    return storage.runs.update(run_id, mutate, reason="human end card").state

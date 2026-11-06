@@ -170,3 +170,38 @@ async def test_the_critic_judges_against_the_human_shot_list(tmp_path: Path) -> 
     body = "\n".join(p.text for p in msg.parts if hasattr(p, "text"))
     assert "written by a human creative director" in body
     assert "raises her hand to knock" in body and HUMAN in body
+
+
+async def test_the_human_brand_name_reaches_the_end_card(tmp_path: Path) -> None:
+    orch, run_id = await at_gate(tmp_path)
+    commands.set_endcard(orch.rt.storage, run_id, brand="عتبة", tagline="كنا ننتظرك")
+    state = orch.rt.storage.runs.load(run_id)
+    assert state.brief is not None and state.brief.brand_name == "عتبة"
+    assert state.stage is Stage.AWAITING_GENERATION_APPROVAL  # nothing else moves
+    commands.approve_generation(orch.rt.storage, run_id)
+    state = await orch.run_until_blocked(run_id)
+    card = state.endcard
+    assert state.stage is Stage.DONE and card is not None
+    assert (card.brand_name, card.tagline) == ("عتبة", "كنا ننتظرك")
+    assert not card.brand_placeholder and not card.tagline_placeholder
+    evs = [e.summary for e in orch.rt.storage.events.tail(run_id, limit=3000)]
+    assert "HUMAN creative direction: end-card brand name set to «عتبة»" in evs
+    with pytest.raises(CommandRejectedError, match="already made"):
+        commands.set_endcard(orch.rt.storage, run_id, brand="x")
+
+
+def test_cli_endcard_brand_without_a_prompt_file_stops_at_the_gate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    orch, run_id = asyncio.run(at_gate(tmp_path))
+    s = orch.rt.settings
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("adsmith.cli.main.configure_logging", lambda *a, **k: None)
+    monkeypatch.setenv("ADSMITH_DATA_DIR", str(s.data_dir))
+    monkeypatch.setenv("ADSMITH_ACCOUNT_DB", str(s.account_db))
+    res = CliRunner().invoke(app, ["approve", run_id, "--endcard-brand", "عتبة", "--no-approve"])
+    assert res.exit_code == 0, res.output
+    state = orch.rt.storage.runs.load(run_id)
+    assert state.stage is Stage.AWAITING_GENERATION_APPROVAL and state.brief is not None
+    assert state.brief.brand_name == "عتبة" and state.generation is not None
+    assert not state.generation.approved

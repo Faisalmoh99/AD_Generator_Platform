@@ -294,7 +294,10 @@ def approve(
         typer.Option("--no-approve", help="With --prompt-file: re-price and stop at the gate."),
     ] = False,
     endcard_tagline: Annotated[
-        str | None, typer.Option(help="With --prompt-file: the end card's tagline.")
+        str | None, typer.Option(help="The end card's tagline (before assembly).")
+    ] = None,
+    endcard_brand: Annotated[
+        str | None, typer.Option(help="The end card's brand name (before assembly).")
     ] = None,
 ) -> None:
     """Approve at the current gate: the storyboard keyframes, or the estimate of a whole-ad
@@ -302,8 +305,16 @@ def approve(
     orch = _orchestrator()
     state = orch.rt.storage.runs.load(run_id)
     at_spend = state.stage is Stage.AWAITING_GENERATION_APPROVAL
-    if prompt_file is None and (no_approve or endcard_tagline is not None):
-        raise typer.BadParameter("--no-approve and --endcard-tagline need --prompt-file")
+    endcard = endcard_brand is not None or endcard_tagline is not None
+    if no_approve and prompt_file is None and not endcard:
+        raise typer.BadParameter("--no-approve needs --prompt-file or an --endcard-* option")
+    if endcard and prompt_file is None:
+        state = commands.set_endcard(
+            orch.rt.storage, run_id, brand=endcard_brand, tagline=endcard_tagline
+        )
+        if no_approve:
+            print_state(orch, state)
+            return
     if prompt_file is not None:
         if not at_spend or state.generation is None:
             raise typer.BadParameter(
@@ -316,6 +327,8 @@ def approve(
             max_chars=ep.max_prompt_chars, source=str(prompt_file),
             endcard_tagline=endcard_tagline,
         )  # fmt: skip
+        if endcard_brand is not None:
+            commands.set_endcard(orch.rt.storage, run_id, brand=endcard_brand)
         state = follow(orch, run_id, orch.run_until_blocked(run_id))
         g = state.generation
         if no_approve or state.stage is not Stage.AWAITING_GENERATION_APPROVAL or g is None:
