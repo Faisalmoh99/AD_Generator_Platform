@@ -1013,3 +1013,8 @@ estimate table, the montage v2 calibration, a real planning run and the one real
   delivered" although the morph is there, in ~0.5 s between two sample points. Not fixed yet
   (denser sampling or motion-triggered frames would catch it).
 - **Tests**: 729 passed, 2 skipped (+9 in `tests/integration/test_retime.py`).
+- **Final edit (2026-11-07)**: the held-bottle trim left a framing jump (a 4-frame crossfade
+  ghosted two bottles), so the edit is now morph 3.875-4.375 s x3 (mci, 1.5 s) and trim
+  4.375-5.375 s: the morph runs straight into the hard cut to shot 4 at frame 129 (5.375 s).
+  `final_v2.mp4`: 264 frames, cuts at 29/86/129/216, audio identical to `final.mp4`, frames
+  0-92 and 129-263 identical. Crossfade stays available (`--crossfade`), unused here.
