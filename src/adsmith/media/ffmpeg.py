@@ -163,10 +163,16 @@ def _slow_filter(method: str, fps: float) -> str:
 
 
 def retime_graph(
-    spans: Sequence[tuple[int, int, int, int, int, str, float]], *, frames: int, fps: float
+    spans: Sequence[tuple[int, int, int, int, int, str, float]],
+    *,
+    frames: int,
+    fps: float,
+    crossfades: Sequence[int] = (),
 ) -> tuple[str, int]:
     """The filter graph for retime edits given as frame spans (window start, window end, trim
-    start, trim end, slowed length, method, factor), sorted. Returns (graph, output frames)."""
+    start, trim end, slowed length, method, factor), sorted. ``crossfades[i]`` (even, 0 = hard)
+    dissolves across edit i's trim join over that many frames, centred on the join and holding
+    each side's edge frame, so the length is unchanged. Returns (graph, output frames)."""
     parts: list[str] = []
     labels: list[str] = []
     total = 0
@@ -184,6 +190,7 @@ def retime_graph(
             total += b - a
 
     cursor = 0
+    joins: list[int] = []  # output frame where each edit's post-trim footage starts
     for ws, we, ts, te, slowed, method, factor in spans:
         keep(cursor, ws)
         lab = f"s{len(labels)}"
@@ -197,19 +204,37 @@ def retime_graph(
         labels.append(lab)
         total += slowed
         keep(we, ts)
+        joins.append(total)
         cursor = te
     keep(cursor, frames)
     joined = "".join(f"[{lab}]" for lab in labels)
-    parts.append(f"{joined}concat=n={len(labels)}:v=1:a=0,format=yuv420p[v]")
+    fades = [(j, n) for j, n in zip(joins, crossfades, strict=False) if n > 0]
+    out = "v" if not fades else "c0"
+    parts.append(f"{joined}concat=n={len(labels)}:v=1:a=0,format=yuv420p[{out}]")
+    for i, (j, n) in enumerate(fades):
+        half, src, dst = n // 2, f"c{i}", "v" if i == len(fades) - 1 else f"c{i + 1}"
+        parts.append(
+            f"[{src}]split[a{i}][b{i}];"
+            f"[a{i}]trim=end_frame={j},tpad=stop_mode=clone:stop={half},{cfr}[x{i}];"
+            f"[b{i}]trim=start_frame={j},setpts=PTS-STARTPTS,"
+            f"tpad=start_mode=clone:start={half},{cfr}[y{i}];"
+            f"[x{i}][y{i}]xfade=transition=fade:duration={n / fps:.6f}:"
+            f"offset={(j - half) / fps:.6f},{cfr}[{dst}]"
+        )
     return ";".join(parts), total
 
 
 async def retime_video(
-    src: Path, out: Path, spans: Sequence[tuple[int, int, int, int, int, str, float]], *, fps: float
+    src: Path,
+    out: Path,
+    spans: Sequence[tuple[int, int, int, int, int, str, float]],
+    *,
+    fps: float,
+    crossfades: Sequence[int] = (),
 ) -> Path:
     """Apply retime edits to the video stream; the audio stream is copied untouched."""
     frames = await frame_count(src)
-    graph, total = retime_graph(spans, frames=frames, fps=fps)
+    graph, total = retime_graph(spans, frames=frames, fps=fps, crossfades=crossfades)
     audio = ["-map", "0:a:0", "-c:a", "copy"] if await has_audio(src) else []
     await run(
         "-i", str(src), "-filter_complex", graph, "-map", "[v]", *audio,

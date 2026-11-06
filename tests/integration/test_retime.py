@@ -157,3 +157,47 @@ async def test_a_new_generation_drops_the_old_edits(tmp_path: Path) -> None:
     commands.regenerate_ad(rt.storage, run.id, reason="new roll")
     g = rt.storage.runs.load(run.id).generation
     assert g is not None and g.retimes == [] and g.final_name == "final.mp4"
+
+
+def test_a_crossfade_is_centred_on_the_join_and_keeps_the_length() -> None:
+    e = edit(crossfade_frames=4)
+    spans = [(*retime_frames(e, FPS), "mci", 2.5)]
+    graph, total = retime_graph(spans, frames=192, fps=FPS, crossfades=[4])
+    assert total == 192
+    # the join is at output frame 72 + 30 + 12 = 114; the dissolve covers frames 112-115
+    assert "trim=end_frame=114,tpad=stop_mode=clone:stop=2" in graph
+    assert "trim=start_frame=114" in graph and "tpad=start_mode=clone:start=2" in graph
+    assert "xfade=transition=fade:duration=0.166667:offset=4.666667" in graph
+    hard, _ = retime_graph(spans, frames=192, fps=FPS)
+    assert "xfade" not in hard
+
+
+def test_crossfade_frames_are_even_and_bounded() -> None:
+    with pytest.raises(ValueError, match="multiple"):
+        edit(crossfade_frames=3)
+    tight = edit(trim_start_s=4.0, trim_end_s=4.75, crossfade_frames=12)
+    assert retime_problems([tight], fps=FPS, frames=114 + 5) == [
+        "edit 1: not enough frames on each side for the crossfade"
+    ]
+
+
+async def test_a_crossfade_only_touches_the_frames_around_the_join(tmp_path: Path) -> None:
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=textured_photo(tmp_path))
+    await orch.run_until_blocked(run.id)
+    retimed = rt.storage.artifacts.scratch_dir(run.id) / "assemble" / "retimed.mp4"
+    commands.retime_ad(rt.storage, run.id, [edit()], fps=FPS, frames=192)
+    await orch.run_until_blocked(run.id)
+    hard = _gray(retimed)
+    commands.retime_ad(rt.storage, run.id, [edit(crossfade_frames=4)], fps=FPS, frames=192)
+    state = await orch.run_until_blocked(run.id)
+    soft = _gray(retimed)
+    assert len(soft) == len(hard) == 192 and state.final is not None
+    diffs = [float(np.abs(soft[i] - hard[i]).mean()) for i in range(192)]
+    # re-encoding a noisy test texture leaves ~0.4-0.55 everywhere; the dissolve stands out
+    changed = [i for i in range(192) if diffs[i] > 0.65]
+    assert changed and set(changed) <= {112, 113, 114, 115}
+    assert max(range(192), key=lambda i: diffs[i]) == 114  # peaks on the join
+    summaries = [e.summary for e in rt.storage.events.tail(run.id, limit=3000)]
+    assert any("4-frame crossfade" in s and s.startswith("human edit: retime") for s in summaries)

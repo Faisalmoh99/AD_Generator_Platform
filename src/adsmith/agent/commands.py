@@ -745,6 +745,7 @@ def retime_ad(
         desc = "; ".join(
             f"slow {e.window_start_s:g}-{e.window_end_s:g}s x{e.factor:g} ({e.method}), "
             f"trim {e.trim_start_s:g}-{e.trim_end_s:g}s"
+            + (f", {e.crossfade_frames}-frame crossfade" if e.crossfade_frames else "")
             for e in edits
         )
         return [

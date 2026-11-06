@@ -234,6 +234,8 @@ class RetimeEdit(DomainModel):
     trim_start_s: float = Field(ge=0)
     trim_end_s: float = Field(gt=0)
     method: RetimeMethod = "blend"
+    # Dissolve across the trim's join over this many frames (even; 0 = hard join).
+    crossfade_frames: int = Field(default=0, ge=0, le=12, multiple_of=2)
 
 
 def retime_frames(e: RetimeEdit, fps: float) -> tuple[int, int, int, int, int]:
@@ -262,6 +264,9 @@ def retime_problems(edits: list[RetimeEdit], *, fps: float, frames: int) -> list
                 f"edit {i}: slowing adds {added} frames ({added / fps:.3f} s) but the trim removes "
                 f"{removed} ({removed / fps:.3f} s): they must match to keep the length"
             )
+        half = e.crossfade_frames // 2
+        if half and (slowed + (ts - we) < half or frames - te < half):
+            problems.append(f"edit {i}: not enough frames on each side for the crossfade")
         spans.append((ws, te))
     spans.sort()
     if any(a[1] > b[0] for a, b in itertools.pairwise(spans)):

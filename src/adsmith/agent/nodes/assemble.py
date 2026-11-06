@@ -284,14 +284,20 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
     events: list[AgentEvent] = []
     if g.retimes:  # human edits (ADR-0023 addendum): same length, audio untouched
         fps = await ffmpeg.frame_rate(source)
-        spans = sorted((*retime_frames(e, fps), e.method, e.factor) for e in g.retimes)
-        source = await ffmpeg.retime_video(source, work / "retimed.mp4", spans, fps=fps)
+        edits = sorted(g.retimes, key=lambda e: e.window_start_s)
+        spans = [(*retime_frames(e, fps), e.method, e.factor) for e in edits]
+        source = await ffmpeg.retime_video(
+            source, work / "retimed.mp4", spans, fps=fps,
+            crossfades=[e.crossfade_frames for e in edits],
+        )  # fmt: skip
         events.append(
             decision(
                 ctx.run_id, Stage.ASSEMBLE,
                 "Applied " + "; ".join(
                     f"retime {e.window_start_s:g}-{e.window_end_s:g}s x{e.factor:g} ({e.method}), "
-                    f"trim {e.trim_start_s:g}-{e.trim_end_s:g}s" for e in g.retimes
+                    f"trim {e.trim_start_s:g}-{e.trim_end_s:g}s"
+                    + (f", {e.crossfade_frames}-frame crossfade" if e.crossfade_frames else "")
+                    for e in g.retimes
                 ) + "; length and audio unchanged",
             )
         )  # fmt: skip

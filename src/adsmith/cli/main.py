@@ -403,6 +403,9 @@ def retime(
     factor: Annotated[float, typer.Option(help="Slow-down factor")] = 2.5,
     method: Annotated[str, typer.Option(help="mci (motion interpolation) or blend")] = "mci",
     output: Annotated[str, typer.Option(help="File name next to final.mp4")] = "final_v2.mp4",
+    crossfade: Annotated[
+        int, typer.Option(help="Dissolve across the trim's join over N frames (even, 0 = hard)")
+    ] = 0,
 ) -> None:
     """Human edit on a finished whole ad: slow a window, trim a later stretch, re-assemble."""
     from adsmith.domain.ad import RetimeEdit  # noqa: PLC0415
@@ -420,7 +423,7 @@ def retime(
         raise typer.BadParameter("--method is mci or blend")
     edit = RetimeEdit(
         window_start_s=ws, window_end_s=we, factor=factor, trim_start_s=ts, trim_end_s=te,
-        method="mci" if method == "mci" else "blend",
+        method="mci" if method == "mci" else "blend", crossfade_frames=crossfade,
     )  # fmt: skip
     try:
         commands.retime_ad(orch.rt.storage, run_id, [edit], fps=fps, frames=frames, output=output)
