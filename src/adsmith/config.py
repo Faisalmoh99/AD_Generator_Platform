@@ -395,8 +395,10 @@ class Settings(BaseSettings):
     def resolved_qa_mode(self) -> Literal["mock", "llm"]:
         if self.qa_mode != "auto":
             return self.qa_mode
-        # Mock placeholder frames would always fail a real vision critic.
-        return "mock" if self.media_provider == "mock" else "llm"
+        # Mock placeholder frames would always fail a real vision critic; real media from either
+        # provider (fal scenes, or a Higgsfield whole-ad generation) gets the vision critic.
+        real = self.media_provider != "mock" or self.ad_provider != "mock"
+        return "llm" if real else "mock"
 
     @model_validator(mode="after")
     def _keys_for_providers(self) -> Self:

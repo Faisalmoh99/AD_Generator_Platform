@@ -577,3 +577,9 @@ def test_runtime_builds_the_provider_and_caps_media_by_the_hf_wallet(tmp_path: P
     assert rt.hf_account().summary().settled_usd == pytest.approx(3.0)
     fal_rows = SpendAccount(tmp_path / "acct.db", balance_usd=10.0).summary()
     assert fal_rows.settled_usd == 0
+
+
+def test_a_real_higgsfield_ad_gets_the_vision_critic(tmp_path: Path) -> None:
+    assert settings(tmp_path).resolved_qa_mode() == "mock"
+    s = settings(tmp_path, ad_provider="higgsfield", hf_key=SECRET, hf_balance_usd=5.0)
+    assert s.media_provider == "mock" and s.resolved_qa_mode() == "llm"
