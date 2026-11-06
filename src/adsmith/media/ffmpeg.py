@@ -170,12 +170,16 @@ def retime_graph(
     parts: list[str] = []
     labels: list[str] = []
     total = 0
+    # Every segment gets frame-indexed timestamps at a constant rate: concat then joins them
+    # frame by frame (uneven timestamps from interpolation would otherwise be padded with
+    # duplicates by the output rate and shift every later frame).
+    cfr = f"settb=1/{fps:g},setpts=N"
 
     def keep(a: int, b: int) -> None:
         nonlocal total
         if b > a:
             lab = f"s{len(labels)}"
-            parts.append(f"[0:v]trim=start_frame={a}:end_frame={b},setpts=PTS-STARTPTS[{lab}]")
+            parts.append(f"[0:v]trim=start_frame={a}:end_frame={b},{cfr}[{lab}]")
             labels.append(lab)
             total += b - a
 
@@ -184,10 +188,11 @@ def retime_graph(
         keep(cursor, ws)
         lab = f"s{len(labels)}"
         parts.append(
-            f"[0:v]trim=start_frame={ws}:end_frame={we},setpts=PTS-STARTPTS,"
+            # one frame of look-ahead (if any) so the last slowed frames interpolate toward
+            # the next source frame instead of freezing on the window's last one
+            f"[0:v]trim=start_frame={ws}:end_frame={min(we + 1, frames)},setpts=PTS-STARTPTS,"
             f"setpts={factor:g}*PTS,{_slow_filter(method, fps)},"
-            f"tpad=stop_mode=clone:stop_duration=1,trim=end_frame={slowed},"
-            f"setpts=PTS-STARTPTS[{lab}]"
+            f"tpad=stop_mode=clone:stop_duration=1,trim=end_frame={slowed},{cfr}[{lab}]"
         )
         labels.append(lab)
         total += slowed

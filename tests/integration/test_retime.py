@@ -6,7 +6,9 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import numpy as np
 import pytest
+from PIL import Image
 
 from adsmith.agent import commands
 from adsmith.agent.commands import CommandRejectedError
@@ -53,7 +55,8 @@ def test_the_graph_keeps_the_frame_count() -> None:
     e = edit()
     graph, total = retime_graph([(*retime_frames(e, FPS), "mci", 2.5)], frames=192, fps=FPS)
     assert total == 192
-    assert "trim=start_frame=72:end_frame=84" in graph and "setpts=2.5*PTS" in graph
+    assert "trim=start_frame=72:end_frame=85" in graph  # + one frame of look-ahead
+    assert "setpts=2.5*PTS" in graph and graph.count("settb=1/24,setpts=N") == 4
     assert "mi_mode=mci" in graph and "trim=start_frame=114:end_frame=192" in graph
     assert "trim=start_frame=84:end_frame=96" in graph  # kept between window and trim
     blend, _ = retime_graph([(*retime_frames(e, FPS), "blend", 2.5)], frames=192, fps=FPS)
@@ -64,6 +67,30 @@ def _probe(path: Path, *args: str) -> str:
     return subprocess.run(
         ["ffprobe", "-v", "error", *args, str(path)], capture_output=True, text=True, check=True
     ).stdout.strip()
+
+
+def textured_photo(tmp_path: Path) -> Path:
+    """A photo with detail everywhere, so each frame of the mock push-in is unique."""
+    rng = np.random.default_rng(7)
+    y, x = np.mgrid[0:400, 0:300]
+    img = np.stack([(x * 255 // 300), (y * 255 // 400), ((x + y) * 3) % 256], axis=-1)
+    img = (img + rng.integers(0, 60, img.shape)).clip(0, 255).astype(np.uint8)
+    out = tmp_path / "textured.png"
+    Image.fromarray(img).save(out)
+    return out
+
+
+def _gray(path: Path) -> np.ndarray:
+    raw = subprocess.run(
+        ["ffmpeg", "-v", "error", "-i", str(path), "-vf", "scale=45:80,format=gray",
+         "-f", "rawvideo", "-vsync", "0", "-"],
+        capture_output=True, check=True,
+    ).stdout  # fmt: skip
+    return np.frombuffer(raw, np.uint8).reshape(-1, 80, 45).astype(int)
+
+
+def _best(frames: np.ndarray, frame: np.ndarray) -> int:
+    return int(np.abs(frames - frame).mean(axis=(1, 2)).argmin())
 
 
 def _audio_md5(path: Path, seconds: float) -> str:
@@ -78,7 +105,7 @@ def _audio_md5(path: Path, seconds: float) -> str:
 async def test_retime_reassembles_into_a_new_file_with_the_same_length(tmp_path: Path) -> None:
     rt = runtime(settings(tmp_path))
     orch = Orchestrator(rt)
-    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    run = orch.create_run(REQUEST, interactive=False, product_photo=textured_photo(tmp_path))
     first = await orch.run_until_blocked(run.id)
     assert first.stage is Stage.DONE and first.final is not None and first.endcard is not None
     run_dir = rt.storage.artifacts.run_dir(run.id)
@@ -98,6 +125,12 @@ async def test_retime_reassembles_into_a_new_file_with_the_same_length(tmp_path:
     assert state.generation is not None and state.generation.artifact is not None
     src = rt.storage.artifacts.resolve(state.generation.artifact)
     assert _audio_md5(retimed, 7.9) == _audio_md5(src, 7.9)  # audio untouched
+    # every frame after the trim sits exactly where it was (no timing drift)
+    out, orig = _gray(retimed), _gray(src)
+    assert len(out) == len(orig) == 192
+    for k in (114, 130, 160, 191):
+        assert _best(orig, out[k]) == k
+    assert [_best(orig, out[i]) for i in (72, 101)] == [72, 83]  # window: first and last
     summaries = [e.summary for e in rt.storage.events.tail(run.id, limit=3000)]
     assert any(s.startswith("human edit: retime (slow 3-3.5s x2.5 (mci)") for s in summaries)
     assert any("final_v2.mp4" in s and s.startswith("Assembled") for s in summaries)
