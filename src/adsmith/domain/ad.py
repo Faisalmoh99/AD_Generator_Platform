@@ -25,7 +25,7 @@ from pydantic import Field, model_validator
 
 from adsmith.domain.base import DomainModel, utcnow
 from adsmith.domain.generation import Artifact, GenerationAttempt
-from adsmith.domain.qa import QAVerdict
+from adsmith.domain.qa import AdVerdict, QAVerdict
 from adsmith.domain.scene import SceneFailure
 
 ShotText = Annotated[str, Field(min_length=1, max_length=400)]
@@ -135,7 +135,7 @@ class AdGenerationVersion(DomainModel):
     status: AdStatus
     est_usd: float | None = None
     artifact: Artifact | None = None
-    qa: QAVerdict | None = None
+    qa: AdVerdict | QAVerdict | None = None
     reason: str = Field(max_length=500)
     created_at: datetime = Field(default_factory=utcnow)
 
@@ -155,7 +155,9 @@ class AdGeneration(DomainModel):
     approved_by: Literal["user", "auto_mock", "cache"] | None = None
     attempts: list[GenerationAttempt] = Field(default_factory=list)
     artifact: Artifact | None = None
-    qa: QAVerdict | None = None
+    # AdVerdict from the vision critic; a plain QAVerdict from the mock critic (no rubric: mock
+    # media cannot be judged creatively). AdVerdict first: it is the stricter shape.
+    qa: AdVerdict | QAVerdict | None = None
     accepted_by_human: str | None = Field(default=None, max_length=500)
     failure: SceneFailure | None = None
     version: int = Field(default=1, ge=1)

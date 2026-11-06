@@ -15,7 +15,7 @@ from adsmith.domain.concept import (
 from adsmith.domain.continuity import ContinuityBibleDraft
 from adsmith.domain.edit import ConflictReport, ScenePatchDraft
 from adsmith.domain.endcard import EndCardCopyDraft
-from adsmith.domain.qa import QAVerdictDraft
+from adsmith.domain.qa import AdVerdictDraft, QAVerdictDraft
 from adsmith.domain.scene import ScenePromptDraft
 from adsmith.domain.storyboard import StoryboardDraft
 
@@ -35,6 +35,7 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "qa_critic": QAVerdictDraft,
     "qa_keyframe": QAVerdictDraft,
     "qa_product_ref": QAVerdictDraft,
+    "qa_ad_critic": AdVerdictDraft,
     "endcard_copy": EndCardCopyDraft,
     "ad_prompt_writer": AdPromptDraft,
 }

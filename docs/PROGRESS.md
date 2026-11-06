@@ -938,3 +938,20 @@ all four scenarios (Arabic text for `perfume_ar`), each scenario keeping its ori
 fields (the brief, which works in production, has 10). The first real planning run confirms it.
 **Tests:** judge tests rewritten for the rubric (+ insight-anchoring and repair cases); tests that
 count LLM calls grew by the insight call; 678 passed, 2 skipped.
+
+## Phase D: the whole-ad critic, rubric scores, code decides, warn only (2026-11-06)
+**Built (ADR-0025):** `qa_ad_critic` v1 + `LLMCritic.review_ad` / `review_video`: the real
+product photo as image 0 and three frames per planned shot (on the real video's timeline), the
+concept, storyboard, the model's prompt, the product checklist and the rubric's video questions.
+`AdVerdict` = the existing hard checks (code decides `passed`; a product issue is never minor) +
+a note per shot + the six rubric scores; code computes the creative score (`Rubric.weighted`) and
+warns below 6.5 (`ADSMITH_CREATIVE_THRESHOLD`) or for undelivered shots. Warn only: approved or
+flagged, always assembled, the decision is the human's (`accept-ad` / `regenerate-ad`). The
+creative review is its own decision event; `adsmith show` prints the six scores.
+`scripts/calibrate_ad_critic.py` (prepared, NOT run: it calls Anthropic) reviews montage v2 with
+the beat-cut shot windows (checked on local data: 7 shots, 10.59 s of footage) and states the
+expected outcome (hard pass, creative low) and "report before tuning" otherwise.
+**Tests:** 7 new (`tests/integration/test_ad_critic.py`): hard fail beats a perfect rubric; a low
+score warns and spends nothing more; a minor product issue is made hard and flags the ad;
+inconsistent verdicts are repaired; 13 images reach the critic; the verdict survives a snapshot
+round trip. 685 passed, 2 skipped.

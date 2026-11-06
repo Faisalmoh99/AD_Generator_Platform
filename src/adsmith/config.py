@@ -305,6 +305,8 @@ class Settings(BaseSettings):
     product_reference_mode: Literal["direct", "composite"] = "direct"
     max_total_attempts: int = Field(default=80, ge=1)  # 12 shots x 3 keyframe tries + clips
     qa_threshold: float = Field(default=0.7, ge=0, le=1)
+    # Whole-ad creative score (rubric, 1-10) below which the critic WARNS (ADR-0025). Warn only.
+    creative_threshold: float = Field(default=6.5, ge=1, le=10)
     scene_concurrency: int = Field(default=3, ge=1, le=16)
     chaos: bool = False
     mock_latency_s: float = Field(default=1.5, ge=0)

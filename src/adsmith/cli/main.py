@@ -25,6 +25,7 @@ from adsmith.config import Settings
 from adsmith.domain.enums import SceneStatus, Stage
 from adsmith.domain.events import EventType
 from adsmith.domain.formats import AdFormat
+from adsmith.domain.qa import AdVerdict
 from adsmith.domain.run import RunState
 from adsmith.logging import configure_logging
 
@@ -126,6 +127,10 @@ def _print_generation(state: RunState) -> None:
     if g.qa is not None:
         why = "; ".join(g.qa.fail_reasons) or "hard gate passed"
         console.print(f"[dim]Critic: {g.qa.score:.2f} ({why})[/]")
+        if isinstance(g.qa, AdVerdict):
+            flag = "" if g.qa.creative_pass else "  [yellow]WARN[/]"
+            scores = ", ".join(f"{k} {v}" for k, v in g.qa.rubric.model_dump().items())
+            console.print(f"[dim]Creative: {g.qa.creative_score:.2f}/10 ({scores})[/]{flag}")
     if g.failure is not None:
         console.print(f"[red]Whole ad failed:[/] {g.failure.reason_user}")
 

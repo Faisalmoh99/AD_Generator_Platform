@@ -163,3 +163,59 @@ class QAVerdict(QAVerdictDraft):
         return bool(in_keyframe) or any(
             i.severity != "minor" and i.category in KEYFRAME_ISSUE_CATEGORIES for i in self.issues
         )
+
+
+# ------------------------------------------------------------------------------ whole-ad verdict
+# Phase D (ADR-0025): the whole-ad critic fills the same hard checks as the clip critic, a note
+# per planned shot, and the six creative rubric scores (config/rubric.toml). Code computes the
+# creative total. The HARD gate alone decides `passed`; the creative score and undelivered shots
+# are WARNINGS (warn only: nothing is regenerated automatically; a human decides).
+RubricScore = Annotated[int, Field(ge=1, le=10)]
+
+
+class AdShotCheck(DomainModel):
+    number: int = Field(ge=1, le=12)
+    delivered: bool = Field(description="The planned beat of this shot is visible in its frames.")
+    note: Annotated[str, Field(min_length=1, max_length=300)]
+
+
+class AdRubricScores(DomainModel):
+    insight: RubricScore
+    hook: RubricScore
+    story_turn: RubricScore
+    originality: RubricScore
+    cultural_meaning: RubricScore
+    product_role: RubricScore
+
+
+class AdVerdictDraft(QAVerdictDraft):
+    """``qa_ad_critic`` output schema."""
+
+    shots: list[AdShotCheck] = Field(min_length=1, max_length=12)
+    rubric: AdRubricScores
+    creative_note: Annotated[str, Field(min_length=1, max_length=600)] = Field(
+        description="The film's biggest creative strength and weakness, in two sentences."
+    )
+
+
+class AdVerdict(QAVerdict):
+    shots: list[AdShotCheck] = Field(min_length=1, max_length=12)
+    rubric: AdRubricScores
+    creative_note: str = Field(max_length=600)
+    creative_score: float = Field(ge=0, le=10)  # computed by code from the rubric weights
+    creative_threshold: float = Field(ge=0, le=10)
+
+    @property
+    def creative_pass(self) -> bool:
+        return self.creative_score >= self.creative_threshold - 1e-9
+
+    @property
+    def warnings(self) -> list[str]:
+        """What a human should look at before accepting (never a reason to regenerate by code)."""
+        out: list[str] = []
+        if not self.creative_pass:
+            out.append(f"creative score {self.creative_score:.2f} < {self.creative_threshold:g}")
+        missed = [s.number for s in self.shots if not s.delivered]
+        if missed:
+            out.append(f"planned beat not delivered in shot(s) {missed}")
+        return out

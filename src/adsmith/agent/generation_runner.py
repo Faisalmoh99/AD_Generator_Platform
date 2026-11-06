@@ -40,7 +40,7 @@ from adsmith.domain.generation import (
     RemoteRequest,
 )
 from adsmith.domain.llm import LLMCallRecord
-from adsmith.domain.qa import QAVerdict
+from adsmith.domain.qa import AdVerdict, QAVerdict
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import SceneFailure
 from adsmith.logging import get_logger
@@ -408,6 +408,8 @@ class AdGenerationRunner:
                     "`adsmith regenerate-ad` (back to the estimate gate)."
                 )
                 level = "warn"
+            if isinstance(verdict, AdVerdict):
+                events.append(self._creative_event(run_id, verdict))
             events.append(
                 _ev(
                     run_id, Stage.QA, EventType.SCENE_STATUS, summary, level=level,
@@ -420,6 +422,28 @@ class AdGenerationRunner:
             return events
 
         self._update(run_id, mutate, "ad reviewed")
+
+    @staticmethod
+    def _creative_event(run_id: str, v: AdVerdict) -> AgentEvent:
+        """The creative review, decided by code from the rubric scores. Warn only: a low score
+        is information for the human at the gate, never a reason to spend again."""
+        scores = v.rubric.model_dump()
+        parts = ", ".join(f"{k} {n}" for k, n in scores.items())
+        verdict = "OK" if v.creative_pass else "WARN"
+        missed = [s.number for s in v.shots if not s.delivered]
+        summary = (
+            f"Creative review: {v.creative_score:.2f}/10 vs {v.creative_threshold:g} → "
+            f"{verdict} ({parts})"
+            + (f"; shots not delivered: {missed}" if missed else "")
+            + f". {v.creative_note}"
+        )
+        return _ev(
+            run_id, Stage.QA, EventType.DECISION, summary,
+            level="info" if not v.warnings else "warn",
+            creative_score=v.creative_score, creative_threshold=v.creative_threshold,
+            rubric=scores, warnings=v.warnings,
+            shots=[s.model_dump() for s in v.shots],
+        )  # fmt: skip
 
     # ------------------------------------------------------------------------ helpers
     def _fail(

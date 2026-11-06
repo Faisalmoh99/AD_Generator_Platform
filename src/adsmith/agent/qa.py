@@ -17,16 +17,26 @@ from __future__ import annotations
 import asyncio
 import base64
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from adsmith.agent.context import NodeContext
-from adsmith.agent.nodes.common import scene_block
+from adsmith.agent.nodes.common import concept_block, scene_block, storyboard_block
 from adsmith.agent.recovery.errors import PermanentProviderError
 from adsmith.config import LLMNode
+from adsmith.domain.ad import AdGeneration
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.generation import Artifact
 from adsmith.domain.llm import LLMCallRecord
-from adsmith.domain.qa import QAChecks, QAIssue, QAVerdict, QAVerdictDraft
+from adsmith.domain.qa import (
+    AdVerdict,
+    AdVerdictDraft,
+    QAChecks,
+    QAIssue,
+    QAVerdict,
+    QAVerdictDraft,
+)
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene
 from adsmith.media.frames import (
@@ -226,8 +236,105 @@ class LLMCritic:
         return res.value, res.calls
 
     async def review_ad(self, state: RunState) -> tuple[QAVerdict, list[LLMCallRecord]]:
-        """The whole-ad critic is built in Phase D (rubric scores + the hard gate)."""
-        raise PermanentProviderError("the whole-ad vision critic is not built yet (Phase D)")
+        """The whole-ad critic (ADR-0025): the run's generated video, frames per planned shot,
+        the real product photo as image 0."""
+        g = state.generation
+        if g is None or g.artifact is None:
+            raise PermanentProviderError("there is no generated ad to review")
+        video = self.ctx.artifacts.resolve(g.artifact)
+        video_s = g.artifact.duration_s or float(g.duration_s)
+        reference = self.ctx.artifacts.resolve(state.product_photo) if state.product_photo else None
+        verdict, calls = await self.review_video(
+            state,
+            video=video,
+            shots=ad_shot_windows(g, video_s),
+            reference=reference,
+            prompt_text=g.prompt.text,
+            duration_s=video_s,
+        )
+        return verdict, calls
+
+    async def review_video(
+        self,
+        state: RunState,
+        *,
+        video: Path,
+        shots: Sequence[ShotWindow],
+        reference: Path | None,
+        prompt_text: str,
+        duration_s: float,
+    ) -> tuple[AdVerdict, list[LLMCallRecord]]:
+        """Review any finished ad: the hard checks (code decides ``passed``), a note per shot and
+        the six rubric scores (code computes the creative total). Also used to calibrate the
+        rubric on ads made by the old pipeline (scripts/calibrate_ad_critic.py)."""
+        assert state.bible is not None and state.storyboard is not None
+        parts: list[ImagePart | TextPart] = []
+        labels: list[str] = []
+        if reference is not None:
+            jpeg = await asyncio.to_thread(image_to_jpeg, reference, long_side=self.long_side)
+            parts += [
+                TextPart("Image 0: the real product photo (the reference)"),
+                ImagePart("image/jpeg", base64.b64encode(jpeg).decode("ascii")),
+            ]
+            labels.append("0: the real product photo (the reference)")
+        for w in shots:
+            length = max(0.1, w.end_s - w.start_s)
+            frames = await sample_frames(
+                video, length, fractions=AD_FRACTIONS, long_side=self.long_side, offset_s=w.start_s
+            )
+            for f in frames:
+                n = len(labels)
+                label = f"{n}: shot {w.number} at {f.time_s:.2f}s"
+                parts += [TextPart(f"Image {label}"), ImagePart("image/jpeg", f.b64)]
+                labels.append(label)
+        n_images = len(labels)
+        concept = state.concepts.selected if state.concepts else None
+        rubric = self.ctx.settings.rubric
+        rendered = self.ctx.prompts.get("qa_ad_critic").render(
+            concept=concept_block(concept) if concept else "(none)",
+            storyboard=storyboard_block(state.storyboard),
+            ad_prompt=prompt_text,
+            product_checklist="\n".join(f"- {i}" for i in state.bible.product.checklist()),
+            rubric=rubric.prompt_block("video"),
+            shots="\n".join(
+                f"- shot {w.number} ({w.start_s:.1f}-{w.end_s:.1f} s): {w.plan}" for w in shots
+            ),
+            duration=f"{duration_s:.1f}",
+            reference_note="Image 0 is the real product photo: compare the product against it."
+            if reference is not None
+            else "No product photo was given: compare the product against the checklist.",
+            image_list="\n".join(f"- image {label}" for label in labels),
+        )
+        threshold = state.config.qa_threshold
+        creative_threshold = self.ctx.settings.creative_threshold
+        numbers = [w.number for w in shots]
+
+        def convert(d: AdVerdictDraft) -> AdVerdict:
+            d = ad_product_rule(d)
+            problems = check_verdict(d, n_images=n_images)
+            got = sorted(s.number for s in d.shots)
+            if got != sorted(numbers):
+                problems.append(f"give exactly one shot note per planned shot {numbers}, got {got}")
+            if problems:
+                raise ValueError("; ".join(problems))
+            core = QAVerdictDraft.model_validate(
+                d.model_dump(include=set(QAVerdictDraft.model_fields))
+                | {"frames_inspected": n_images}
+            )
+            base = QAVerdict.from_draft(core, threshold=threshold)
+            return AdVerdict(
+                **base.model_dump(),
+                shots=d.shots,
+                rubric=d.rubric,
+                creative_note=d.creative_note,
+                creative_score=rubric.weighted(d.rubric.model_dump()),
+                creative_threshold=creative_threshold,
+            )
+
+        res = await self.ctx.llm.call_and_convert(
+            LLMNode.QA_CRITIC, rendered, AdVerdictDraft, convert, images=parts
+        )
+        return res.value, res.calls
 
     async def review_product_reference(
         self, state: RunState, image: Artifact, prompt: str
@@ -358,3 +465,43 @@ def composition_rule(ctx: NodeContext, scene: Scene) -> str:
         f"{entry.keyframe_hint}. If that event or framing is missing or clearly different, "
         "report a MAJOR 'composition' issue and set matches_shot_spec to false."
     )
+
+
+# ------------------------------------------------------------------------------ whole ad
+AD_FRACTIONS: tuple[float, ...] = (0.2, 0.5, 0.8)  # 3 frames per planned shot
+
+
+@dataclass(frozen=True, slots=True)
+class ShotWindow:
+    number: int
+    start_s: float
+    end_s: float
+    plan: str
+
+
+def ad_shot_windows(g: AdGeneration, video_s: float) -> list[ShotWindow]:
+    """The planned shots on the real video's timeline (scaled if the model rendered a slightly
+    different length). The model chooses its own cuts, so these are approximate windows."""
+    scale = video_s / max(1e-6, float(g.prompt.duration_s))
+    return [
+        ShotWindow(
+            s.number, round(s.start_s * scale, 3), round(min(s.end_s * scale, video_s), 3),
+            s.action,
+        )
+        for s in g.prompt.shots
+    ]  # fmt: skip
+
+
+def ad_product_rule(d: AdVerdictDraft) -> AdVerdictDraft:
+    """As at the keyframe gate: a salient product mismatch is never minor, and it fails
+    continuity_ok, whatever the LLM said (fine details stay 'product_detail', minor)."""
+    issues = [
+        i.model_copy(update={"severity": "major"})
+        if i.category == "product" and i.severity == "minor"
+        else i
+        for i in d.issues
+    ]
+    checks = d.checks
+    if any(i.category == "product" for i in issues):
+        checks = checks.model_copy(update={"continuity_ok": False})
+    return d.model_copy(update={"issues": issues, "checks": checks})
