@@ -18,6 +18,7 @@ costs a full ad, so it goes back through the estimate gate by a human command (w
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -120,6 +121,103 @@ def ad_prompt_problems(
     return problems
 
 
+# ----------------------------------------------------------------------------- human prompt
+_SHOT_LINE = re.compile(
+    r"^\s*Shot\s+(\d+)\s*\(\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*s\s*\)\s*:\s*(.+)$",
+    re.IGNORECASE,
+)
+_SECTION = re.compile(r"^\s*(Look|Audio)\s*:", re.IGNORECASE)
+
+
+class HumanShot(DomainModel):
+    number: int = Field(ge=1)
+    start_s: float = Field(ge=0)
+    end_s: float = Field(gt=0)
+    action: str = Field(min_length=1, max_length=2000)
+
+
+class HumanPrompt(DomainModel):
+    """A prompt written by a human creative director that replaces the model-written one at the
+    spend gate. Sent to the video model verbatim; its numbered shots (parsed by code) drive the
+    critic's frame windows."""
+
+    text: str = Field(min_length=1)
+    shots: list[HumanShot] = Field(min_length=1)
+    replaced_at: datetime = Field(default_factory=utcnow)
+    source: str = Field(default="", max_length=500)  # e.g. the file it came from
+
+
+def parse_prompt_shots(text: str) -> list[HumanShot]:
+    out = []
+    for line in text.splitlines():
+        m = _SHOT_LINE.match(line)
+        if m:
+            out.append(
+                HumanShot(
+                    number=int(m[1]), start_s=float(m[2]), end_s=float(m[3]), action=m[4].strip()
+                )
+            )
+    return out
+
+
+def human_prompt_problems(text: str, *, duration_s: int, max_chars: int) -> list[str]:
+    """Deterministic checks before a human prompt is accepted: within the model's prompt limit,
+    numbered shots 1..n with contiguous timecodes from 0 that end at the ad's length."""
+    problems: list[str] = []
+    if len(text) > max_chars:
+        problems.append(f"the prompt is {len(text)} characters; the limit is {max_chars}")
+    shots = parse_prompt_shots(text)
+    if not shots:
+        problems.append('no numbered shots found (lines like "Shot 1 (0-2 s): ...")')
+        return problems
+    numbers = [s.number for s in shots]
+    if numbers != list(range(1, len(shots) + 1)):
+        problems.append(f"shots must be numbered 1..{len(shots)} in order, got {numbers}")
+    t = 0.0
+    for sh in shots:
+        if abs(sh.start_s - t) > TIMECODE_TOLERANCE_S or sh.end_s <= sh.start_s:
+            problems.append(f"shot {sh.number} must start at {t:g} s (the previous shot's end)")
+        t = sh.end_s
+    if abs(shots[-1].end_s - duration_s) > TIMECODE_TOLERANCE_S:
+        problems.append(f"the last shot ends at {shots[-1].end_s:g} s, not at {duration_s} s")
+    return problems
+
+
+def _sections(text: str) -> dict[str, str]:
+    """Split a prompt into comparable parts: header, Look, Shot N, Audio."""
+    parts: dict[str, list[str]] = {}
+    key = "header"
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        if m := _SHOT_LINE.match(line):
+            key = f"Shot {int(m[1])}"
+        elif m2 := _SECTION.match(line):
+            key = m2[1].capitalize()
+        parts.setdefault(key, []).append(" ".join(line.split()))
+    return {k: " ".join(v) for k, v in parts.items()}
+
+
+def prompt_diff_summary(old: str, new: str) -> str:
+    """One line for the trace: which parts changed, were added or removed, and the size."""
+    a, b = _sections(old), _sections(new)
+    changed = [k for k in b if k in a and a[k] != b[k]]
+    added = [k for k in b if k not in a]
+    removed = [k for k in a if k not in b]
+    same = [k for k in b if k in a and a[k] == b[k]]
+    bits = []
+    if changed:
+        bits.append("changed " + ", ".join(changed))
+    if added:
+        bits.append("added " + ", ".join(added))
+    if removed:
+        bits.append("removed " + ", ".join(removed))
+    if same:
+        bits.append("unchanged " + ", ".join(same))
+    bits.append(f"{len(old)} → {len(new)} chars")
+    return "; ".join(bits)
+
+
 AdStatus = Literal[
     "pending", "estimated", "generating", "qa_review", "approved", "flagged", "failed"
 ]
@@ -164,6 +262,8 @@ class AdGeneration(DomainModel):
     # media cannot be judged creatively). AdVerdict first: it is the stricter shape.
     qa: AdVerdict | QAVerdict | None = None
     accepted_by_human: str | None = Field(default=None, max_length=500)
+    # Set when a human replaced the model-written prompt at the gate: sent verbatim instead.
+    human_prompt: HumanPrompt | None = None
     failure: SceneFailure | None = None
     version: int = Field(default=1, ge=1)
     history: list[AdGenerationVersion] = Field(default_factory=list)
@@ -185,6 +285,21 @@ class AdGeneration(DomainModel):
             raise ValueError("a generation starts only after its estimate was approved")
         if self.approved_usd is not None and self.est_usd is None:
             raise ValueError("an approval needs an estimate")
+
+    @property
+    def prompt_text(self) -> str:
+        """What the video model receives: the human's prompt if one replaced the model's."""
+        return self.human_prompt.text if self.human_prompt is not None else self.prompt.text
+
+    def replace_prompt(self, human: HumanPrompt) -> None:
+        """Human creative direction at the spend gate: the new prompt must be priced again, so
+        the estimate and any approval are cleared (back to pending)."""
+        self._need("pending", "estimated")
+        self.human_prompt = human
+        self.status = "pending"
+        self.est_usd = self.computed_usd = self.price_basis = None
+        self.estimated_at = self.approved_usd = self.approved_by = None
+        self.check_invariants()
 
     @property
     def approved(self) -> bool:

@@ -155,7 +155,7 @@ def pack_markdown(state: RunState) -> str:
             f"## Whole-ad prompt ({g.model}, {g.duration_s}s {g.resolution}, estimate {est})",
             "",
             "```text",
-            g.prompt.text,
+            g.prompt_text,
             "```",
             "",
         ]

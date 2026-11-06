@@ -18,7 +18,7 @@ from rich.table import Table
 
 from adsmith import __version__
 from adsmith.agent import commands
-from adsmith.agent.context import AgentRuntime
+from adsmith.agent.context import AgentRuntime, ad_endpoint
 from adsmith.agent.orchestrator import Orchestrator
 from adsmith.cli.live import LiveTrace
 from adsmith.config import Settings
@@ -127,7 +127,8 @@ def _print_generation(state: RunState) -> None:
     if state.stage is Stage.AWAITING_GENERATION_APPROVAL:
         if g.price_basis:
             console.print(f"[dim]Price: {g.price_basis}[/]")
-        console.print(f"[bold]Prompt sent to the model:[/]\n{g.prompt.text}")
+        who = " (written by a human creative director)" if g.human_prompt else ""
+        console.print(f"[bold]Prompt sent to the model{who}:[/]\n{g.prompt_text}")
     if g.qa is not None:
         why = "; ".join(g.qa.fail_reasons) or "hard gate passed"
         console.print(f"[dim]Critic: {g.qa.score:.2f} ({why})[/]")
@@ -279,11 +280,56 @@ def accept(
 
 
 @app.command()
-def approve(run_id: str) -> None:
+def approve(
+    run_id: str,
+    prompt_file: Annotated[
+        Path | None,
+        typer.Option(
+            help="Spend gate only: replace the model's prompt with this human-written "
+            "one (sent verbatim); it is priced again before anything is approved."
+        ),
+    ] = None,
+    no_approve: Annotated[
+        bool,
+        typer.Option("--no-approve", help="With --prompt-file: re-price and stop at the gate."),
+    ] = False,
+    endcard_tagline: Annotated[
+        str | None, typer.Option(help="With --prompt-file: the end card's tagline.")
+    ] = None,
+) -> None:
     """Approve at the current gate: the storyboard keyframes, or the estimate of a whole-ad
     generation (real money is spent only after this)."""
     orch = _orchestrator()
-    if orch.rt.storage.runs.load(run_id).stage is Stage.AWAITING_GENERATION_APPROVAL:
+    state = orch.rt.storage.runs.load(run_id)
+    at_spend = state.stage is Stage.AWAITING_GENERATION_APPROVAL
+    if prompt_file is None and (no_approve or endcard_tagline is not None):
+        raise typer.BadParameter("--no-approve and --endcard-tagline need --prompt-file")
+    if prompt_file is not None:
+        if not at_spend or state.generation is None:
+            raise typer.BadParameter(
+                f"--prompt-file is for the spend gate; run is at {state.stage}"
+            )
+        shown = state.generation.est_usd
+        ep = ad_endpoint(orch.rt.settings, state.config.ad_model)
+        commands.replace_generation_prompt(
+            orch.rt.storage, run_id, prompt_file.read_text(encoding="utf-8"),
+            max_chars=ep.max_prompt_chars, source=str(prompt_file),
+            endcard_tagline=endcard_tagline,
+        )  # fmt: skip
+        state = follow(orch, run_id, orch.run_until_blocked(run_id))
+        g = state.generation
+        if no_approve or state.stage is not Stage.AWAITING_GENERATION_APPROVAL or g is None:
+            print_state(orch, state)
+            return
+        if shown is not None and (g.est_usd or 0) > shown + 1e-9:
+            print_state(orch, state)
+            console.print(
+                f"[yellow]The new prompt's reservation ${g.est_usd or 0:.3f} is above the "
+                f"${shown:.3f} you saw: not approved. Review it, then run "
+                f"`adsmith approve {run_id}`.[/]"
+            )
+            return
+    if at_spend:
         commands.approve_generation(orch.rt.storage, run_id)
     else:
         commands.approve_storyboard(orch.rt.storage, run_id)

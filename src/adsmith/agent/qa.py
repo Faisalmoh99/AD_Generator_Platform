@@ -25,7 +25,7 @@ from adsmith.agent.context import NodeContext
 from adsmith.agent.nodes.common import concept_block, scene_block, storyboard_block
 from adsmith.agent.recovery.errors import PermanentProviderError
 from adsmith.config import LLMNode
-from adsmith.domain.ad import AdGeneration
+from adsmith.domain.ad import AdGeneration, AdShotDraft, HumanShot
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.generation import Artifact
 from adsmith.domain.llm import LLMCallRecord
@@ -249,7 +249,7 @@ class LLMCritic:
             video=video,
             shots=ad_shot_windows(g, video_s),
             reference=reference,
-            prompt_text=g.prompt.text,
+            prompt_text=g.prompt_text,
             duration_s=video_s,
         )
         return verdict, calls
@@ -483,12 +483,16 @@ def ad_shot_windows(g: AdGeneration, video_s: float) -> list[ShotWindow]:
     """The planned shots on the real video's timeline (scaled if the model rendered a slightly
     different length). The model chooses its own cuts, so these are approximate windows."""
     scale = video_s / max(1e-6, float(g.prompt.duration_s))
+    # A human-written prompt replaces the plan: its own numbered shots are what was asked for.
+    shots: Sequence[AdShotDraft | HumanShot] = (
+        g.human_prompt.shots if g.human_prompt else g.prompt.shots
+    )
     return [
         ShotWindow(
             s.number, round(s.start_s * scale, 3), round(min(s.end_s * scale, video_s), 3),
             s.action,
         )
-        for s in g.prompt.shots
+        for s in shots
     ]  # fmt: skip
 
 

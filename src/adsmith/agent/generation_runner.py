@@ -126,7 +126,7 @@ class AdGenerationRunner:
             provider=self.provider.name,
             model=self.provider.model,
             phase=ScenePhase.CLIP,
-            prompt=gen.prompt.text,
+            prompt=gen.prompt_text,
             params={
                 "duration": gen.duration_s, "resolution": gen.resolution,
                 "aspect_ratio": gen.aspect_ratio, "generate_audio": gen.generate_audio,
@@ -142,7 +142,7 @@ class AdGenerationRunner:
             functools.partial(self.provider.reference_url, path), sleep=self.sleep, rng=self.rng
         )
         return ReferenceVideoJob(
-            prompt=gen.prompt.text,
+            prompt=gen.prompt_text,
             image_urls=(url,),
             duration_s=gen.duration_s,
             resolution=gen.resolution,

@@ -38,7 +38,7 @@ def load_prompt(args: argparse.Namespace, rt: AgentRuntime) -> str:
     gen = state.generation
     if gen is None or gen.prompt is None:
         raise SystemExit(f"run {args.run} has no ad prompt yet (plan it with --until estimate)")
-    text: str = gen.prompt.text
+    text: str = gen.prompt_text
     return text
 
 

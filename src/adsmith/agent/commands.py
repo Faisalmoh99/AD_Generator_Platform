@@ -9,7 +9,13 @@ from __future__ import annotations
 from pydantic import JsonValue
 
 from adsmith.agent.transitions import GATE_EXITS
-from adsmith.domain.enums import FailureKind, SceneStatus, Stage, StaleFrom
+from adsmith.domain.ad import (
+    HumanPrompt,
+    human_prompt_problems,
+    parse_prompt_shots,
+    prompt_diff_summary,
+)
+from adsmith.domain.enums import FailureKind, Language, SceneStatus, Stage, StaleFrom
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.generation import Artifact
 from adsmith.domain.qa import QAVerdict
@@ -551,3 +557,62 @@ def regenerate_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
         ]
 
     return storage.runs.update(run_id, mutate, reason="ad regenerate").state
+
+
+def replace_generation_prompt(
+    storage: Storage,
+    run_id: str,
+    text: str,
+    *,
+    max_chars: int,
+    source: str = "",
+    endcard_tagline: str | None = None,
+) -> RunState:
+    """Human creative direction at the spend gate: replace the model-written prompt with a
+    human one (sent verbatim). The run goes back to ESTIMATE so the new prompt is priced again
+    and waits at the gate; reservation, critic and assembly are unchanged. Optionally sets the
+    end card's tagline (the brand stays as the brief or the end-card writer gives it)."""
+    text = text.strip()
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if s.stage is not Stage.AWAITING_GENERATION_APPROVAL or g is None:
+            raise CommandRejectedError(f"run is at {s.stage}, not waiting for a spend approval")
+        problems = human_prompt_problems(text, duration_s=g.duration_s, max_chars=max_chars)
+        if problems:
+            raise CommandRejectedError("the prompt was not accepted: " + "; ".join(problems))
+        old_text, old_reserve = g.prompt_text, g.est_usd
+        diff = prompt_diff_summary(old_text, text)
+        g.replace_prompt(HumanPrompt(text=text, shots=parse_prompt_shots(text), source=source))
+        s.stage = Stage.ESTIMATE
+        events = [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.AWAITING_GENERATION_APPROVAL,
+                type=EventType.DECISION,
+                summary=f"HUMAN creative direction: prompt replaced ({diff}). It is priced "
+                "again and waits at the gate.",
+                payload={
+                    "human": True, "diff": diff, "old_prompt": old_text, "new_prompt": text,
+                    "previous_reserved_usd": old_reserve, "source": source,
+                },
+            )
+        ]  # fmt: skip
+        if endcard_tagline is not None and s.brief is not None:
+            tag = endcard_tagline.strip()
+            lang = Language.AR if any("؀" <= ch <= "ۿ" for ch in tag) else Language.EN
+            old_tag = s.brief.tagline
+            s.brief = s.brief.model_copy(update={"tagline": tag, "tagline_language": lang})
+            s.endcard = None  # re-made at assembly with the human tagline
+            events.append(
+                AgentEvent(
+                    run_id=s.id,
+                    stage=Stage.AWAITING_GENERATION_APPROVAL,
+                    type=EventType.DECISION,
+                    summary=f"HUMAN creative direction: end-card tagline set to «{tag}»",
+                    payload={"human": True, "tagline": tag, "previous": old_tag},
+                )
+            )
+        return events
+
+    return storage.runs.update(run_id, mutate, reason="human prompt").state

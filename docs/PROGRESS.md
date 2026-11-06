@@ -986,3 +986,10 @@ estimate table, the montage v2 calibration, a real planning run and the one real
 - **Tests**: 697 passed, 2 skipped (+10: the live description verbatim, per-resolution formula,
   drift refusal, no-pricing refusal, settle at price + price check, 8 s default).
 - **Next**: `--matrix` (local), calibration on montage v2 (Anthropic, approved).
+
+## Human creative direction at the spend gate (2026-11-06)
+
+- **Built**: `adsmith approve <run> --prompt-file <path> [--no-approve] [--endcard-tagline T]`
+  (ADR-0023 addendum). Human prompt validated, diff logged, priced again, sent verbatim; critic
+  windows from the human shots; approve only if the reserve did not rise.
+- **Tests**: 705 passed, 2 skipped (+8 in `tests/integration/test_human_prompt.py`).

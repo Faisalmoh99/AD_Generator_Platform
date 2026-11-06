@@ -58,3 +58,17 @@ nothing paid is regenerated automatically.
 − Blast-radius edits do not apply to multishot runs yet.
 − The planned timecodes are approximate in the real output; the critic samples by time.
 − Ads longer than one generation (> 15 s on 2.0) are clamped to the model's maximum for now.
+
+## Addendum (2026-11-06): human creative direction at the spend gate
+
+`adsmith approve <run> --prompt-file <path>` replaces the model-written prompt with a human one,
+sent verbatim (`AdGeneration.human_prompt`; the model's `AdPrompt` is kept for the record). Code
+checks it first (numbered shots 1..n, contiguous timecodes from 0 to the ad's length, within the
+endpoint's prompt limit) and logs a decision event "HUMAN creative direction: prompt replaced"
+with a per-section diff (header / Look / Shot N / Audio) and both texts. The run goes back to
+ESTIMATE: the new prompt is priced again and waits at the gate. The command then approves only
+if the new reservation is not above the one the human already saw; otherwise it stops at the
+gate. `--no-approve` re-prices and stops. Reservation, cache key (the prompt is part of it),
+critic (its frame windows follow the human shots) and assembly are otherwise unchanged.
+`--endcard-tagline` sets the brief's tagline, so the end card shows it (Arabic is shaped by
+`arabic_reshaper` + `python-bidi`).
