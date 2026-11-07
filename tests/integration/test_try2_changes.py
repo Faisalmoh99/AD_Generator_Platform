@@ -207,9 +207,10 @@ async def test_the_critic_sees_the_prop_as_a_prop(tmp_path: Path) -> None:
     )
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE and state.generation is not None
-    # The photo, three props (the user's + two generated), 4 shots × 3 frames.
-    assert state.generation.qa is not None and state.generation.qa.frames_inspected == 16
-    req = next(r for r in llm.requests if r.template == "qa_ad_critic@v2")
+    # The photo, three props (the user's + two generated), 3 hook frames, 3 shots × 3 frames and
+    # the key shot × 8 (ADR-0026 phase 5).
+    assert state.generation.qa is not None and state.generation.qa.frames_inspected == 24
+    req = next(r for r in llm.requests if r.template == "qa_ad_critic@v3")
     msg = req.messages[0]
     assert hasattr(msg, "parts")
     texts = [p.text for p in msg.parts if hasattr(p, "text")]
@@ -222,11 +223,11 @@ async def test_the_critic_sees_the_prop_as_a_prop(tmp_path: Path) -> None:
     )
 
 
-def test_the_critic_template_is_v2_and_has_no_prop_line_without_props(tmp_path: Path) -> None:
+def test_the_critic_template_has_no_prop_line_without_props(tmp_path: Path) -> None:
     from adsmith.agent.prompts import PromptLibrary  # noqa: PLC0415
 
     t = PromptLibrary(settings(tmp_path).prompts_dir).get("qa_ad_critic")
-    assert t.version == 2 and "props" in t.variables
+    assert t.version == 3 and "props" in t.variables
 
 
 # ----------------------------------------------------------------------------- 9 s prompt

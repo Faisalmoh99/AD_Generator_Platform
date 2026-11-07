@@ -188,10 +188,42 @@ class AdRubricScores(DomainModel):
     product_role: RubricScore
 
 
+class AdExecutionChecks(DomainModel):
+    """What the competitor analysis showed matters on screen (ADR-0026 phase 5). Warnings only."""
+
+    product_handled: bool = Field(description="A person's hands hold or use the product.")
+    product_seconds: float = Field(ge=0, le=60, description="Seconds the product is on screen.")
+    hook_first_2s: bool = Field(
+        description="The first two seconds show a motion and open a question."
+    )
+    key_moment_visible: bool = Field(
+        description="The key shot's turn (transformation, gesture) is visible, step by step."
+    )
+    one_location: bool = Field(description="The whole film happens in one location.")
+    note: Annotated[str, Field(max_length=400)] = Field(
+        description="Why each false check is false (empty when all are true)."
+    )
+
+    def warnings(self, duration_s: float) -> list[str]:
+        out = []
+        if not self.product_handled:
+            out.append("the product is never handled by a person")
+        if duration_s > 0 and self.product_seconds < 0.5 * duration_s:
+            out.append(f"the product is on screen {self.product_seconds:g} s of {duration_s:g}")
+        if not self.hook_first_2s:
+            out.append("the first two seconds do not hook")
+        if not self.key_moment_visible:
+            out.append("the key moment is not visible")
+        if not self.one_location:
+            out.append("more than one location")
+        return out
+
+
 class AdVerdictDraft(QAVerdictDraft):
     """``qa_ad_critic`` output schema."""
 
     shots: list[AdShotCheck] = Field(min_length=1, max_length=12)
+    execution: AdExecutionChecks
     rubric: AdRubricScores
     creative_note: Annotated[str, Field(min_length=1, max_length=600)] = Field(
         description="The film's biggest creative strength and weakness, in two sentences."
@@ -200,6 +232,11 @@ class AdVerdictDraft(QAVerdictDraft):
 
 class AdVerdict(QAVerdict):
     shots: list[AdShotCheck] = Field(min_length=1, max_length=12)
+    # None for verdicts made before critic v3 (ADR-0026 phase 5).
+    execution: AdExecutionChecks | None = None
+    duration_s: float = Field(default=0.0, ge=0)
+    observed_cuts: list[float] = Field(default_factory=list)
+    windows_from: Literal["planned", "observed"] = "planned"
     rubric: AdRubricScores
     creative_note: str = Field(max_length=600)
     creative_score: float = Field(ge=0, le=10)  # computed by code from the rubric weights
@@ -218,4 +255,6 @@ class AdVerdict(QAVerdict):
         missed = [s.number for s in self.shots if not s.delivered]
         if missed:
             out.append(f"planned beat not delivered in shot(s) {missed}")
+        if self.execution is not None:
+            out += self.execution.warnings(self.duration_s)
         return out

@@ -370,6 +370,12 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "rubric": g.qa.rubric.model_dump() if isinstance(g.qa, AdVerdict) else {},
         "warnings": g.qa.warnings if isinstance(g.qa, AdVerdict) else [],
         "creative_note": g.qa.creative_note if isinstance(g.qa, AdVerdict) else None,
+        "execution": (
+            g.qa.execution.model_dump()
+            if isinstance(g.qa, AdVerdict) and g.qa.execution is not None
+            else None
+        ),
+        "observed_cuts": g.qa.observed_cuts if isinstance(g.qa, AdVerdict) else [],
         "failure": g.failure.reason_user if g.failure else None,
         "director": _director(state),
         "images": _images(state),

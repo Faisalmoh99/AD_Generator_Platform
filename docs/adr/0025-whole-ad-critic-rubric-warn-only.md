@@ -42,3 +42,24 @@ Sunday's ≈ $5 budget a hard fail is warn only too: no paid regeneration is tri
 − Audio is not judged (the critic sees frames only).
 − The planned timecodes are approximate in a real generation; a shot note may cover a
   neighbouring shot's frames.
+
+## Addendum (2026-11-07): critic v3 (ADR-0026 phase 5)
+
+- **Windows from the video's own cuts.** `media/frames.py` `detect_cuts` finds hard cuts by code
+  on the existing `motion_profile` (24 fps, 96x96 grey): a frame-difference spike above 20 and 3x
+  the median of the surrounding second. Calibrated on try 2 (cuts 1.25 / 3.63 / 5.42 s against
+  ffmpeg scene detection's 1.23 / 3.60 / 5.40) and try 1 (its crossfade is not a cut). When the
+  count matches the plan (shots - 1), `ad_shot_windows` uses the observed shots; otherwise the
+  scaled plan as before. A decision event logs observed vs planned cuts. Limitation: the measure
+  is luma, so a cut between two shots of the same brightness and different hue is missed (then
+  the scaled plan is used).
+- **Dense where it matters.** The key shot (`AdPrompt.key_shot`; for a human prompt the longest
+  shot) gets 8 frames instead of 3 (try 2's 0.5 s morph fell between samples), and three extra
+  frames at 0.5 / 1.0 / 1.5 s judge the hook. About 23 images per review instead of 13-15.
+- **Execution checks** (`qa_ad_critic` v3, `AdExecutionChecks`): product handled, seconds on
+  screen, the first two seconds hook, the key moment visible, one location, and a note. They are
+  warnings only (the hard gate is unchanged); a false check or screen time under half the film
+  needs a reason in the note (code, → repair). Stored verdicts made before v3 load (default None).
+- **Deviation from the plan**: "every false flag needs an issue" became "needs a reason in the
+  note": an issue in the "product" category would have failed the hard gate by code
+  (`ad_product_rule`), turning a warning into a hard fail.

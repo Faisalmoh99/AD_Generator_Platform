@@ -49,6 +49,14 @@ def verdict_output(**over: Any) -> dict[str, Any]:
             {"number": n, "delivered": True, "note": f"shot {n} reads clearly"}
             for n in (1, 2, 3, 4)
         ],
+        "execution": {
+            "product_handled": True,
+            "product_seconds": 6.0,
+            "hook_first_2s": True,
+            "key_moment_visible": True,
+            "one_location": True,
+            "note": "",
+        },
         "rubric": {
             "insight": 8,
             "hook": 7,
@@ -159,7 +167,8 @@ async def test_the_critic_sees_the_photo_and_three_frames_per_shot(tmp_path: Pat
     assert state.stage is Stage.DONE
     g = state.generation
     assert g is not None and isinstance(g.qa, AdVerdict) and g.status == "approved"
-    assert g.qa.frames_inspected == 15  # the photo + 2 generated props + 4 shots × 3 frames
+    # the photo + 2 generated props + 3 hook frames + 3 shots × 3 frames + the key shot × 8
+    assert g.qa.frames_inspected == 23
     assert g.qa.creative_score == pytest.approx(7.80)  # .2·8 + .2·7 + .15·(8+7+9+8)
     req = next(r for r in rt._provider_override.requests if r.template.startswith("qa_ad_critic@"))
     texts = [p.text for p in req.messages[0].parts if hasattr(p, "text")]
@@ -235,6 +244,6 @@ async def test_inconsistent_verdicts_go_through_schema_repair(tmp_path: Path) ->
             e
             for e in events(rt, run.id)
             if e.type in {EventType.LLM_CALL, EventType.LLM_REPAIR}
-            and e.payload.get("template") == "qa_ad_critic@v2"
+            and e.payload.get("template") == "qa_ad_critic@v3"
         ]
         assert len(repairs) == 2  # one invalid answer, one repaired

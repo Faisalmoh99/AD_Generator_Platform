@@ -1087,3 +1087,19 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
 - **Fix found by a test**: Arabic aliases match at word starts only («عود» inside «سعودية»).
 - **Tests**: 782 passed, 2 skipped (+9: `tests/unit/test_culture_bank.py`).
 - **For the user**: review the Arabic of `config/culture_bank.toml` before the first real run.
+
+## Phase 5: critic v3 (2026-11-07)
+
+- **Built**: `detect_cuts` / `cuts_from_profile` (`media/frames.py`) on the existing motion
+  profile; `ad_shot_windows(g, video_s, cuts)` (observed windows when the count matches);
+  `key_shot_number`; 8 frames on the key shot and 3 hook frames; `AdExecutionChecks` on the
+  verdict (warnings), `observed_cuts` / `windows_from` / `duration_s` stored; `qa_ad_critic` v3; a
+  "Critic windows" decision event; execution and warnings in `adsmith show` and the studio.
+  ADR-0025 addendum.
+- **Calibration (local, $0)**: try 2 `final_v2.mp4` → cuts 1.25, 3.63, 5.42 s (+ the end-card
+  join, absent from the raw generation the critic sees); try 1 → 1.96, 4.13 s, crossfade not a cut.
+- **Deviation**: a false execution check needs a reason in its note, not an issue (an issue in
+  the product category would fail the hard gate by code). Luma-only cuts: a same-brightness cut
+  is missed and the scaled plan is used.
+- **Tests**: 788 passed, 2 skipped (+6: `tests/integration/test_critic_v3.py`; image counts and the v3 pin moved).
+- **Not run (paid)**: the critic re-run on try 2's real video (one Anthropic call, about $0.08) waits for approval.

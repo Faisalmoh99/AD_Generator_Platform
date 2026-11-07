@@ -490,6 +490,8 @@ function renderGeneration(v) {
     ${row("hard gate", hard)}
     ${row("creative", creative)}
     ${scores ? `<div class="flags">${scores}</div>` : ""}
+    ${g.execution ? `<div class="flags">${[["handled", g.execution.product_handled], ["hook 0-2 s", g.execution.hook_first_2s], ["key moment", g.execution.key_moment_visible], ["one location", g.execution.one_location]].map(([k, ok]) => `<span class="flag ${ok ? "good" : "bad"}">${k}</span>`).join("")}<span class="flag">product ${g.execution.product_seconds}s</span></div>` : ""}
+    ${g.observed_cuts && g.observed_cuts.length ? row("cuts seen", g.observed_cuts.map((c) => c.toFixed(2)).join(" / ") + " s") : ""}
     ${g.warnings.length ? `<div class="desc">${esc(g.warnings.join(" · "))}</div>` : ""}
     ${g.creative_note ? `<div class="desc" dir="auto">${esc(g.creative_note)}</div>` : ""}
     ${g.failure ? `<div class="fail" dir="auto">${esc(g.failure)}</div>` : ""}

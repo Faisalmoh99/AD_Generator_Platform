@@ -486,6 +486,10 @@ class AdGenerationRunner:
                 )
                 level = "warn"
             if isinstance(verdict, AdVerdict):
+                ends = [
+                    x.end_s for x in (g.human_prompt.shots if g.human_prompt else g.prompt.shots)
+                ]
+                events.append(self._windows_event(run_id, verdict, ends[:-1]))
                 events.append(self._creative_event(run_id, verdict))
             events.append(
                 _ev(
@@ -520,6 +524,20 @@ class AdGenerationRunner:
             creative_score=v.creative_score, creative_threshold=v.creative_threshold,
             rubric=scores, warnings=v.warnings,
             shots=[s.model_dump() for s in v.shots],
+            execution=v.execution.model_dump() if v.execution else None,
+            observed_cuts=v.observed_cuts, windows_from=v.windows_from,
+        )  # fmt: skip
+
+    @staticmethod
+    def _windows_event(run_id: str, v: AdVerdict, planned: list[float]) -> AgentEvent:
+        """Where the critic looked: the cuts detected in the video vs the plan's (ADR-0026)."""
+        obs = " / ".join(f"{c:.2f}" for c in v.observed_cuts) or "none"
+        plan = " / ".join(f"{c:g}" for c in planned) or "none"
+        how = "the observed shots" if v.windows_from == "observed" else "the planned shots, scaled"
+        return _ev(
+            run_id, Stage.QA, EventType.DECISION,
+            f"Critic windows: observed cuts {obs} s, planned {plan} s; frames sampled in {how}",
+            observed_cuts=v.observed_cuts, planned_cuts=planned, windows_from=v.windows_from,
         )  # fmt: skip
 
     # ------------------------------------------------------------------------ helpers

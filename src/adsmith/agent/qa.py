@@ -43,6 +43,7 @@ from adsmith.media.frames import (
     DEFAULT_FRACTIONS,
     DEFAULT_LONG_SIDE,
     DENSE_FRACTIONS,
+    detect_cuts,
     image_to_jpeg,
     played_duration,
     sample_frames,
@@ -254,15 +255,24 @@ class LLMCritic:
         video_s = g.artifact.duration_s or float(g.duration_s)
         reference = self.ctx.artifacts.resolve(state.product_photo) if state.product_photo else None
         props = [(r.name, self.ctx.artifacts.resolve(r.artifact)) for r in state.reference_images]
+        cuts = await detect_cuts(video)
+        windows = ad_shot_windows(g, video_s, cuts)
+        observed = len(cuts) == len(windows) - 1
+        key = key_shot_number(g)
         verdict, calls = await self.review_video(
             state,
             video=video,
-            shots=ad_shot_windows(g, video_s),
+            shots=windows,
             reference=reference,
             prompt_text=g.prompt_text,
             duration_s=video_s,
             storyboard_text=human_storyboard_block(g),
             props=props,
+            dense_shots=frozenset({key}) if key is not None else frozenset(),
+            hook_times=HOOK_TIMES,
+        )
+        verdict = verdict.model_copy(
+            update={"observed_cuts": cuts, "windows_from": "observed" if observed else "planned"}
         )
         return verdict, calls
 
@@ -277,6 +287,8 @@ class LLMCritic:
         duration_s: float,
         storyboard_text: str | None = None,
         props: Sequence[tuple[str, Path]] = (),
+        dense_shots: frozenset[int] = frozenset(),
+        hook_times: Sequence[float] = (),
     ) -> tuple[AdVerdict, list[LLMCallRecord]]:
         """Review any finished ad: the hard checks (code decides ``passed``), a note per shot and
         the six rubric scores (code computes the creative total). Also used to calibrate the
@@ -301,10 +313,23 @@ class LLMCritic:
             ]
             prop_labels.append(f"image {len(labels)} ({name})")
             labels.append(label)
+        # The first two seconds decide the scroll: extra frames there (ADR-0026 phase 5).
+        for t in hook_times:
+            if t >= duration_s:
+                continue
+            frames = await sample_frames(
+                video, duration_s, fractions=(t / duration_s,), long_side=self.long_side
+            )
+            for f in frames:
+                label = f"{len(labels)}: first two seconds at {f.time_s:.2f}s"
+                parts += [TextPart(f"Image {label}"), ImagePart("image/jpeg", f.b64)]
+                labels.append(label)
         for w in shots:
             length = max(0.1, w.end_s - w.start_s)
+            # The key shot is sampled densely: try 2's 0.5 s morph fell between 3 samples.
+            fractions = DENSE_FRACTIONS if w.number in dense_shots else AD_FRACTIONS
             frames = await sample_frames(
-                video, length, fractions=AD_FRACTIONS, long_side=self.long_side, offset_s=w.start_s
+                video, length, fractions=fractions, long_side=self.long_side, offset_s=w.start_s
             )
             for f in frames:
                 n = len(labels)
@@ -340,6 +365,15 @@ class LLMCritic:
             got = sorted(s.number for s in d.shots)
             if got != sorted(numbers):
                 problems.append(f"give exactly one shot note per planned shot {numbers}, got {got}")
+            if d.execution.warnings(duration_s) and not d.execution.note.strip():
+                problems.append(
+                    "execution: explain every false check (or short screen time) in note"
+                )
+            if d.execution.product_seconds > duration_s + 0.5:
+                problems.append(
+                    f"execution.product_seconds {d.execution.product_seconds:g} is longer than "
+                    f"the film ({duration_s:.1f} s)"
+                )
             if problems:
                 raise ValueError("; ".join(problems))
             core = QAVerdictDraft.model_validate(
@@ -350,6 +384,8 @@ class LLMCritic:
             return AdVerdict(
                 **base.model_dump(),
                 shots=d.shots,
+                execution=d.execution,
+                duration_s=round(duration_s, 3),
                 rubric=d.rubric,
                 creative_note=d.creative_note,
                 creative_score=rubric.weighted(d.rubric.model_dump()),
@@ -546,6 +582,18 @@ class ShotWindow:
     plan: str
 
 
+HOOK_TIMES: tuple[float, ...] = (0.5, 1.0, 1.5)  # extra frames in the first two seconds
+
+
+def key_shot_number(g: AdGeneration) -> int | None:
+    """The shot whose beat is the turn: the prompt's key shot, or the longest shot of a human
+    prompt (the human gave the turn the time it needs)."""
+    if g.human_prompt is not None:
+        hs = g.human_prompt.shots
+        return max(hs, key=lambda s: s.end_s - s.start_s).number if hs else None
+    return g.prompt.key_shot
+
+
 def human_storyboard_block(g: AdGeneration) -> str | None:
     """When a human creative director replaced the prompt, the shot list the film is judged
     against is the human's, not the model's storyboard (else following the human would read as
@@ -559,12 +607,22 @@ def human_storyboard_block(g: AdGeneration) -> str | None:
     return "\n".join(lines)
 
 
-def ad_shot_windows(g: AdGeneration, video_s: float) -> list[ShotWindow]:
-    """The planned shots on the real video's timeline (scaled if the model rendered a slightly
-    different length). The model chooses its own cuts, so these are approximate windows."""
+def ad_shot_windows(
+    g: AdGeneration, video_s: float, cuts: Sequence[float] | None = None
+) -> list[ShotWindow]:
+    """The planned shots on the real video's timeline. When the cuts detected in the video match
+    the plan's count (shots - 1), the windows ARE the observed shots (ADR-0026 phase 5: the model
+    re-times shots; try 2's shot 1 lasted 1.2 s instead of 2); otherwise the planned shots are
+    scaled to the video's length (approximate windows, as before)."""
     scale = video_s / max(1e-6, float(g.prompt.duration_s))
     # A human-written prompt replaces the plan: its own numbered shots are what was asked for.
     shots: Sequence[AdShot | HumanShot] = g.human_prompt.shots if g.human_prompt else g.prompt.shots
+    if cuts is not None and len(cuts) == len(shots) - 1:
+        edges = [0.0, *cuts, video_s]
+        return [
+            ShotWindow(s.number, round(edges[i], 3), round(edges[i + 1], 3), s.action)
+            for i, s in enumerate(shots)
+        ]
     return [
         ShotWindow(
             s.number, round(s.start_s * scale, 3), round(min(s.end_s * scale, video_s), 3),

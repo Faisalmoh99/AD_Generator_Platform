@@ -156,6 +156,17 @@ def _print_generation(state: RunState) -> None:
             flag = "" if g.qa.creative_pass else "  [yellow]WARN[/]"
             scores = ", ".join(f"{k} {v}" for k, v in g.qa.rubric.model_dump().items())
             console.print(f"[dim]Creative: {g.qa.creative_score:.2f}/10 ({scores})[/]{flag}")
+            ex = g.qa.execution
+            if ex is not None:
+                console.print(
+                    f"[dim]Execution: handled {'yes' if ex.product_handled else 'NO'}, product "
+                    f"{ex.product_seconds:g}s of {g.qa.duration_s:g}s, hook "
+                    f"{'yes' if ex.hook_first_2s else 'NO'}, key moment "
+                    f"{'yes' if ex.key_moment_visible else 'NO'}, one location "
+                    f"{'yes' if ex.one_location else 'NO'}[/]"
+                )
+            for w in g.qa.warnings:
+                console.print(f"[yellow]  warn: {w}[/]")
     if g.failure is not None:
         console.print(f"[red]Whole ad failed:[/] {g.failure.reason_user}")
 

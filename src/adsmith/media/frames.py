@@ -176,6 +176,41 @@ async def motion_profile(video: Path, *, fps: int = MOTION_FPS) -> list[float]:
     return [round(float(d), 4) for d in diffs]
 
 
+CUT_FPS = 24
+CUT_MIN_JUMP = 20.0  # mean |Δluma| (0-255) of a hard cut on 96x96 grey frames
+CUT_RATIO = 3.0  # and this many times the local median motion (a camera move is not a cut)
+CUT_MIN_GAP_S = 0.5
+
+
+async def detect_cuts(video: Path, *, fps: int = CUT_FPS) -> list[float]:
+    """Hard cuts in a generated video, by code (ADR-0026 phase 5): frames whose difference from
+    the previous one is a spike, above ``CUT_MIN_JUMP`` and ``CUT_RATIO`` times the median of the
+    surrounding second. A crossfade or a fast camera move is not a cut. Calibrated on try 2: the
+    cuts at 1.23, 3.60 and 5.40 s (ffmpeg scene detection) read 1.25, 3.63 and 5.42 s; try 1's
+    crossfade reads as no cut. Times are the first frame of the new shot."""
+    return cuts_from_profile(await motion_profile(video, fps=fps), fps=fps)
+
+
+def cuts_from_profile(profile: Sequence[float], *, fps: int) -> list[float]:
+    cuts: list[float] = []
+    half = fps // 2
+    for i, v in enumerate(profile):
+        if v < CUT_MIN_JUMP:
+            continue
+        window = [profile[j] for j in range(max(0, i - half), min(len(profile), i + half + 1))
+                  if j != i]  # fmt: skip
+        local = float(np.median(window)) if window else 0.0
+        if v < CUT_RATIO * max(local, 1.0):
+            continue
+        if not all(v >= profile[j] for j in (i - 1, i + 1) if 0 <= j < len(profile)):
+            continue  # the peak frame only
+        t = round((i + 1) / fps, 3)
+        if cuts and t - cuts[-1] < CUT_MIN_GAP_S:
+            continue
+        cuts.append(t)
+    return cuts
+
+
 def peak_window(
     profile: Sequence[float], *, fps: int, clip_s: float, kept_s: float
 ) -> tuple[float, float]:
