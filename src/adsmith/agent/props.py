@@ -31,7 +31,7 @@ from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AccountLockedError, AgentError
 from adsmith.config import PROJECT_ROOT, Settings
-from adsmith.domain.ad import ReferenceSpec, earns_image, ref_key, render_ad_prompt
+from adsmith.domain.ad import ReferenceSpec, earns_image, fit_references, ref_key
 from adsmith.domain.base import stable_hash
 from adsmith.domain.budget import BudgetRefusedError
 from adsmith.domain.culture_bank import GulfObject
@@ -120,8 +120,14 @@ class PropsRunner:
             self._note(run_id, "Props: no prop image to generate")
             self._rerender(run_id)
             return
-        names = ", ".join(r.name for r in todo)
-        self._note(run_id, f"Props: generating a reference image for {names}")
+        from_library = [r.name for r in todo if self._library_object(r) is not None]
+        to_generate = [r.name for r in todo if r.name not in from_library]
+        parts = []
+        if from_library:
+            parts.append(f"from the library: {', '.join(from_library)}")
+        if to_generate:
+            parts.append(f"to generate: {', '.join(to_generate)}")
+        self._note(run_id, "Props: reference images " + "; ".join(parts))
         for index, spec in enumerate(todo, start=1):
             if await self._one(run_id, spec, index) == "stop":
                 break
@@ -144,13 +150,8 @@ class PropsRunner:
         )
 
     async def _one(self, run_id: str, spec: ReferenceSpec, index: int) -> str:
-        obj = self.settings.culture_bank.object_for(spec.name)
-        library = self.settings.props_library and obj is not None and obj.ref_image
-        if (
-            library
-            and obj is not None
-            and await self._from_library(run_id, spec, obj) == "accepted"
-        ):
+        obj = self._library_object(spec)
+        if obj is not None and await self._from_library(run_id, spec, obj) == "accepted":
             return "accepted"
         hint = ""
         for attempt in range(1, TRIES_PER_PROP + 1):
@@ -263,6 +264,17 @@ class PropsRunner:
         self.storage.cache.evict(prepared.request.cache_key())
         return verdict if verdict is not None else "failed"
 
+    def _library_object(self, spec: ReferenceSpec) -> GulfObject | None:
+        """The Gulf object whose verified photo this prop will use, or None (library off, no
+        object, no photo, or the photo missing on disk)."""
+        if not self.settings.props_library:
+            return None
+        obj = self.settings.culture_bank.object_for(spec.name)
+        if obj is None or not obj.ref_image:
+            return None
+        path = Path(obj.ref_image)
+        return obj if (path if path.is_absolute() else PROJECT_ROOT / path).is_file() else None
+
     async def _from_library(self, run_id: str, spec: ReferenceSpec, obj: GulfObject) -> str:
         """A verified photo of the Gulf object, at $0 instead of a generated image. It is checked
         once (the cheap vision check) and the pass is cached by the photo's hash, so later runs
@@ -322,32 +334,37 @@ class PropsRunner:
         return "accepted" if passed else "rejected"
 
     def _rerender(self, run_id: str) -> None:
-        """Number the references in the prompt from the images that now exist; drop generated
-        props last-first while the text is over the model's limit."""
+        """Number the references in the prompt from the images that now exist, and fit the text
+        within the model's limit (``fit_references``): compact prop lines first, then drop
+        generated props, then library props, each drop a warning."""
         max_chars = ad_endpoint(
             self.settings, self.storage.runs.load(run_id).config.ad_model
         ).max_prompt_chars
+        bank = self.settings.culture_bank
 
         def mutate(s: RunState) -> list[AgentEvent]:
             g = s.generation
             if g is None or g.human_prompt is not None:
                 return []
             events: list[AgentEvent] = []
-            while True:
-                names = [r.name for r in s.reference_images]
-                text = render_ad_prompt(
-                    g.prompt, duration_s=g.prompt.duration_s, aspect_ratio=g.aspect_ratio,
-                    image_names=names,
-                )  # fmt: skip
-                generated = [i for i, r in enumerate(s.reference_images)
-                             if r.source == "generated"]  # fmt: skip
-                if len(text) <= max_chars or not generated:
-                    break
-                dropped = s.reference_images.pop(generated[-1])
+            refs = [(r.name, r.source) for r in s.reference_images]
+            text, dropped, compact = fit_references(
+                g.prompt, refs, duration_s=g.prompt.duration_s, aspect_ratio=g.aspect_ratio,
+                max_chars=max_chars, glosses=bank.glosses([r[0] for r in refs]),
+            )  # fmt: skip
+            if compact:
                 events.append(_ev(
                     s.id, EventType.DECISION,
-                    f"Props: the {dropped.name} image is dropped: with it the prompt is over "
-                    f"the model's {max_chars}-character limit", level="warn",
+                    f"Props: the full References line is over the model's {max_chars}-character "
+                    "limit; each prop line is shortened to its name and a gloss (the image "
+                    "carries the look)",
+                ))  # fmt: skip
+            for i in sorted(dropped, reverse=True):
+                gone = s.reference_images.pop(i)
+                events.append(_ev(
+                    s.id, EventType.DECISION,
+                    f"Props: the {gone.name} image ({gone.source}) is dropped: even compact, the "
+                    f"prompt is over the model's {max_chars}-character limit", level="warn",
                 ))  # fmt: skip
             if text != g.prompt.text:
                 s.generation = g.model_copy(
@@ -358,8 +375,8 @@ class PropsRunner:
                     for i, r in enumerate(s.reference_images, start=2)
                 ]
                 events.append(_ev(s.id, EventType.DECISION,
-                                  "Props: references renumbered: " + "; ".join(images),
-                                  images=images))  # fmt: skip
+                                  "Props: references renumbered: " + "; ".join(images)
+                                  + f" ({len(text)} characters)", images=images))  # fmt: skip
             return events
 
         self.storage.runs.update(run_id, mutate, reason="props: prompt re-rendered")

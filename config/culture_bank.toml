@@ -29,9 +29,11 @@ food = ["food", "sweets", "chocolate", "pastry", "حلويات", "حلا", "شو
 # run_01M6SSVMPBEAY1WW1FWF4DGWRZ drew a European gooseneck pot for "dallah").
 # Fields: id · names (English and Arabic, matched against the prop's name) · description (one
 # physical line, at most 200 characters) · not_like (the wrong versions a model tends to draw) ·
-# ref_image (optional: a verified photo, used at $0 instead of a generated image).
+# ref_image (optional: a verified photo, used at $0 instead of a generated image) ·
+# gloss (2-4 words for the compact References line when the prompt is over the limit).
 [[objects]]
 id = "dallah"
+gloss = "Saudi coffee pot"
 ref_image = "assets/dallah.webp"  # a verified reference photo (user, 2026-11-07)
 names = ["dallah", "dalla", "arabic coffee pot", "coffee pot", "دلة", "دلّة"]
 description = "a Saudi dallah: brass body pinched at the waist above a wide base, a tall crescent beak spout, a domed lid with a pointed finial, a curved side handle"
@@ -39,6 +41,7 @@ not_like = ["a European or Turkish coffee pot", "a gooseneck kettle with a thin 
 
 [[objects]]
 id = "finjan"
+gloss = "Arabic coffee cup"
 ref_image = "assets/finjan.jpeg"  # a verified reference photo (user, 2026-11-07)
 names = ["finjan", "fenjan", "arabic coffee cup", "coffee cup", "فنجان", "فناجين"]
 description = "a small handleless Arabic coffee cup (finjan), white porcelain with a thin gold band, about egg-cup size, a third full of light golden coffee"
@@ -46,24 +49,28 @@ not_like = ["a mug or any cup with a handle", "an espresso cup on a saucer", "da
 
 [[objects]]
 id = "mabkhara"
+gloss = "Gulf incense burner"
 names = ["mabkhara", "incense burner", "bakhoor burner", "burner", "مبخرة"]
 description = "a Gulf mabkhara: a carved dark-wood or brass pedestal, wider at the base, with a small bowl on top holding glowing charcoal and oud"
 not_like = ["a church censer on chains", "an incense-stick holder", "a candle", "a perfume bottle"]
 
 [[objects]]
 id = "mandoos"
+gloss = "brass-studded wooden chest"
 names = ["mandoos", "wooden chest", "chest", "مندوس"]
 description = "a mandoos: a low dark teak chest covered with brass studs and brass plates in geometric patterns, with a hinged lid"
 not_like = ["a pirate treasure chest", "a modern storage box", "a plain suitcase"]
 
 [[objects]]
 id = "najr"
+gloss = "brass coffee mortar"
 names = ["najr", "brass mortar", "mortar", "نجر", "هاون"]
 description = "a heavy brass mortar (najr) with a long brass pestle, used to pound roasted coffee beans with cardamom"
 not_like = ["a stone kitchen mortar", "an electric coffee grinder"]
 
 [[objects]]
 id = "bisht"
+gloss = "gold-trimmed cloak"
 names = ["bisht", "cloak", "بشت"]
 description = "a bisht: a flowing sheer wool cloak in black, brown or cream with wide gold-embroidered trim along the front edges, worn open over a white thobe"
 not_like = ["a bathrobe", "a cape", "a Western overcoat"]

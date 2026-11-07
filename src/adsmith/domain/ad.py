@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Annotated, Literal, Self
 
@@ -253,13 +253,21 @@ def identity_line(product_text: str) -> str:
 
 
 def references_block(
-    p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = (), identity: str | None = None
+    p: AdPromptDraft | AdPrompt,
+    image_names: Sequence[str] = (),
+    identity: str | None = None,
+    glosses: Mapping[str, str] | None = None,
 ) -> str:
     """The References line, built by code. Image 1 is always the product photo; image k+2 is
     ``image_names[k]`` (the run's reference images, in the order they are sent). A reference
     with no image gets no line: it stays in the shot text only (user rule, 2026-11-07), except a
     prop that transforms into the product, whose line carries the turn. A reference image no spec
-    names is still declared a prop, so numbering and roles never drift."""
+    names is still declared a prop, so numbering and roles never drift.
+
+    With ``glosses`` (compact mode, used when the full text is over the model's limit) a prop
+    with an image gets its name and a 2-4 word gloss instead of its description: the image
+    carries the look ("Image 2 is the dallah (Saudi coffee pot). It appears in shots 1-4 and is
+    never the product.")."""
     keys = [ref_key(n) for n in image_names]
     seen = [s.number for s in p.shots if s.shows_product]
     ident = identity or (p.identity if isinstance(p, AdPrompt) and p.identity else BOTTLE_IDENTITY)
@@ -278,6 +286,17 @@ def references_block(
         if r.role == "location":
             parts.append(f"{head}: {_clause(r.description)} Every shot takes place there.")
             continue
+        if glosses is not None and idx is not None:
+            gloss = glosses.get(ref_key(r.name))
+            head = f"{head} ({gloss})." if gloss else f"{head}."
+            tail = f" It appears in {shots_phrase(r.shots)}"
+            if r.transforms_into_product:
+                turn = p.key_shot if p.key_shot in r.shots else max(r.shots)
+                tail += f" and transforms into the product in shot {turn}."
+            else:
+                tail += " and is never the product."
+            parts.append(f"{head}{tail}")
+            continue
         tail = f" It appears in {shots_phrase(r.shots)}"
         if r.transforms_into_product:
             turn = p.key_shot if p.key_shot in r.shots else max(r.shots)
@@ -295,6 +314,57 @@ def references_block(
     return "References: " + " ".join(parts)
 
 
+_NO_VOICE = re.compile(
+    r"\s*\b(no voice(?:[- ]?over)?s?|no voiceover)\b[,;]?\s*(?:and\s+)?(?:no\s+dialogu?e)?\.?",
+    re.IGNORECASE,
+)
+
+
+def strip_no_voice(audio: str) -> str:
+    """Code adds "No voice, no dialogue." itself; a writer-typed copy is removed so it is never
+    said twice (the dates run ended its audio line with it twice)."""
+    out = _NO_VOICE.sub(" ", audio)
+    out = re.sub(r"\s*\bno dialogu?e\b\.?", " ", out, flags=re.IGNORECASE)
+    return " ".join(out.split()).rstrip(" ,;") or audio
+
+
+def fit_references(
+    p: AdPrompt,
+    refs: Sequence[tuple[str, str]],
+    *,
+    duration_s: int,
+    aspect_ratio: str,
+    max_chars: int,
+    glosses: Mapping[str, str],
+) -> tuple[str, list[int], bool]:
+    """Fit the prompt within the model's limit (user rule, 2026-11-07). ``refs`` are the run's
+    reference images as (name, source) in the order sent. First the full References lines; if
+    over the limit, every prop line shortened to its name and a gloss (the image carries the
+    look); only if still over, generated props are dropped last-first, then library props as a
+    last resort; user images are never dropped. Returns (text, indices of refs dropped,
+    compact)."""
+    kept = list(range(len(refs)))
+
+    def render(compact: bool) -> str:
+        return render_ad_prompt(
+            p, duration_s=duration_s, aspect_ratio=aspect_ratio,
+            image_names=[refs[i][0] for i in kept], glosses=glosses if compact else None,
+        )  # fmt: skip
+
+    text = render(False)
+    if len(text) <= max_chars:
+        return text, [], False
+    dropped: list[int] = []
+    for source in ("generated", "library"):
+        while len(text := render(True)) > max_chars:
+            candidates = [i for i in kept if refs[i][1] == source]
+            if not candidates:
+                break
+            kept.remove(candidates[-1])
+            dropped.append(candidates[-1])
+    return render(True), dropped, True
+
+
 def _article(duration_s: int) -> str:
     return "An" if str(duration_s).startswith("8") or duration_s in (11, 18) else "A"
 
@@ -306,6 +376,7 @@ def render_ad_prompt(
     aspect_ratio: str,
     image_names: Sequence[str] = (),
     identity: str | None = None,
+    glosses: Mapping[str, str] | None = None,
 ) -> str:
     """The text the video model receives, in the structure of the human-directed prompt of try 2
     (header, References, Look, numbered shots, Audio). The identity, no-text and no-voice rules
@@ -315,7 +386,7 @@ def render_ad_prompt(
     lines = [
         f"{_article(duration_s)} {duration_s}-second {orient} {aspect_ratio} film in "
         f"{len(p.shots)} shots, hard cuts between shots.",
-        references_block(p, image_names, identity),
+        references_block(p, image_names, identity, glosses),
         f"Look: {look}",
     ]
     for s in p.shots:
@@ -327,7 +398,7 @@ def render_ad_prompt(
             + (f" Framing: {size}." if size else "")
             + f" Camera: {_sentence(s.camera)}{light} Sound: {_sentence(s.sound)}"
         )
-    lines.append(f"Audio: {_capital(p.audio)} No voice, no dialogue.")
+    lines.append(f"Audio: {_capital(strip_no_voice(p.audio))} No voice, no dialogue.")
     return "\n".join(lines)
 
 

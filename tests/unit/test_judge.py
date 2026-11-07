@@ -153,5 +153,5 @@ async def test_a_concept_pointing_at_a_missing_insight_is_repaired(settings: Set
     state = await orch.run_until_blocked(run.id, stop_before=Stage.STORYBOARD)
     assert state.stage is Stage.STORYBOARD
     names = [r.template for r in provider.requests]
-    repair = provider.requests[names.index("ideate@v6") + 1].messages[-1]
+    repair = provider.requests[names.index("ideate@v7") + 1].messages[-1]
     assert "insight_number [5] does not exist" in repair.parts[0].text  # type: ignore[union-attr]

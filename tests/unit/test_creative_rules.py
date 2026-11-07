@@ -430,3 +430,91 @@ def test_the_product_must_act_in_the_story(rules: CreativeRules) -> None:
     assert "only stands on a table in every shot fails" in rule.text
     assert "turning a pouch toward a cup" in rule.text
     assert "only stood on the tray" in rules.lessons["try_5"]
+
+
+# ----------------------------------------------------------------------------- fitting the limit
+
+
+def _stored(d: AdPromptDraft) -> AdPrompt:
+    return AdPrompt.from_draft(
+        d, duration_s=9, aspect_ratio="9:16", text="t", template_version="t@v3", bible_version=1
+    )
+
+
+def _with_props() -> AdPrompt:
+    desc = (
+        "a Saudi dallah: brass body pinched at the waist above a wide base, a tall crescent "
+        "beak spout, a domed lid with a pointed finial"
+    )
+    pot = {**BURNER, "name": "dallah", "transforms_into_product": False, "description": desc,
+           "shots": [1, 2, 3, 4]}  # fmt: skip
+    tray = {**pot, "name": "tray", "description": "a round hammered brass tray with a low rim"}
+    cup = {**pot, "name": "finjan", "description": "a small handleless white porcelain cup"}
+    return _stored(draft(good().model_dump()["shots"], references=[pot, tray, cup]))
+
+
+def test_a_prompt_within_the_limit_keeps_its_full_reference_lines() -> None:
+    from adsmith.domain.ad import fit_references  # noqa: PLC0415
+
+    p = _with_props()
+    refs = [("dallah", "library"), ("tray", "generated"), ("finjan", "library")]
+    text, dropped, compact = fit_references(
+        p, refs, duration_s=9, aspect_ratio="9:16", max_chars=5000, glosses={}
+    )
+    assert not compact and dropped == [] and "Image 2 is the dallah: a Saudi dallah" in text
+
+
+def test_over_the_limit_lines_are_shortened_before_anything_is_dropped() -> None:
+    from adsmith.domain.ad import fit_references  # noqa: PLC0415
+
+    p = _with_props()
+    refs = [("dallah", "library"), ("tray", "generated"), ("finjan", "library")]
+    glosses = {"dallah": "Saudi coffee pot", "finjan": "Arabic coffee cup"}
+    full = render_ad_prompt(p, duration_s=9, aspect_ratio="9:16", image_names=[r[0] for r in refs])
+    text, dropped, compact = fit_references(
+        p, refs, duration_s=9, aspect_ratio="9:16", max_chars=len(full) - 1, glosses=glosses
+    )
+    assert compact and dropped == []
+    line = text.splitlines()[1]
+    assert (
+        "Image 2 is the dallah (Saudi coffee pot). It appears in shots 1-4 and is never the "
+        "product." in line
+    )
+    assert "Image 3 is the tray. It appears" in line and "pinched at the waist" not in line
+
+
+def test_generated_props_are_dropped_before_library_props_and_users_never() -> None:
+    from adsmith.domain.ad import fit_references  # noqa: PLC0415
+
+    p = _with_props()
+    refs = [("dallah", "user"), ("tray", "generated"), ("finjan", "library")]
+    glosses = {"finjan": "Arabic coffee cup"}
+    only_user = render_ad_prompt(
+        p, duration_s=9, aspect_ratio="9:16", image_names=["dallah"], glosses=glosses
+    )
+    text, dropped, _ = fit_references(
+        p, refs, duration_s=9, aspect_ratio="9:16", max_chars=len(only_user), glosses=glosses
+    )
+    assert dropped == [1, 2]  # the generated tray first, then the library finjan; never the user's
+    assert "Image 2 is the dallah." in text and "finjan (Arabic" not in text
+
+
+def test_a_writer_typed_no_voice_line_is_not_repeated() -> None:
+    from adsmith.domain.ad import strip_no_voice  # noqa: PLC0415
+
+    d = good().model_copy(update={"audio": "warm oud resolves. No voice, no dialogue."})
+    text = render_ad_prompt(d, duration_s=9, aspect_ratio="9:16")
+    assert text.endswith("Audio: Warm oud resolves. No voice, no dialogue.")
+    assert text.count("No voice") == 1
+    assert strip_no_voice("Quiet tone. No voice-over, no dialogue.") == "Quiet tone."
+
+
+def test_modesty_is_dress_and_faces_may_be_shown(rules: CreativeRules) -> None:
+    from adsmith.agent.prompts import PromptLibrary  # noqa: PLC0415
+
+    lib = PromptLibrary(Settings().prompts_dir)
+    cont = lib.get("continuity").system
+    assert "a woman's face in a headscarf may be fully visible" in cont
+    assert 'no "eyes never shown"' in cont
+    assert "never crop a face for consistency" in lib.get("ideate").system
+    assert "her eyes are never shown" in rules.lessons["try_6"]

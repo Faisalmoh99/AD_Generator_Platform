@@ -9,11 +9,12 @@ entries that fit the brief's category and names, for each insight, the entry it 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from adsmith.domain.ad import AdPromptDraft
+from adsmith.domain.ad import AdPromptDraft, ref_key
 from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
 
@@ -37,6 +38,8 @@ class GulfObject(DomainModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{2,39}$")
     names: list[Annotated[str, Field(min_length=2, max_length=40)]] = Field(min_length=1)
     description: Annotated[str, Field(min_length=1, max_length=200)]
+    # 2-4 words for a compact References line, when the image carries the look.
+    gloss: Annotated[str, Field(min_length=1, max_length=40)] | None = None
     not_like: list[Annotated[str, Field(max_length=120)]] = Field(default_factory=list)
     # A verified reference photo of the Gulf version (path relative to the project root): used
     # at $0 instead of a generated prop image (user, 2026-11-07).
@@ -97,6 +100,15 @@ class CultureBank(DomainModel):
                 ):
                     best = (len(n), o)
         return best[1] if best else None
+
+    def glosses(self, names: Sequence[str]) -> dict[str, str]:
+        """Compact glosses for the props named (by ``ref_key``), from the Gulf objects."""
+        out: dict[str, str] = {}
+        for n in names:
+            obj = self.object_for(n)
+            if obj is not None and obj.gloss:
+                out[ref_key(n)] = obj.gloss
+        return out
 
     def objects_block(self) -> str:
         if not self.objects:

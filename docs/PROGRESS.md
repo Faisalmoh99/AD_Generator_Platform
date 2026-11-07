@@ -1175,3 +1175,22 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
     (`AdPrompt.identity`) so the props re-render keeps it.
   - Judge rule `product_active` (11 rules) + lesson `try_5`.
 - **Tests**: 823 passed, 2 skipped (+7).
+
+## Dates planning run + fitting the limit, faces (2026-11-07)
+
+- **Run (approved, paid)**: `run_01M6T075QBXT7VV9EW7K5V4MNC`, «اعلان لتمر فاخر», $0.628 (no
+  image cost: dallah and finjan from the library). Pick «الاختبار الصامت» (8.00). The prompt came
+  out at 2,893 characters, over the 2,500 limit (library props were never dropped), and repeated
+  "No voice, no dialogue".
+- **Fixes (user, code only)**:
+  - `fit_references`: over the limit, every prop line is first shortened to its name and a 2-4
+    word gloss (`gloss` on the Gulf objects); only if still over, generated props are dropped
+    last-first, then library props, each a warning; a user's images are never dropped.
+  - `strip_no_voice`: a writer-typed "No voice, no dialogue" is removed before code adds it.
+  - The props log says which props come from the library and which are generated.
+  - Faces: no rule forbade a woman's face. The concept's risk note («ظهور وجه الجدّة يجب أن يبقى
+    جزئيًا … لتفادي مشاكل ثبات الوجه»), the storyboard ("no eyes or full face"), the bible ("her
+    eyes are never shown") and the director ("as the bible requires") passed it down. `continuity`
+    v6 and `ideate` v7 now say modesty is dress, a woman's face in a headscarf may be fully
+    visible, and faces are never cropped for consistency in one generation; lesson `try_6`.
+- **Tests**: 829 passed, 2 skipped (+6).

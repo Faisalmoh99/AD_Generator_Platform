@@ -165,11 +165,11 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
     state = await orch.run_until_blocked(run.id, stop_before=Stage.PROPS)
     assert state.generation is not None
     g0 = state.generation
-    # Room for the first prop's References line only.
+    # Room for the first prop's COMPACT References line only: compacting alone is not enough.
     limit = len(
         render_ad_prompt(
             g0.prompt, duration_s=g0.prompt.duration_s, aspect_ratio=g0.aspect_ratio,
-            image_names=["brass tray"],
+            image_names=["brass tray"], glosses={},
         )
     )  # fmt: skip
 
@@ -180,7 +180,23 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
     state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
     assert [r.name for r in state.reference_images] == ["brass tray"]
     assert state.generation is not None and len(state.generation.prompt.text) <= limit
-    assert any("the coffee cup image is dropped" in n for n in notes(orch, state.id))
+    logged = notes(orch, state.id)
+    assert any("shortened to its name and a gloss" in n for n in logged)
+    assert any("the coffee cup image (generated) is dropped" in n for n in logged)
+    assert "Image 2 is the brass tray. It appears in shots 1, 4" in state.generation.prompt.text
+
+
+async def test_the_log_says_which_props_come_from_the_library(tmp_path: Path) -> None:
+    orch, state = await to_estimate(tmp_path)
+    assert "Props: reference images to generate: brass tray, coffee cup" in notes(orch, state.id)
+    (tmp_path / "lib").mkdir()
+    rt = _library_runtime(tmp_path / "lib", (240, 240, 235))
+    orch2 = Orchestrator(rt)
+    run = orch2.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state2 = await orch2.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
+    assert "Props: reference images from the library: coffee cup; to generate: brass tray" in notes(
+        orch2, state2.id
+    )
 
 
 async def test_a_prop_that_does_not_earn_an_image_stays_text_only(tmp_path: Path) -> None:
