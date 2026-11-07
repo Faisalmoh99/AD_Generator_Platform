@@ -7,6 +7,12 @@
 # use (how an ad can stand on it: a turn, a gesture, a payoff) · categories (product categories
 # it fits; "any" fits every product) · pitfalls (what an ad must not do with it).
 
+# Pitfalls for every ad, whatever the entry (Saudi hospitality and respect).
+general_pitfalls = [
+  "a host never ignores or delays a guest at the door: a ringing bell is answered, the guest is never kept waiting (ignoring it reads as rude, not as self-care)",
+  "no beat shows anyone neglecting a guest, an elder or a parent, even for a moment",
+]
+
 # Words that put a brief in a category (matched in the brief's English category and product, and
 # in the raw request, which may be Arabic).
 [aliases]
@@ -68,7 +74,7 @@ text_ar = "تبخير البيت قبل وصول الضيوف"
 meaning_en = "The host lights the burner minutes before guests arrive, so the scent welcomes them before anyone speaks: generosity begins with the senses."
 use = "a turn: the guest knows they were expected because the house already smells of welcome"
 categories = ["perfume", "incense"]
-pitfalls = ["no open flame near curtains or children", "the scent is a welcome, not a show of wealth"]
+pitfalls = ["no open flame near curtains or children", "the scent is a welcome, not a show of wealth", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "bakhoor_farewell"
@@ -78,7 +84,7 @@ text_ar = "تبخير الضيف قبل انصرافه"
 meaning_en = "At the end of a gathering the burner is passed to the guests, who perfume their ghutra and sleeves: an honour, and a graceful sign that the visit is ending."
 use = "a payoff: the guest leaves carrying the host's scent; the product continues the gesture outside the house"
 categories = ["perfume", "incense"]
-pitfalls = ["the elder is dignified, never a caricature", "no rushing the guest out: it is an honour, not an eviction"]
+pitfalls = ["the elder is dignified, never a caricature", "no rushing the guest out: it is an honour, not an eviction", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "after_oud_no_sitting"
@@ -88,7 +94,7 @@ text_ar = "بعد العود ما فيه قعود"
 meaning_en = "Once the incense has been passed round, nobody stays: the scent closes the visit without a word being said."
 use = "a hook or a turn: a gathering ends with scent instead of words; the product as the polite last word"
 categories = ["perfume", "incense"]
-pitfalls = ["never shown as rudeness to the guest", "the proverb is spoken in the culture, not written on screen"]
+pitfalls = ["never shown as rudeness to the guest", "the proverb is spoken in the culture, not written on screen", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "thobe_censing"
@@ -156,7 +162,7 @@ text_ar = "تقديم القهوة باليمين وبدء الصب بالكبي
 meaning_en = "Coffee is poured and served with the right hand, starting with the eldest or the most honoured guest: an order of respect everyone in the room reads."
 use = "a turn: who is served first tells the story without a word"
 categories = ["coffee", "dates"]
-pitfalls = ["the pourer stands, the cup is filled only a little", "never the left hand"]
+pitfalls = ["the pourer stands, the cup is filled only a little", "never the left hand", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "shake_the_cup"
@@ -166,7 +172,7 @@ text_ar = "هزّ الفنجان"
 meaning_en = "A guest shakes the small cup gently to say 'enough'; until then the host keeps pouring. A silent language every Saudi knows."
 use = "a hook or a payoff: the shake that ends (or refuses to end) the pouring"
 categories = ["coffee"]
-pitfalls = ["the cup is a small handleless finjan, filled a third"]
+pitfalls = ["the cup is a small handleless finjan, filled a third", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "four_cups"
@@ -196,7 +202,7 @@ text_ar = "الدلة على النار"
 meaning_en = "A dallah kept warm means the door is open: whoever comes will be served. It is the symbol of a generous house."
 use = "a promise: the warm dallah waiting for someone who has not arrived yet"
 categories = ["coffee"]
-pitfalls = ["a brass or steel dallah with its beak spout, not a European coffee pot"]
+pitfalls = ["a brass or steel dallah with its beak spout, not a European coffee pot", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "mortar_call"
@@ -225,7 +231,7 @@ text_ar = "الضيف ما يُسأل عن حاجته ثلاثة أيام"
 meaning_en = "By old custom a guest is hosted for three days before being asked why they came: hospitality is given before anything is asked."
 use = "a value: giving first, asking never"
 categories = ["coffee", "dates", "any"]
-pitfalls = ["not literal: a value, never a long scene of a stay"]
+pitfalls = ["not literal: a value, never a long scene of a stay", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "house_is_yours"
@@ -234,7 +240,7 @@ text_ar = "البيت بيتك"
 meaning_en = "'The house is yours': the host's sentence that hands the guest the freedom of the home."
 use = "a payoff line for the end card or a gesture that says it"
 categories = ["any"]
-pitfalls = []
+pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "the_majlis"
@@ -243,7 +249,7 @@ text_ar = "المجلس"
 meaning_en = "The sitting room for guests: cushions along the walls, the host serving, the order of seats showing respect. Where a family meets the outside world."
 use = "the one location of an ad whose story is about welcome and respect"
 categories = ["any"]
-pitfalls = ["the majlis as a place of meaning, not a museum set of trays and lanterns"]
+pitfalls = ["the majlis as a place of meaning, not a museum set of trays and lanterns", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "kashta"
@@ -281,7 +287,7 @@ text_ar = "صحن التمر في المجلس"
 meaning_en = "A plate of dates is always ready in the majlis for whoever drops by: the house is prepared for a guest it has not met yet."
 use = "readiness: the plate is refilled before anyone asks"
 categories = ["dates"]
-pitfalls = []
+pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "eid_morning"
@@ -290,7 +296,7 @@ text_ar = "قهوة العيد وتمره"
 meaning_en = "On Eid morning families visit the elders first; coffee, dates and sweets wait for every visitor in new clothes."
 use = "a visit: the first door knocked on Eid morning is the grandparents'"
 categories = ["coffee", "dates", "perfume", "any"]
-pitfalls = ["Eid prayer shown with respect or not at all"]
+pitfalls = ["Eid prayer shown with respect or not at all", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "eidiya"
@@ -327,7 +333,7 @@ text_ar = "الوقوف للكبير"
 meaning_en = "When an elder enters, everyone in the majlis stands: respect is shown with the body before words."
 use = "a hook: a whole room stands, and we wait to see for whom"
 categories = ["any"]
-pitfalls = []
+pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "gift_unopened"

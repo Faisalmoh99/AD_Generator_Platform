@@ -67,10 +67,10 @@ def test_an_arabic_request_alone_finds_the_category(bank: CultureBank) -> None:
 def test_the_prompt_block_carries_meaning_use_and_pitfalls(bank: CultureBank) -> None:
     entry = bank.get("national_day")
     assert entry is not None
-    text = CultureBank.prompt_block([entry])
+    text = bank.prompt_block([entry])
     assert "«اليوم الوطني»" in text and "An ad can use it as:" in text
     assert "Never: the flag carries the shahada" in text
-    assert "anchor every insight to 'none'" in CultureBank.prompt_block([])
+    assert "anchor every insight to 'none'" in bank.prompt_block([])
 
 
 def test_an_old_insight_without_an_anchor_still_loads() -> None:
@@ -164,3 +164,13 @@ def test_code_puts_the_gulf_description_into_the_prompt(bank: CultureBank) -> No
     d = AdPromptDraft.model_validate(good().model_dump() | {"references": [pot]})
     out = with_gulf_objects(d, bank)
     assert "crescent beak spout" in out.references[0].description
+
+
+def test_hospitality_pitfalls_reach_every_prompt(bank: CultureBank) -> None:
+    assert any("ringing bell is answered" in p for p in bank.general_pitfalls)
+    for eid in ("bakhoor_before_guests", "coffee_right_hand", "dallah_on_the_fire", "the_majlis"):
+        entry = bank.get(eid)
+        assert entry is not None
+        assert any("never ignores or delays a guest" in p for p in entry.pitfalls), eid
+    text = bank.prompt_block([])
+    assert text.endswith("Never, in any ad: " + "; ".join(bank.general_pitfalls) + ".")

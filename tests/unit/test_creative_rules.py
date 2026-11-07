@@ -309,7 +309,7 @@ def test_multishot_needs_the_product_in_three_shots_and_two_second_turns(
 def test_emotion_on_turn_is_a_judged_rule_with_this_runs_lesson(rules: CreativeRules) -> None:
     assert "emotion_on_turn" in rules.judge_ids
     rule = next(r for r in rules.judge if r.id == "emotion_on_turn")
-    assert "face or the body" in rule.text and "Hands and a wrist alone fail" in rule.text
+    assert "the face shows the feeling" in rule.text and "hands and a wrist alone" in rule.text
     assert "hand and a wrist" in rules.lessons["try_3"]
     assert "emotion_on_turn" in rules.prompt_block()
 
@@ -382,3 +382,17 @@ def test_a_text_only_prop_has_no_references_line() -> None:
     assert "Image 2 is the dallah" in render_ad_prompt(
         d, duration_s=9, aspect_ratio="9:16", image_names=["dallah"]
     )
+
+
+def test_emotion_on_turn_needs_the_face_and_names_the_real_cliche(rules: CreativeRules) -> None:
+    rule = next(r for r in rules.judge if r.id == "emotion_on_turn")
+    assert "face, at least partly (profile or three-quarter is fine)" in rule.text
+    assert "'Face turned away', 'seen from behind'" in rule.text
+    assert "eyes closed, sniffing the wrist" in rule.text
+
+
+def test_a_host_never_neglects_a_guest(rules: CreativeRules) -> None:
+    rule = next(r for r in rules.judge if r.id == "culturally_gracious")
+    assert "a ringing bell is answered" in rule.text and "an elder" in rule.text
+    assert "she does not turn to the door" in rules.lessons["try_4"]
+    assert "culturally_gracious" in rules.prompt_block()

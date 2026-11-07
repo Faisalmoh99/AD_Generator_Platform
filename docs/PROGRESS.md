@@ -1145,3 +1145,16 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
   ADR-0026 addendum.
 - **Tests**: 813 passed, 2 skipped (+21 for the five fixes).
 - **Next**: re-run the women's perfume planning (same request and photo) to compare, after approval.
+
+## Re-run + gracious and face rules (2026-11-07)
+
+- **Re-run (approved, paid)**: `run_01M6SV0XZVPCFS6XA9HD7EE71M`, $0.725. Same hostess truth picked
+  («ثلاث ثوانٍ قبل الباب», 7.80); `emotion_on_turn` passed (breath, dropped shoulders); the
+  dallah image was rejected twice by the stricter check and dropped; the finjan stayed text only.
+- **Fixes (user, rules and culture bank only)**: judge rule `culturally_gracious` (no host
+  neglects a guest, an elder or a parent; a ringing bell is answered); `emotion_on_turn` refined
+  (the face at least partly visible and showing the feeling; "face turned away" or "seen from
+  behind" fails; the cliché is "eyes closed, sniffing the wrist"); lesson `try_4`;
+  `general_pitfalls` in the culture bank (shown first in every insight prompt) and the
+  hospitality pitfall on 12 hospitality entries. Judge text bound 400 → 600 characters.
+- **Tests**: 816 passed, 2 skipped (+3).

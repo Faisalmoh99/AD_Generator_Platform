@@ -58,7 +58,7 @@ class BannedWord(DomainModel):
 
 class JudgeRule(DomainModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,39}$")
-    text: Annotated[str, Field(min_length=1, max_length=400)]
+    text: Annotated[str, Field(min_length=1, max_length=600)]
 
 
 class CreativeRules(DomainModel):

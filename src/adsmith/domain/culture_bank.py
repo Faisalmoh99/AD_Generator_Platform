@@ -64,6 +64,7 @@ class CultureEntry(DomainModel):
 
 class CultureBank(DomainModel):
     aliases: dict[str, list[str]]
+    general_pitfalls: list[Annotated[str, Field(max_length=300)]] = Field(default_factory=list)
     objects: list[GulfObject] = Field(default_factory=list)
     entries: list[CultureEntry] = Field(min_length=1)
 
@@ -131,11 +132,17 @@ class CultureBank(DomainModel):
         general = [e for e in self.entries if "any" in e.categories and e not in own]
         return (own + general)[:limit]
 
-    @staticmethod
-    def prompt_block(entries: list[CultureEntry]) -> str:
+    def prompt_block(self, entries: list[CultureEntry]) -> str:
+        general = (
+            "Never, in any ad: " + "; ".join(self.general_pitfalls) + "."
+            if self.general_pitfalls
+            else ""
+        )
         if not entries:
-            return "(no entry fits this product: anchor every insight to 'none')"
-        lines = []
+            return "(no entry fits this product: anchor every insight to 'none')" + (
+                f"\n{general}" if general else ""
+            )
+        lines = [general] if general else []
         for e in entries:
             pit = f" Never: {'; '.join(e.pitfalls)}." if e.pitfalls else ""
             lines.append(

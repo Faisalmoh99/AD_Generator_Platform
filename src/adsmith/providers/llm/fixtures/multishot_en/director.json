@@ -46,6 +46,11 @@
           "rule_id": "emotion_on_turn",
           "passed": true,
           "note": "The insight is about the host's generosity; shot 3 shows the host lifting and offering the bottle to the guest's open palm: people carry the turn, not a spray demo."
+        },
+        {
+          "rule_id": "culturally_gracious",
+          "passed": true,
+          "note": "The host never keeps the last guest waiting: he turns back toward him and offers the bottle with both hands."
         }
       ],
       "changes": [],
