@@ -523,6 +523,13 @@ def test_modesty_is_dress_and_faces_may_be_shown(rules: CreativeRules) -> None:
     assert "her eyes are never shown" in rules.lessons["try_6"]
 
 
+def test_the_coffee_video_lesson_names_what_the_film_lost(rules: CreativeRules) -> None:
+    lesson = rules.lessons["try_7"]
+    for fact in ("face never showed", "the sip was cut", "handles", "second time"):
+        assert fact in lesson
+    assert "try_7" in rules.lessons_block()
+
+
 # ------------------------------------------------------------------------ the References budget
 
 
