@@ -20,6 +20,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from adsmith.domain.creative_rules import CreativeRules
 from adsmith.domain.culture import CultureLexicon
+from adsmith.domain.culture_bank import CultureBank
 from adsmith.domain.formats import FormatLibrary
 from adsmith.domain.rubric import Rubric
 from adsmith.domain.vocabulary import VocabLibrary
@@ -427,6 +428,13 @@ class Settings(BaseSettings):
         (config/creative_rules.toml, ADR-0026)."""
         with (self.config_dir / "creative_rules.toml").open("rb") as fh:
             return CreativeRules.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def culture_bank(self) -> CultureBank:
+        """Saudi rituals, proverbs, occasions and gestures for the insight stage
+        (config/culture_bank.toml, ADR-0026)."""
+        with (self.config_dir / "culture_bank.toml").open("rb") as fh:
+            return CultureBank.model_validate(tomllib.load(fh))
 
     @cached_property
     def culture(self) -> CultureLexicon:

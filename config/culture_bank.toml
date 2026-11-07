@@ -1,0 +1,310 @@
+# Saudi culture bank (ADR-0026, phase 4). DATA fed to the insight stage: rituals, proverbs,
+# occasions, gestures, objects and phrases that carry MEANING an ad can stand on (culture as
+# meaning, never as decoration). Each insight names the entry it stands on (culture_anchor) or
+# "none". Arabic is stored in logical order. TO BE REVIEWED BY THE USER before the first real run.
+#
+# Fields: id (snake_case) · kind · text_ar (as people say it) · meaning_en (what it means) ·
+# use (how an ad can stand on it: a turn, a gesture, a payoff) · categories (product categories
+# it fits; "any" fits every product) · pitfalls (what an ad must not do with it).
+
+# Words that put a brief in a category (matched in the brief's English category and product, and
+# in the raw request, which may be Arabic).
+[aliases]
+perfume = ["perfume", "fragrance", "scent", "oud", "eau de", "عطر", "عطور", "عود", "دهن"]
+incense = ["incense", "bakhoor", "bukhoor", "mabkhara", "بخور", "مبخرة", "دخون"]
+coffee = ["coffee", "qahwa", "espresso", "cardamom", "قهوة", "بن", "دلة", "محمصة"]
+dates = ["dates", "date fruit", "ruttab", "rutab", "sukkari", "ajwa", "khalas", "تمر", "تمور", "رطب", "عجوة", "سكري", "خلاص"]
+fashion = ["abaya", "thobe", "fashion", "clothing", "bisht", "عباية", "عبايات", "ثوب", "أزياء", "بشت"]
+food = ["food", "sweets", "chocolate", "pastry", "حلويات", "حلا", "شوكولاتة"]
+
+# ------------------------------------------------------------------- scent: oud, bakhoor, perfume
+[[entries]]
+id = "bakhoor_before_guests"
+kind = "ritual"
+text_ar = "تبخير البيت قبل وصول الضيوف"
+meaning_en = "The host lights the burner minutes before guests arrive, so the scent welcomes them before anyone speaks: generosity begins with the senses."
+use = "a turn: the guest knows they were expected because the house already smells of welcome"
+categories = ["perfume", "incense"]
+pitfalls = ["no open flame near curtains or children", "the scent is a welcome, not a show of wealth"]
+
+[[entries]]
+id = "bakhoor_farewell"
+kind = "ritual"
+text_ar = "تبخير الضيف قبل انصرافه"
+meaning_en = "At the end of a gathering the burner is passed to the guests, who perfume their ghutra and sleeves: an honour, and a graceful sign that the visit is ending."
+use = "a payoff: the guest leaves carrying the host's scent; the product continues the gesture outside the house"
+categories = ["perfume", "incense"]
+pitfalls = ["the elder is dignified, never a caricature", "no rushing the guest out: it is an honour, not an eviction"]
+
+[[entries]]
+id = "after_oud_no_sitting"
+kind = "proverb"
+text_ar = "بعد العود ما فيه قعود"
+meaning_en = "Once the incense has been passed round, nobody stays: the scent closes the visit without a word being said."
+use = "a hook or a turn: a gathering ends with scent instead of words; the product as the polite last word"
+categories = ["perfume", "incense"]
+pitfalls = ["never shown as rudeness to the guest", "the proverb is spoken in the culture, not written on screen"]
+
+[[entries]]
+id = "thobe_censing"
+kind = "ritual"
+text_ar = "تبخير الثوب والشماغ قبل الخروج"
+meaning_en = "Before leaving for an occasion, a man holds the burner under his shemagh and sleeves for a quiet minute: preparing to honour the people he will meet."
+use = "a quiet minute before the door: the ritual compressed into one spray for a fast life"
+categories = ["perfume", "incense", "fashion"]
+pitfalls = ["Saudi thobe with a stiff collar, shemagh or ghutra with agal (see culture.toml)", "no smoke crossing the product"]
+
+[[entries]]
+id = "scent_arrives_first"
+kind = "phrase"
+text_ar = "ريحتك سبقتك"
+meaning_en = "People are recognised by their scent before they appear: a familiar perfume announces someone loved."
+use = "a hook: someone is recognised by scent alone, before they are seen"
+categories = ["perfume"]
+pitfalls = ["no romantic contact between unrelated men and women"]
+
+[[entries]]
+id = "oud_on_the_bisht"
+kind = "object"
+text_ar = "ريحة العود في بشت الأب"
+meaning_en = "A father's bisht or ghutra keeps his oud for years: children know him by it, and the scent becomes family memory."
+use = "memory: a son or daughter opens a wardrobe and the scent brings the father back"
+categories = ["perfume", "incense", "fashion"]
+pitfalls = ["grief only if handled with restraint", "the bisht is worn at occasions, not daily"]
+
+[[entries]]
+id = "perfume_never_refused"
+kind = "proverb"
+text_ar = "الطيب ما يُرد"
+meaning_en = "A gift of perfume is never refused: offering scent is offering respect, and accepting it honours the giver."
+use = "a gesture: perfume offered and accepted as the moment that seals a relationship"
+categories = ["perfume", "incense"]
+pitfalls = ["no religious text on screen", "the gift is offered with the right hand"]
+
+[[entries]]
+id = "grandmother_chest"
+kind = "object"
+text_ar = "مندوس الجدة"
+meaning_en = "The grandmother's wooden chest holds her oud, her perfume oils and her keepsakes; opening it releases the smell of the family's past."
+use = "a reveal: the chest opens and three generations meet in one scent"
+categories = ["perfume", "incense"]
+pitfalls = ["the grandmother is respected, not frail or comic", "women's hair covered when men are present"]
+
+[[entries]]
+id = "henna_night"
+kind = "occasion"
+text_ar = "ليلة الحناء"
+meaning_en = "Before the wedding, the bride's women relatives gather for henna, songs and perfume: the bride's last night as a daughter of the house."
+use = "a women-only gathering where scent and henna mark a change of life"
+categories = ["perfume", "fashion"]
+pitfalls = ["women only, modest framing, no men present", "no faces of real brides"]
+
+# --------------------------------------------------------------------- coffee and hospitality
+[[entries]]
+id = "coffee_right_hand"
+kind = "gesture"
+text_ar = "تقديم القهوة باليمين وبدء الصب بالكبير"
+meaning_en = "Coffee is poured and served with the right hand, starting with the eldest or the most honoured guest: an order of respect everyone in the room reads."
+use = "a turn: who is served first tells the story without a word"
+categories = ["coffee", "dates"]
+pitfalls = ["the pourer stands, the cup is filled only a little", "never the left hand"]
+
+[[entries]]
+id = "shake_the_cup"
+kind = "gesture"
+text_ar = "هزّ الفنجان"
+meaning_en = "A guest shakes the small cup gently to say 'enough'; until then the host keeps pouring. A silent language every Saudi knows."
+use = "a hook or a payoff: the shake that ends (or refuses to end) the pouring"
+categories = ["coffee"]
+pitfalls = ["the cup is a small handleless finjan, filled a third"]
+
+[[entries]]
+id = "four_cups"
+kind = "proverb"
+text_ar = "الهيف والضيف والكيف والسيف"
+meaning_en = "The traditional cups: the host tastes the first (al-haif) to show it is good, then the guest's cup, the cup of pleasure, and the cup of the sword (standing by the host)."
+use = "structure: an ad told in cups, each cup one beat"
+categories = ["coffee"]
+pitfalls = ["no weapons shown with the 'sword' cup: it is a pledge, not a fight"]
+
+[[entries]]
+id = "dates_with_coffee"
+kind = "ritual"
+text_ar = "التمر مع القهوة"
+meaning_en = "Saudi coffee is always served with dates: the bitterness of cardamom coffee and the sweetness of the date belong together, and offering both is the welcome."
+use = "a pairing: the product completes the other half of the welcome"
+categories = ["coffee", "dates"]
+pitfalls = ["Saudi coffee is light gold with cardamom, not dark espresso"]
+
+[[entries]]
+id = "dallah_on_the_fire"
+kind = "object"
+text_ar = "الدلة على النار"
+meaning_en = "A dallah kept warm means the door is open: whoever comes will be served. It is the symbol of a generous house."
+use = "a promise: the warm dallah waiting for someone who has not arrived yet"
+categories = ["coffee"]
+pitfalls = ["a brass or steel dallah with its beak spout, not a European coffee pot"]
+
+[[entries]]
+id = "mortar_call"
+kind = "ritual"
+text_ar = "صوت النجر"
+meaning_en = "The rhythm of coffee beans pounded in the brass mortar (najr) carried across the camp and the neighbourhood: an invitation to come and drink."
+use = "a sound hook: the rhythm calls people before the picture shows them"
+categories = ["coffee"]
+pitfalls = ["the rhythm is a musical, joyful beat, not noise"]
+
+[[entries]]
+id = "morning_coffee"
+kind = "ritual"
+text_ar = "قهوة الصباح قبل الكلام"
+meaning_en = "In many homes the day starts with the first cup of coffee and dates, often with the parents, before anyone talks about work."
+use = "a quiet beginning: the minute that belongs to the family before the day takes over"
+categories = ["coffee", "dates"]
+pitfalls = []
+
+[[entries]]
+id = "guest_three_days"
+kind = "proverb"
+text_ar = "الضيف ما يُسأل عن حاجته ثلاثة أيام"
+meaning_en = "By old custom a guest is hosted for three days before being asked why they came: hospitality is given before anything is asked."
+use = "a value: giving first, asking never"
+categories = ["coffee", "dates", "any"]
+pitfalls = ["not literal: a value, never a long scene of a stay"]
+
+[[entries]]
+id = "house_is_yours"
+kind = "phrase"
+text_ar = "البيت بيتك"
+meaning_en = "'The house is yours': the host's sentence that hands the guest the freedom of the home."
+use = "a payoff line for the end card or a gesture that says it"
+categories = ["any"]
+pitfalls = []
+
+[[entries]]
+id = "the_majlis"
+kind = "object"
+text_ar = "المجلس"
+meaning_en = "The sitting room for guests: cushions along the walls, the host serving, the order of seats showing respect. Where a family meets the outside world."
+use = "the one location of an ad whose story is about welcome and respect"
+categories = ["any"]
+pitfalls = ["the majlis as a place of meaning, not a museum set of trays and lanterns"]
+
+[[entries]]
+id = "kashta"
+kind = "occasion"
+text_ar = "الكشتة"
+meaning_en = "A winter outing to the desert or the wadi with family or friends: a small fire, coffee on the coals, the cold evening shared."
+use = "a setting of togetherness for coffee or dates"
+categories = ["coffee", "dates"]
+pitfalls = ["the desert is a cliché for perfume ads: use it only for coffee or dates", "no driving stunts"]
+
+# --------------------------------------------------------------------- dates and the seasons
+[[entries]]
+id = "ruttab_season"
+kind = "occasion"
+text_ar = "موسم الرطب والصرام"
+meaning_en = "At the end of summer the dates ripen and are harvested; families share the first rutab of the season with neighbours and relatives."
+use = "a first: the first rutab of the season given before it is eaten"
+categories = ["dates"]
+pitfalls = ["the farmer is proud and skilled, never poor or tired"]
+
+[[entries]]
+id = "iftar_date"
+kind = "ritual"
+text_ar = "الإفطار على تمرة"
+meaning_en = "In Ramadan the fast is broken at sunset with a date and water: the first taste after a long day, shared by the whole family at the same second."
+use = "a held moment: everyone waiting for the call, the date as the first thing"
+categories = ["dates", "coffee"]
+pitfalls = ["no eating or drinking before sunset", "the call to prayer is heard, never cut or used as a jingle"]
+
+[[entries]]
+id = "dates_bowl_majlis"
+kind = "object"
+text_ar = "صحن التمر في المجلس"
+meaning_en = "A plate of dates is always ready in the majlis for whoever drops by: the house is prepared for a guest it has not met yet."
+use = "readiness: the plate is refilled before anyone asks"
+categories = ["dates"]
+pitfalls = []
+
+[[entries]]
+id = "eid_morning"
+kind = "occasion"
+text_ar = "قهوة العيد وتمره"
+meaning_en = "On Eid morning families visit the elders first; coffee, dates and sweets wait for every visitor in new clothes."
+use = "a visit: the first door knocked on Eid morning is the grandparents'"
+categories = ["coffee", "dates", "perfume", "any"]
+pitfalls = ["Eid prayer shown with respect or not at all"]
+
+[[entries]]
+id = "eidiya"
+kind = "gesture"
+text_ar = "العيدية"
+meaning_en = "Elders give children money or small gifts on Eid; the child's joy is the elder's."
+use = "a gift between generations"
+categories = ["any"]
+pitfalls = ["money is folded and given, never fanned out"]
+
+[[entries]]
+id = "ghabga"
+kind = "occasion"
+text_ar = "الغبقة"
+meaning_en = "A late-night Ramadan gathering of family and friends after the evening prayers, with food, coffee and long conversation."
+use = "a night setting of togetherness in Ramadan"
+categories = ["coffee", "dates", "food"]
+pitfalls = ["no daytime eating in Ramadan scenes"]
+
+# --------------------------------------------------------------------- respect and family
+[[entries]]
+id = "kiss_the_head"
+kind = "gesture"
+text_ar = "تقبيل رأس الوالد"
+meaning_en = "Kissing a parent's or elder's head (or forehead) is the deepest everyday sign of respect and gratitude."
+use = "a payoff gesture: thanks without words"
+categories = ["any"]
+pitfalls = ["between family members only", "no mixed-gender contact outside the family"]
+
+[[entries]]
+id = "stand_for_the_elder"
+kind = "gesture"
+text_ar = "الوقوف للكبير"
+meaning_en = "When an elder enters, everyone in the majlis stands: respect is shown with the body before words."
+use = "a hook: a whole room stands, and we wait to see for whom"
+categories = ["any"]
+pitfalls = []
+
+[[entries]]
+id = "gift_unopened"
+kind = "gesture"
+text_ar = "الهدية ما تنفتح قدام صاحبها"
+meaning_en = "A gift is not opened in front of the giver: what matters is the gesture, and the surprise is kept for later."
+use = "a turn: the gift is opened later, alone, and its meaning lands then"
+categories = ["perfume", "dates", "any"]
+pitfalls = []
+
+[[entries]]
+id = "return_from_travel"
+kind = "ritual"
+text_ar = "السلام على الوالدين أول الرجوع من السفر"
+meaning_en = "Back from a trip, the first visit is to the parents, with a gift (perfume, dates, sweets) before anything else."
+use = "an order of priorities: the parents first, the gift in hand"
+categories = ["perfume", "dates", "coffee", "any"]
+pitfalls = []
+
+[[entries]]
+id = "milka"
+kind = "occasion"
+text_ar = "الملكة"
+meaning_en = "The marriage contract ceremony: families meet, perfume and gifts are exchanged, the groom's family is welcomed."
+use = "two families becoming one, marked by scent and gifts"
+categories = ["perfume", "dates", "fashion"]
+pitfalls = ["no bride's face", "men and women in separate gatherings"]
+
+[[entries]]
+id = "national_day"
+kind = "occasion"
+text_ar = "اليوم الوطني"
+meaning_en = "On 23 September the country wears green; families celebrate together with the ardah and gatherings."
+use = "a shared pride, if the idea is about belonging"
+categories = ["any"]
+pitfalls = ["the flag carries the shahada: never on a product, on the ground or on packaging", "no political messages"]

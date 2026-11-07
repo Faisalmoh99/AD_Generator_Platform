@@ -5,6 +5,7 @@ from __future__ import annotations
 from adsmith.config import FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept, InsightSet
+from adsmith.domain.culture_bank import CultureBank
 from adsmith.domain.enums import Language, Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.formats import AdFormat
@@ -73,14 +74,22 @@ def concept_block(c: Concept, number: int | None = None) -> str:
     return "\n".join(lines)
 
 
-def insights_block(insights: InsightSet | None) -> str:
+def insights_block(insights: InsightSet | None, bank: CultureBank | None = None) -> str:
     if insights is None or not insights.insights:
         return "(none were given: find the human truth yourself and state it in insight)"
-    return "\n".join(
-        f"{i}. {x.statement}\n   tension: {x.tension}\n   evidence: {x.evidence}\n"
-        f"   for a Gulf viewer: {x.gulf_meaning}"
-        for i, x in enumerate(insights.insights, 1)
-    )
+    lines = []
+    for i, x in enumerate(insights.insights, 1):
+        line = (
+            f"{i}. {x.statement}\n   tension: {x.tension}\n   evidence: {x.evidence}\n"
+            f"   for a Gulf viewer: {x.gulf_meaning}"
+        )
+        entry = bank.get(x.culture_anchor) if bank is not None else None
+        if entry is not None:
+            line += f"\n   culture anchor: «{entry.text_ar}»: {entry.meaning_en}"
+            if entry.pitfalls:
+                line += f" Never: {'; '.join(entry.pitfalls)}."
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def decision(run_id: str, stage: Stage, summary: str, **payload: object) -> AgentEvent:

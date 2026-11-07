@@ -112,3 +112,19 @@ system must write that prompt itself.
   renumbering does not count as a new prompt.
 - The gate shows every image in order with its source, cost and check (CLI, studio thumbnails,
   production pack, written after PROPS too). Zero-key runs make mock props.
+
+## Addendum (2026-11-07): the Saudi culture bank (phase 4)
+
+- `config/culture_bank.toml` (32 entries, to be reviewed by the user before the first real run):
+  rituals, proverbs, occasions, gestures, objects and phrases, each with its Arabic text (logical
+  order), its meaning, how an ad can stand on it, the product categories it fits and its
+  pitfalls; `[aliases]` maps English and Arabic words to categories (perfume, incense, coffee,
+  dates, fashion, food). `domain/culture_bank.py`, `Settings.culture_bank`.
+- The brief's category is matched in its English category and product and in the raw request;
+  Arabic aliases match only at a word start (with و/ف/ب/ل/ك and ال), because «عود» (oud) occurs
+  inside «سعودية» (Saudi) and turned a coffee brief into a perfume one (caught by a test).
+- `insight` v2 receives up to 12 entries (the brief's categories first, then those for any
+  product) and names, per insight, the entry it stands on (`culture_anchor`) or "none"; code
+  refuses an id it was not given (→ repair). Stored `Insight` has `culture_anchor = "none"` by
+  default, so earlier runs load. Ideate sees the anchor's Arabic text, meaning and pitfalls under
+  each insight with no template change; the pack lists the anchors.

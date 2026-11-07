@@ -101,6 +101,16 @@ class InsightDraft(DomainModel):
     gulf_meaning: UserText = Field(
         description="What it means for a Saudi/Gulf viewer specifically, beyond decoration."
     )
+    culture_anchor: str = Field(
+        max_length=40,
+        description="The id of the culture-bank entry this truth stands on, or 'none'.",
+    )
+
+
+class Insight(InsightDraft):
+    """A stored insight; runs made before the culture bank have no anchor."""
+
+    culture_anchor: str = Field(default="none", max_length=40)
 
 
 class InsightSetDraft(DomainModel):
@@ -111,8 +121,15 @@ class InsightSetDraft(DomainModel):
     insights: list[InsightDraft] = Field(min_length=3, max_length=5)
 
 
-class InsightSet(InsightSetDraft):
-    pass
+class InsightSet(DomainModel):
+    """Stored insights (the draft's shape, with defaults for runs made before ADR-0026)."""
+
+    category_cliches: list[Cliche] = Field(min_length=3, max_length=5)
+    insights: list[Insight] = Field(min_length=3, max_length=5)
+
+    @classmethod
+    def from_draft(cls, d: InsightSetDraft) -> InsightSet:
+        return cls.model_validate(d.model_dump())
 
 
 class Story(DomainModel):

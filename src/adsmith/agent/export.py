@@ -176,7 +176,11 @@ def pack_markdown(state: RunState) -> str:
         ]
     if state.insights:
         out += ["## Insights", ""]
-        out += [f"{i}. {x.statement}" for i, x in enumerate(state.insights.insights, 1)]
+        out += [
+            f"{i}. {x.statement}"
+            + (f" (culture anchor: {x.culture_anchor})" if x.culture_anchor != "none" else "")
+            for i, x in enumerate(state.insights.insights, 1)
+        ]
         out.append("")
     concept = state.concepts.selected if state.concepts else None
     if concept:

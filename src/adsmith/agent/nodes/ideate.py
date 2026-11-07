@@ -28,7 +28,7 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
     cliches = list(found.category_cliches) if found else []
     prompt = ctx.prompts.get("ideate").render(
         brief=brief_block(state.brief),
-        insights=insights_block(found),
+        insights=insights_block(found, ctx.settings.culture_bank),
         cliches="\n".join(f"- {c}" for c in cliches) or "(none listed)",
         user_language=language_name(state.brief.language),
         duration=f"{state.brief.duration_s:g}",

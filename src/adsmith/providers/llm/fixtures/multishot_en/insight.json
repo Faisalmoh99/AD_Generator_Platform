@@ -11,19 +11,22 @@
           "statement": "In the Gulf, the scent you leave a guest with is the last word of your hospitality.",
           "tension": "Hospitality is judged at the end of the visit, not the start.",
           "evidence": "The host passes the bakhoor and the perfume to guests before they leave.",
-          "gulf_meaning": "Perfuming a parting guest is a ritual of generosity and respect in the majlis."
+          "gulf_meaning": "Perfuming a parting guest is a ritual of generosity and respect in the majlis.",
+          "culture_anchor": "bakhoor_farewell"
         },
         {
           "statement": "A scent is worn like a time of day: some people carry the golden hour with them.",
           "tension": "People want to keep a feeling that passes in minutes.",
           "evidence": "Everyone stops to watch the late sun through the mashrabiya.",
-          "gulf_meaning": "The light after asr has a warmth Gulf homes are built around."
+          "gulf_meaning": "The light after asr has a warmth Gulf homes are built around.",
+          "culture_anchor": "none"
         },
         {
           "statement": "The last thing you put on before the biggest night is the one you remember.",
           "tension": "The groom is surrounded by people, but the last gesture is intimate.",
           "evidence": "Friends fixing the bisht in the corridor before the zaffa.",
-          "gulf_meaning": "Gulf weddings are prepared by brothers and friends, hand by hand."
+          "gulf_meaning": "Gulf weddings are prepared by brothers and friends, hand by hand.",
+          "culture_anchor": "thobe_censing"
         }
       ]
     }

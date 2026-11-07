@@ -1073,3 +1073,17 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
 - **Tests**: 773 passed, 2 skipped (+8: `tests/integration/test_props.py` and the moved image counts).
 - **Deviation**: none. The zero-key multishot runs now make two mock props, so the critic sees two
   more images (13 → 15; 14 → 16 with a user prop) and the request carries 4 image URLs.
+
+## Phase 4: the Saudi culture bank → insight v2 (2026-11-07)
+
+- **Built**: `config/culture_bank.toml` (32 entries: bakhoor before guests and at farewell, «بعد
+  العود ما فيه قعود», censing the thobe, «ريحتك سبقتك», coffee with the right hand, shaking the
+  finjan, the four cups, dates with coffee, the dallah, the mortar's call, rutab season, iftar on
+  a date, Eid morning, the majlis, kashta, ghabga, milka, henna night, kissing the parent's head,
+  standing for the elder, the gift not opened in front of the giver, the National Day, ...), with
+  meaning, use, categories and pitfalls; `domain/culture_bank.py`; `insight` v2 with
+  `culture_anchor` (checked by code); stored `Insight` with a default; anchors under each insight
+  for ideate; anchors in the pack. Fixtures: `insight.json` in all four scenarios.
+- **Fix found by a test**: Arabic aliases match at word starts only («عود» inside «سعودية»).
+- **Tests**: 782 passed, 2 skipped (+9: `tests/unit/test_culture_bank.py`).
+- **For the user**: review the Arabic of `config/culture_bank.toml` before the first real run.
