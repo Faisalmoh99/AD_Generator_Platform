@@ -284,6 +284,8 @@ class ConceptSet(DomainModel):
     selection_rationale: str | None = Field(default=None, max_length=1000)
     # The candidates ideate wrote that code did not keep (ADR-0028), in full, for the record.
     candidates_dropped: list[Concept] = Field(default_factory=list, max_length=MAX_CANDIDATES)
+    # The raw device sketches ideate wrote before the concepts (ADR-0029), for the record.
+    device_sketches: list[str] = Field(default_factory=list, max_length=10)
 
     @classmethod
     def from_draft(cls, draft: ConceptSetDraft) -> ConceptSet:
@@ -306,6 +308,7 @@ class ConceptSet(DomainModel):
             concepts=[draft.concepts[i].to_concept() for i in idx],
             category_cliches=cliches,
             candidates_dropped=[draft.concepts[i].to_concept() for i in rest],
+            device_sketches=list(draft.device_sketches),
         )
 
     @model_validator(mode="after")

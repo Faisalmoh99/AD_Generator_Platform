@@ -128,6 +128,7 @@ async def test_ideate_is_shown_the_devices_examples_and_shot_count(tmp_path: Pat
     assert "Why it works:" in asked
     assert "every shot_sketch has exactly 4 lines" in asked
     assert state.concepts is not None
+    assert len(state.concepts.device_sketches) == 6  # stored for the decisions report
     assert [c.device_id for c in state.concepts.concepts] == [
         "invisible_made_visible",
         "room_responds",

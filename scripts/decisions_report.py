@@ -59,6 +59,9 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
                     rubric[n] = ", ".join(f"{k} {s[k]}" for k in RUBRIC_KEYS if k in s) + (
                         " · CLICHÉ −penalty" if s.get("uses_category_cliche") else ""
                     )
+        if st.concepts.device_sketches:
+            out.append("\n2a. DEVICE SKETCHES (written before the concepts)")
+            out += [f"  - {x}" for x in st.concepts.device_sketches]
         out.append(f"\n2. CONCEPTS (judge weighted score; * = picked by {st.concepts.selected_by})")
         for n, c in enumerate(st.concepts.concepts, 1):
             mark = "*" if c.id == st.concepts.selected_id else " "
@@ -67,6 +70,9 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
                 out.append(f"      rubric: {rubric[n]}")
             if c.story is not None and c.hook is not None and c.product_role is not None:
                 out.append(f"      insight {c.insight_number}: {c.insight}")
+                if c.device_id:
+                    dev = f"{c.device_id} (shot {c.device_shot})"
+                    out.append(f"      device {dev}: {c.device_image}")
                 out.append(f"      turn: {c.story.turn} · hook opens: {c.hook.question}")
                 out.append(f"      product: {c.product_role.role} · culture: {c.cultural_meaning}")
         if st.concepts.selection_rationale:
@@ -74,7 +80,8 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
         for c in st.concepts.candidates_dropped:
             turn = c.story.turn if c.story else ""
             out.append(f"    dropped [{c.axis or '-'}] {c.title} · {c.logline} · turn: {turn} · "
-                       f"motifs: {', '.join(c.motifs)}")  # fmt: skip
+                       f"motifs: {', '.join(c.motifs)} · device {c.device_id or '-'}: "
+                       f"{c.device_image or '-'}")  # fmt: skip
 
     # 2b. the whole-ad generation (multishot, ADR-0023 / ADR-0025)
     g = st.generation
@@ -110,7 +117,7 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
                 out.append(
                     f"   {'*' if i == sel.brand_index else ' '} brand «{b.text}» {b.weighted}"
                 )
-        out.append("  FINAL PROMPT (sent to the model):")
+        out.append(f"  FINAL PROMPT (sent to the model, {len(g.prompt_text.split())} words):")
         out += [f"    {line}" for line in g.prompt_text.splitlines()]
         for e in events:
             stages = {Stage.DIRECTOR, Stage.PROPS, Stage.COPY, Stage.ESTIMATE, Stage.QA}
