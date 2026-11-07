@@ -110,18 +110,34 @@ competitor's product-review ad and a Seedance reference showed why: their produc
   two seconds, execution warnings. **Audio** is normalised to −16 LUFS.
 
 `uv run python scripts/decisions_report.py <run>` prints what to judge at the gate: insights with
-their anchors, the three concepts with six scores, the director's verdicts, the images in order and
+their anchors, the device sketches, the three concepts with seven scores, the director's verdicts, the images in order and
 the final prompt with its price.
 
-**First ad made by the system alone (2026-11-07):** Saudi specialty coffee, concept, Seedance
-prompt, brand «أول رشفة» and tagline «كنت أسقيه… فسقاني» all written by the pipeline, one
-Seedance 2.0 Fast generation on Kie (6 s, 480p, 70.2 credits = $0.351):
-[video](docs/media/coffee_system_alone.mp4), [side by side with a competitor's ad](docs/media/coffee_vs_halai.png).
-The critic passed the hard gate (0.72) and warned on the creative score (5.8 / 10).
+### Results: three real ads (2026-11-06/07)
 
-Status: built and tested on zero keys and a fake Higgsfield server. The two human-directed
-generations above are the only real ones so far; the new planning stages have not yet run on real
-models.
+Each is one Seedance 2.0 generation of the whole ad from a real product photo, plus an Arabic end
+card added by code. The critic's hard gate (product identity, no text, brand safety, alcohol look)
+decides pass or flag; its creative score (1-10) only warns. **The rubric changed between them**:
+the perfume ad was scored on seven criteria including `visual_magic` (ADR-0029); the other two on
+the earlier six, so the creative scores are close but not strictly comparable.
+
+| Ad | Who wrote what | Run | Model | Video cost | Critic: hard gate · creative |
+|---|---|---|---|---|---|
+| [Men's perfume](docs/media/perfume_system_alone.mp4) · [vs Halai](docs/media/perfume_vs_halai.png) | **The system alone**: concept with a visual device (a trail of golden scent from a returning son to his mother), prompt, brand «عايد», tagline «يوصل قبلك، ويبقى بعدك» | `run_01M6VG1SG2R0E76X3HXMEVPPNP` | Seedance 2.0 Fast on Kie, 6 s 480p | $0.351 (70.2 credits) + $1.07 Anthropic (+ $0.44 for a first attempt that failed at the writer) | pass 0.72 · 6.85 (visual magic 7) |
+| [Saudi specialty coffee](docs/media/coffee_system_alone.mp4) · [vs Halai](docs/media/coffee_vs_halai.png) | **The system alone**: concept (the father who judged his son's coffee pours for him), prompt, brand «أول رشفة», tagline «كنت أسقيه… فسقاني» | `run_01M6TBP6H8VTXWGXFJR6XPVQ7M` | Seedance 2.0 Fast on Kie, 6 s 480p | $0.351 (70.2 credits) + $1.73 Anthropic | pass 0.72 · 5.8 (six criteria) |
+| [Oud perfume, try 2](docs/media/try2_human_prompt.mp4) | **A human** wrote the Seedance prompt (incense smoke condenses into the bottle) and the end card «عتبة — بعد العود… يمشي معك»; the system ran the generation, critic and assembly; the morph was slowed by a human retime | `run_01M6RYP42HB0GBFFYBAY09SGCW` | Seedance 2.0 on Higgsfield, 9 s 720p | $2.44 (console) | flagged 0.62 · 6.0 (six criteria) |
+
+What the critic and our own frame-by-frame review found, honestly:
+- **Perfume (system alone):** the device rendered large and readable and ended on the mother's
+  smiling face; but an unheld bottle floated in mid-air in shot 2, and the payoff showed hands
+  only (the reunion is never shown). Both are now checked by code or a judged rule (ADR-0029
+  part 5).
+- **Coffee (system alone):** the elder-honours-the-younger turn reads, but the father's face never
+  appears at his own turn, the finjans have handles, a second dallah appears, and the opening is a
+  generic hold-up of the product. All four are now caught before the spend gate (ADR-0029 part 4).
+- **Try 2 (human prompt):** the strongest idea of the three, with a visual device written by a
+  human; the 2.5 s smoke-to-bottle morph rendered in about 0.5 s and the burner floated, so the
+  critic flagged it. It is the bar the creative layer is built to reach without a human.
 
 ## The brain
 
