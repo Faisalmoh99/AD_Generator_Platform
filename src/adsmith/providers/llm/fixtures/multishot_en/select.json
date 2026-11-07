@@ -10,6 +10,7 @@
           "originality": 9,
           "cultural_meaning": 10,
           "product_role": 8,
+          "visual_magic": 10,
           "uses_category_cliche": false,
           "rationale": "Strongest idea: a real truth with a turn; risk: the turn must read in one beat."
         },
@@ -21,6 +22,7 @@
           "originality": 7,
           "cultural_meaning": 6,
           "product_role": 8,
+          "visual_magic": 5,
           "uses_category_cliche": false,
           "rationale": "Beautiful material, but the idea is thin and has no turn."
         },
@@ -32,6 +34,7 @@
           "originality": 7,
           "cultural_meaning": 9,
           "product_role": 7,
+          "visual_magic": 7,
           "uses_category_cliche": false,
           "rationale": "A clear human truth and a warm story; risk: busier staging."
         }

@@ -58,3 +58,21 @@ divergent-then-convergent prompting, arXiv 2512.23601).
 + Diversity spreads over how ideas are shown, not only who is in them.
 − A larger ideate schema and more repair reasons; the multishot fixture gained a fourth shot line.
 − "Likely" and "unproven" are our judgement until a generation proves them.
+
+## Addendum (part 2): visual_magic, a judge read in a shuffled order
+
+- `config/rubric.toml` gains `visual_magic` (one image only a moving picture can show, new to the
+  category, carrying the turn) at .20; insight .15, hook .15, story_turn .15, originality .10,
+  cultural_meaning .10, product_role .15 (the user's weights). On the old six criteria the critic
+  scored the human try 2 6.0 and the system's coffee film 5.8: a device was worth almost nothing.
+- `ConceptScore` and the critic's `AdRubricScores` gain the score; a stored verdict's scores are
+  `StoredAdRubricScores` (visual_magic optional), so verdicts made before load.
+- Judge bias (position, length, style over substance: Zheng et al. 2023; Ye et al. ICLR 2025;
+  LitBench, EACL 2026): `select` shows the concepts in an order shuffled by a seed from the run id
+  (`judge_order`; the same order on resume) and maps every score back (`back_to_concepts`); each
+  concept opens with its one image before the prose (`concept_block(image_first=True)`); select v7
+  says length and polish are not quality. Scripted runs keep the given order unless
+  `ADSMITH_SELECT_SHUFFLE_SCRIPTED` is on, so the demo fixtures keep their winners.
+- The novelty penalty also applies to a recent winner's device (`is_reused`).
+- `qa_ad_critic` v4 looks for the concept's device on screen: visible, at least half the frame,
+  held for most of its shot, carrying the turn.

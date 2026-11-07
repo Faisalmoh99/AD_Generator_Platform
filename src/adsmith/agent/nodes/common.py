@@ -44,9 +44,14 @@ def brief_block(b: Brief) -> str:
     return "\n".join(lines)
 
 
-def concept_block(c: Concept, number: int | None = None) -> str:
+def concept_block(c: Concept, number: int | None = None, *, image_first: bool = False) -> str:
+    """``image_first`` (the judge, ADR-0029): the device's one image right after the title, before
+    the prose, so a compact spec is read before the richest writing."""
     head = f"Concept {number}: {c.title}" if number else f"Concept: {c.title}"
-    lines = [head, f"Logline: {c.logline}", f"Insight: {c.insight}"]
+    lines = [head]
+    if image_first and c.device_id:
+        lines.append(f"The image ({c.device_id}): {c.device_image or '-'}")
+    lines += [f"Logline: {c.logline}", f"Insight: {c.insight}"]
     if c.story is not None:
         lines.append(
             f"Story: setup: {c.story.setup} | turn: {c.story.turn} | payoff: {c.story.payoff}"
@@ -59,7 +64,7 @@ def concept_block(c: Concept, number: int | None = None) -> str:
         )
     else:
         lines.append(f"Visual hook: {c.visual_hook}")
-    if c.device_id:
+    if c.device_id and not image_first:
         at = f", shot {c.device_shot}" if c.device_shot else ""
         lines.append(f"Visual device ({c.device_id}{at}): {c.device_image or '-'}")
     if c.product_role is not None:

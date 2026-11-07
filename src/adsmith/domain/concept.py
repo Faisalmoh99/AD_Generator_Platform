@@ -331,8 +331,9 @@ class ConceptSet(DomainModel):
 
 
 # ------------------------------------------------------------------------------ auto-selection
-# The judge scores the six rubric criteria (config/rubric.toml, ADR-0024); code weights them and
-# subtracts the cliché penalty, then picks the winner. Ease of execution is not a criterion.
+# The judge scores the seven rubric criteria (config/rubric.toml, ADR-0024, ADR-0029); code
+# weights them and subtracts the cliché penalty, then picks the winner. Ease of execution is not
+# a criterion.
 Score = Annotated[int, Field(ge=1, le=10)]
 
 
@@ -344,6 +345,7 @@ class ConceptScore(DomainModel):
     originality: Score
     cultural_meaning: Score
     product_role: Score
+    visual_magic: Score
     uses_category_cliche: bool = Field(
         description="True if the concept's core idea or main visual relies on a category cliché "
         "(listed or otherwise)."

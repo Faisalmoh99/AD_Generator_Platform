@@ -18,6 +18,7 @@ RUBRIC_KEYS: tuple[str, ...] = (
     "originality",
     "cultural_meaning",
     "product_role",
+    "visual_magic",
 )
 
 

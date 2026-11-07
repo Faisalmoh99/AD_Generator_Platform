@@ -36,6 +36,7 @@ from adsmith.domain.qa import (
     QAIssue,
     QAVerdict,
     QAVerdictDraft,
+    StoredAdRubricScores,
 )
 from adsmith.domain.run import RunState
 from adsmith.domain.scene import Scene
@@ -386,7 +387,7 @@ class LLMCritic:
                 shots=d.shots,
                 execution=d.execution,
                 duration_s=round(duration_s, 3),
-                rubric=d.rubric,
+                rubric=StoredAdRubricScores(**d.rubric.model_dump()),
                 creative_note=d.creative_note,
                 creative_score=rubric.weighted(d.rubric.model_dump()),
                 creative_threshold=creative_threshold,

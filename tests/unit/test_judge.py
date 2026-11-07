@@ -32,14 +32,15 @@ def rubric(settings: Settings) -> Rubric:
     return settings.rubric
 
 
-def test_the_rubric_is_the_six_agreed_criteria_with_the_agreed_weights(rubric: Rubric) -> None:
-    assert rubric.weights == {
-        "insight": 0.20,
-        "hook": 0.20,
+def test_the_rubric_is_the_seven_agreed_criteria_with_the_agreed_weights(rubric: Rubric) -> None:
+    assert rubric.weights == {  # ADR-0029 (user, 2026-11-07): visual_magic .20
+        "insight": 0.15,
+        "hook": 0.15,
         "story_turn": 0.15,
-        "originality": 0.15,
-        "cultural_meaning": 0.15,
+        "originality": 0.10,
+        "cultural_meaning": 0.10,
         "product_role": 0.15,
+        "visual_magic": 0.20,
     }
     assert sum(rubric.weights.values()) == pytest.approx(1.0)
     assert "producibility" not in rubric.weights  # ease of execution is not a criterion
@@ -75,6 +76,11 @@ def test_a_flagged_cliche_loses_even_with_better_scores(rubric: Rubric) -> None:
 def test_insight_and_hook_carry_the_most_weight(rubric: Rubric) -> None:
     j = judge(score(1, insight=9, hook=9), score(2, originality=9, product_role=9), score(3))
     assert j.winner(rubric).concept_number == 1
+
+
+def test_one_image_only_video_can_show_outweighs_any_single_criterion(rubric: Rubric) -> None:
+    j = judge(score(1, insight=9), score(2, visual_magic=9), score(3, cultural_meaning=9))
+    assert j.winner(rubric).concept_number == 2
 
 
 def test_tie_breaks_on_insight_then_hook_then_lowest_number(rubric: Rubric) -> None:

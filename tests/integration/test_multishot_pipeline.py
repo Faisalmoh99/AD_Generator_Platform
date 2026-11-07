@@ -355,7 +355,15 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
     c = v["concepts"][0]
     assert (
         set(c["rubric"])
-        == {"insight", "hook", "story_turn", "originality", "cultural_meaning", "product_role"}
+        == {
+            "insight",
+            "hook",
+            "story_turn",
+            "originality",
+            "cultural_meaning",
+            "product_role",
+            "visual_magic",
+        }
         and c["product_role"]["role"] == "catalyst"
     )
     assert v["insights"] and v["insights"][0]["statement"].startswith("In the Gulf")

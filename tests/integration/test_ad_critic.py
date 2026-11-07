@@ -64,6 +64,7 @@ def verdict_output(**over: Any) -> dict[str, Any]:
             "originality": 7,
             "cultural_meaning": 9,
             "product_role": 8,
+            "visual_magic": 7,
         },
         "creative_note": "The hand-over lands as a real gesture; the opening is a little slow.",
     }
@@ -85,7 +86,7 @@ def events(rt: Any, run_id: str) -> list[Any]:
 
 
 def ad_verdict(**over: Any) -> AdVerdict:
-    from adsmith.domain.qa import QAVerdict, QAVerdictDraft  # noqa: PLC0415
+    from adsmith.domain.qa import QAVerdict, QAVerdictDraft, StoredAdRubricScores  # noqa: PLC0415
 
     d = AdVerdictDraft.model_validate(verdict_output(**over))
     core = QAVerdictDraft.model_validate(d.model_dump(include=set(QAVerdictDraft.model_fields)))
@@ -94,7 +95,7 @@ def ad_verdict(**over: Any) -> AdVerdict:
     return AdVerdict(
         **base.model_dump(),
         shots=d.shots,
-        rubric=d.rubric,
+        rubric=StoredAdRubricScores(**d.rubric.model_dump()),
         creative_note=d.creative_note,
         creative_score=rubric.weighted(d.rubric.model_dump()),
         creative_threshold=6.5,
@@ -128,6 +129,7 @@ def test_a_low_creative_score_is_a_warning_never_a_failure() -> None:
             "originality": 4,
             "cultural_meaning": 3,
             "product_role": 6,
+            "visual_magic": 3,
         },
         shots=[
             {"number": 1, "delivered": False, "note": "no hook"},
@@ -135,7 +137,7 @@ def test_a_low_creative_score_is_a_warning_never_a_failure() -> None:
         ],
     )
     assert v.passed and not v.creative_pass
-    assert v.creative_score == pytest.approx(0.2 * 3 + 0.2 * 4 + 0.15 * (3 + 4 + 3 + 6))
+    assert v.creative_score == pytest.approx(0.15 * (3 + 4 + 3 + 6) + 0.10 * (4 + 3) + 0.20 * 3)
     assert v.warnings == [
         f"creative score {v.creative_score:.2f} < 6.5",
         "planned beat not delivered in shot(s) [1]",
@@ -169,7 +171,7 @@ async def test_the_critic_sees_the_photo_and_three_frames_per_shot(tmp_path: Pat
     assert g is not None and isinstance(g.qa, AdVerdict) and g.status == "approved"
     # the photo + 2 generated props + 3 hook frames + 3 shots × 3 frames + the key shot × 8
     assert g.qa.frames_inspected == 23
-    assert g.qa.creative_score == pytest.approx(7.80)  # .2·8 + .2·7 + .15·(8+7+9+8)
+    assert g.qa.creative_score == pytest.approx(7.65)  # .15·(8+7+8+8) + .10·(7+9) + .20·7
     req = next(r for r in rt._provider_override.requests if r.template.startswith("qa_ad_critic@"))
     texts = [p.text for p in req.messages[0].parts if hasattr(p, "text")]
     assert texts[0] == "Image 0: the real product photo (the reference)"
@@ -187,6 +189,7 @@ async def test_a_low_creative_score_warns_and_spends_nothing_more(tmp_path: Path
             "originality": 4,
             "cultural_meaning": 3,
             "product_role": 6,
+            "visual_magic": 3,
         }
     )
     orch, rt = llm_run(tmp_path, [{"output": low}])
@@ -244,6 +247,6 @@ async def test_inconsistent_verdicts_go_through_schema_repair(tmp_path: Path) ->
             e
             for e in events(rt, run.id)
             if e.type in {EventType.LLM_CALL, EventType.LLM_REPAIR}
-            and e.payload.get("template") == "qa_ad_critic@v3"
+            and e.payload.get("template") == "qa_ad_critic@v4"
         ]
         assert len(repairs) == 2  # one invalid answer, one repaired

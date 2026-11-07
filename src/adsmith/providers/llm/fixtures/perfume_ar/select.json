@@ -10,6 +10,7 @@
           "originality": 7,
           "cultural_meaning": 8,
           "product_role": 7,
+          "visual_magic": 7,
           "uses_category_cliche": false,
           "rationale": "فكرة قوية بحقيقة إنسانية ولحظة تحول؛ الخطر: أن تُقرأ اللحظة في ثانية واحدة."
         },
@@ -21,6 +22,7 @@
           "originality": 6,
           "cultural_meaning": 5,
           "product_role": 7,
+          "visual_magic": 4,
           "uses_category_cliche": false,
           "rationale": "مواد جميلة لكن الفكرة رقيقة ولا تحول فيها."
         },
@@ -32,6 +34,7 @@
           "originality": 9,
           "cultural_meaning": 9,
           "product_role": 8,
+          "visual_magic": 9,
           "uses_category_cliche": false,
           "rationale": "أقوى الثلاثة: البطل غائب وأثره هو القصة، والثقافة هي المعنى؛ الخطر: أن يُقرأ الغياب بوضوح."
         }

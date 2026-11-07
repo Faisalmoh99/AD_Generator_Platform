@@ -434,6 +434,9 @@ class Settings(BaseSettings):
     # Record scripted (zero-key) winners in the motif ledger too; off so demo fixtures never
     # count as recent ideas (tests turn it on).
     motif_ledger_scripted: bool = False
+    # The judge sees the concepts in a per-run shuffled order (position bias, ADR-0029). Real runs
+    # always shuffle; scripted runs keep the given order unless this is on (tests turn it on).
+    select_shuffle_scripted: bool = False
     # Use the culture bank's verified Gulf-object photos for matching props (ADR-0026).
     props_library: bool = True
     # Whole-ad audio is normalised to this loudness at assembly (EBU R128, -1.5 dBTP); both

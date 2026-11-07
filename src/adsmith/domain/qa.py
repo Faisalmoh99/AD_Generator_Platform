@@ -186,6 +186,13 @@ class AdRubricScores(DomainModel):
     originality: RubricScore
     cultural_meaning: RubricScore
     product_role: RubricScore
+    visual_magic: RubricScore
+
+
+class StoredAdRubricScores(AdRubricScores):
+    """A stored verdict's scores: verdicts made before ADR-0029 have no visual_magic."""
+
+    visual_magic: RubricScore | None = None  # type: ignore[assignment]
 
 
 class AdExecutionChecks(DomainModel):
@@ -237,7 +244,7 @@ class AdVerdict(QAVerdict):
     duration_s: float = Field(default=0.0, ge=0)
     observed_cuts: list[float] = Field(default_factory=list)
     windows_from: Literal["planned", "observed"] = "planned"
-    rubric: AdRubricScores
+    rubric: StoredAdRubricScores
     creative_note: str = Field(max_length=600)
     creative_score: float = Field(ge=0, le=10)  # computed by code from the rubric weights
     creative_threshold: float = Field(ge=0, le=10)
