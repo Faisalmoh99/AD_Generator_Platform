@@ -51,6 +51,11 @@
           "rule_id": "culturally_gracious",
           "passed": true,
           "note": "The host never keeps the last guest waiting: he turns back toward him and offers the bottle with both hands."
+        },
+        {
+          "rule_id": "product_active",
+          "passed": true,
+          "note": "In shot 3 the host lifts the bottle and offers it to the guest: the product is handed over, and the hand-over is the turn."
         }
       ],
       "changes": [],

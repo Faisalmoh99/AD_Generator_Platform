@@ -234,3 +234,55 @@ async def test_a_generic_version_of_a_gulf_object_fails_the_check(tmp_path: Path
     image_prompt = orch.rt.props_runner(state)._prompt(state, cup, "")
     assert "a small handleless Arabic coffee cup (finjan)" in image_prompt
     assert "The traditional Gulf version, never a mug or any cup with a handle" in image_prompt
+
+
+def _library_runtime(tmp_path: Path, photo_colour: tuple[int, int, int], **over: Any) -> Any:
+    """A runtime whose culture bank points the finjan at a temp 'verified' photo."""
+    s = settings(tmp_path, props_library=True, **over)
+    cup = tmp_path / "finjan.png"
+    Image.new("RGB", (256, 256), photo_colour).save(cup)
+    bank = s.culture_bank
+    objects = [
+        o.model_copy(update={"ref_image": str(cup)}) if o.id == "finjan" else o
+        for o in bank.objects
+    ]
+    s.__dict__["culture_bank"] = bank.model_copy(update={"objects": objects})
+    return runtime(s)
+
+
+async def test_a_library_photo_replaces_the_generated_prop(tmp_path: Path) -> None:
+    rt = _library_runtime(tmp_path, (240, 240, 235), qa_mode="llm")
+    llm = rt._provider_override
+    assert isinstance(llm, ScriptedLLMProvider)
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
+    refs = {r.name: r for r in state.reference_images}
+    assert refs["coffee cup"].source == "library" and refs["coffee cup"].cost_usd == 0.0
+    assert refs["brass tray"].source == "generated"
+    assert image_calls(orch, state) == 1  # only the tray is generated
+    assert any(
+        n.startswith("Props: prop from library: the coffee cup") for n in notes(orch, state.id)
+    )
+    checks = llm.calls_for("qa_prop_ref")
+    # A second run reuses the cached check: no new call for the library photo.
+    run2 = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state2 = await orch.run_until_blocked(run2.id, stop_before=Stage.ESTIMATE)
+    assert {r.name: r.check for r in state2.reference_images}["coffee cup"] == (
+        "library, cached pass"
+    )
+    # Only the generated tray is checked again; the library photo's check is cached.
+    assert llm.calls_for("qa_prop_ref") == checks + 1
+
+
+async def test_a_rejected_library_photo_falls_back_to_generation(tmp_path: Path) -> None:
+    rt = _library_runtime(tmp_path, (90, 60, 40), qa_mode="llm")
+    llm = rt._provider_override
+    assert isinstance(llm, ScriptedLLMProvider)
+    bad = {**LOOKS_LIKE_THE_PRODUCT, "revised_prompt_hint": ""}
+    llm.override("qa_prop_ref", [{"when": "library photo", "output": bad}, {"output": PASS}])
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
+    assert {r.name: r.source for r in state.reference_images}["coffee cup"] == "generated"
+    assert any("library photo of the coffee cup was rejected" in n for n in notes(orch, state.id))

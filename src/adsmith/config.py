@@ -372,6 +372,8 @@ class Settings(BaseSettings):
     music_max_usd: float = Field(default=0.15, ge=0)
     # Prop reference images of a whole-ad prompt (ADR-0026): the run's cap on their images.
     props_max_usd: float = Field(default=0.20, ge=0)
+    # Use the culture bank's verified Gulf-object photos for matching props (ADR-0026).
+    props_library: bool = True
     # Whole-ad audio is normalised to this loudness at assembly (EBU R128, -1.5 dBTP); both
     # competitor references measured -15.5 and -16.3 LUFS, our tries -26 and -19.7 (ADR-0026).
     loudness_target_lufs: float | None = Field(default=-16.0, ge=-40, le=-5)

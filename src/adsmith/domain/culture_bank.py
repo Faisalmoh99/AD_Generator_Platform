@@ -38,6 +38,9 @@ class GulfObject(DomainModel):
     names: list[Annotated[str, Field(min_length=2, max_length=40)]] = Field(min_length=1)
     description: Annotated[str, Field(min_length=1, max_length=200)]
     not_like: list[Annotated[str, Field(max_length=120)]] = Field(default_factory=list)
+    # A verified reference photo of the Gulf version (path relative to the project root): used
+    # at $0 instead of a generated prop image (user, 2026-11-07).
+    ref_image: str | None = Field(default=None, pattern=r"\.(png|jpe?g|webp)$")
 
     def matches(self, prop_name: str) -> bool:
         """A prop named 'brass dallah' or 'the coffee pot' is this object (whole-word match)."""

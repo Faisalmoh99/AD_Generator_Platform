@@ -123,7 +123,7 @@ class PropReference(DomainModel):
 
     artifact: Artifact
     name: str = Field(min_length=1, max_length=120)  # the file name or the reference's name
-    source: Literal["user", "generated"] = "user"
+    source: Literal["user", "generated", "library"] = "user"
     cost_usd: float = Field(default=0.0, ge=0)
     check: str = Field(default="", max_length=200)  # the vision check's result, for the gate
 

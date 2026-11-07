@@ -396,3 +396,37 @@ def test_a_host_never_neglects_a_guest(rules: CreativeRules) -> None:
     assert "a ringing bell is answered" in rule.text and "an elder" in rule.text
     assert "she does not turn to the door" in rules.lessons["try_4"]
     assert "culturally_gracious" in rules.prompt_block()
+
+
+@pytest.mark.parametrize(
+    ("product", "clause"),
+    [
+        ("Women's perfume: a rounded pink glass bottle", "cap and materials identical"),
+        ("Specialty coffee: an upright kraft pouch with a zip seal", "seal and emblem identical"),
+        ("Premium dates: a dark wooden box with a velvet lining", "wood, lining and emblem"),
+        ("A ceramic honey jar", "colours, materials and emblem identical"),
+    ],
+)
+def test_the_identity_clause_follows_the_product_type(product: str, clause: str) -> None:
+    from adsmith.domain.ad import AdPrompt, identity_line  # noqa: PLC0415
+
+    ident = identity_line(product)
+    assert clause in ident
+    d = good()
+    text = render_ad_prompt(d, duration_s=9, aspect_ratio="9:16", identity=ident)
+    assert f"Image 1 is the product: {ident}." in text
+    # A stored prompt keeps its clause, so a later re-render (the props stage) keeps it too.
+    stored = AdPrompt.from_draft(
+        d, duration_s=9, aspect_ratio="9:16", text=text, template_version="t@v3",
+        bible_version=1, identity=ident,
+    )  # fmt: skip
+    assert f"Image 1 is the product: {ident}." in render_ad_prompt(
+        stored, duration_s=9, aspect_ratio="9:16"
+    )
+
+
+def test_the_product_must_act_in_the_story(rules: CreativeRules) -> None:
+    rule = next(r for r in rules.judge if r.id == "product_active")
+    assert "only stands on a table in every shot fails" in rule.text
+    assert "turning a pouch toward a cup" in rule.text
+    assert "only stood on the tray" in rules.lessons["try_5"]

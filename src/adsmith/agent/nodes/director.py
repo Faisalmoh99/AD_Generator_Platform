@@ -74,6 +74,7 @@ def rewrite_problems(
     duration_s: int,
     max_chars: int,
     image_names: Sequence[str],
+    identity: str | None = None,
 ) -> list[str]:
     """Code checks on a director rewrite. Timecodes are checked against the rewrite's OWN
     durations (the director may re-time), within the grammar: same shot count as the storyboard,
@@ -99,7 +100,9 @@ def rewrite_problems(
     if not 1 <= d.key_shot <= len(d.shots):
         problems.append(f"key_shot {d.key_shot} is not one of the shots 1..{len(d.shots)}")
     problems += creative_rule_problems(d, rules)
-    text = render_ad_prompt(d, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names)
+    text = render_ad_prompt(
+        d, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names, identity=identity
+    )
     if len(text) > max_chars:
         problems.append(
             f"the rendered prompt is {len(text)} characters; the limit is {max_chars}: shorten it"
@@ -186,6 +189,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     images = await product_photo_parts(state, ctx)
     ids = rules.judge_ids
     bank = ctx.settings.culture_bank
+    ident = g.prompt.identity or None  # the writer's clause by product type
 
     def convert_for(round_no: int) -> Callable[[DirectorReviewDraft], DirectorRound]:
         def convert(d: DirectorReviewDraft) -> DirectorRound:
@@ -196,13 +200,14 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
                 problems.append(f"give exactly one verdict per rule id {ids}; got {got}")
             problems += rewrite_problems(
                 d.rewrite, sb=sb, grammar=grammar, rules=rules, duration_s=duration,
-                max_chars=ep.max_prompt_chars, image_names=names,
+                max_chars=ep.max_prompt_chars, image_names=names, identity=ident,
             )  # fmt: skip
             if problems:
                 raise ValueError("; ".join(problems))
             text = render_ad_prompt(
-                d.rewrite, duration_s=duration, aspect_ratio=g.aspect_ratio, image_names=names
-            )
+                d.rewrite, duration_s=duration, aspect_ratio=g.aspect_ratio, image_names=names,
+                identity=ident,
+            )  # fmt: skip
             retimed = any(
                 abs(a - b) > RETIME_EPS_S
                 for a, b in zip(durations_of(d.rewrite), durations_of(writer), strict=True)
@@ -243,7 +248,11 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
                 else "(first round)"
             ),
             prompt_text=render_ad_prompt(
-                current, duration_s=duration, aspect_ratio=g.aspect_ratio, image_names=names
+                current,
+                duration_s=duration,
+                aspect_ratio=g.aspect_ratio,
+                image_names=names,
+                identity=ident,
             ),
             draft_json=current.model_dump_json(indent=1),
             duration=str(duration),
@@ -286,8 +295,9 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     outcome: Outcome = "fallback" if not rounds else ("rewritten" if final is not None else "kept")
     chosen = final if final is not None else writer
     after = render_ad_prompt(
-        chosen, duration_s=duration, aspect_ratio=g.aspect_ratio, image_names=names
-    )
+        chosen, duration_s=duration, aspect_ratio=g.aspect_ratio, image_names=names,
+        identity=ident,
+    )  # fmt: skip
     retimed = final is not None and any(
         abs(a - b) > RETIME_EPS_S
         for a, b in zip(durations_of(final), durations_of(writer), strict=True)
@@ -310,6 +320,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         new_prompt = AdPrompt.from_draft(
             final, duration_s=duration, aspect_ratio=g.aspect_ratio, text=after,
             template_version=template.template_id, bible_version=g.prompt.bible_version,
+            identity=ident or "",
         )  # fmt: skip
         new_gen: AdGeneration = g.model_copy(deep=True, update={"prompt": new_prompt})
         deltas.append(SetAdGeneration(generation=new_gen))

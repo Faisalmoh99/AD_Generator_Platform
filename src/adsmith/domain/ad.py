@@ -151,6 +151,7 @@ class AdPrompt(DomainModel):
     lighting: str = Field(default="", max_length=200)
     references: list[ReferenceSpec] = Field(default_factory=list, max_length=3)
     key_shot: int | None = Field(default=None, ge=1, le=12)
+    identity: str = Field(default="", max_length=120)  # the identity clause by product type
     duration_s: int = Field(ge=1, le=60)
     aspect_ratio: str
     text: str = Field(min_length=1)  # rendered by code: what the model receives
@@ -167,9 +168,11 @@ class AdPrompt(DomainModel):
         text: str,
         template_version: str,
         bible_version: int,
+        identity: str = "",
     ) -> AdPrompt:
         return cls(
             **d.model_dump(),
+            identity=identity,
             duration_s=duration_s,
             aspect_ratio=aspect_ratio,
             text=text,
@@ -228,7 +231,30 @@ def _capital(text: str) -> str:
     return t[0].upper() + t[1:] if t else t
 
 
-def references_block(p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = ()) -> str:
+BOTTLE_IDENTITY = "keep its shape, colours, cap and materials identical"
+_IDENTITY_BY_KIND: tuple[tuple[str, str], ...] = (
+    (r"\b(bottle|flacon|flask|vial|atomi[sz]er|perfume|spray)\b", BOTTLE_IDENTITY),
+    (
+        r"\b(pouch|bag|sachet|packet|pack)\b",
+        "keep its shape, colour, material, seal and emblem identical",
+    ),
+    (r"\b(box|case|chest|crate|casket)\b", "keep its shape, wood, lining and emblem identical"),
+)
+GENERIC_IDENTITY = "keep its shape, colours, materials and emblem identical"
+
+
+def identity_line(product_text: str) -> str:
+    """The product-identity clause by product type, from the bible's product spec (name and
+    form): a coffee pouch has no cap, a date box has wood and lining (user, 2026-11-07)."""
+    for pattern, line in _IDENTITY_BY_KIND:
+        if re.search(pattern, product_text, re.IGNORECASE):
+            return line
+    return GENERIC_IDENTITY
+
+
+def references_block(
+    p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = (), identity: str | None = None
+) -> str:
     """The References line, built by code. Image 1 is always the product photo; image k+2 is
     ``image_names[k]`` (the run's reference images, in the order they are sent). A reference
     with no image gets no line: it stays in the shot text only (user rule, 2026-11-07), except a
@@ -236,7 +262,8 @@ def references_block(p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = (
     names is still declared a prop, so numbering and roles never drift."""
     keys = [ref_key(n) for n in image_names]
     seen = [s.number for s in p.shots if s.shows_product]
-    parts = ["Image 1 is the product: keep its shape, colours, cap and materials identical."]
+    ident = identity or (p.identity if isinstance(p, AdPrompt) and p.identity else BOTTLE_IDENTITY)
+    parts = [f"Image 1 is the product: {ident}."]
     if seen:
         parts.append(f"It appears in {shots_phrase(seen)}.")
     used: set[int] = set()
@@ -278,6 +305,7 @@ def render_ad_prompt(
     duration_s: int,
     aspect_ratio: str,
     image_names: Sequence[str] = (),
+    identity: str | None = None,
 ) -> str:
     """The text the video model receives, in the structure of the human-directed prompt of try 2
     (header, References, Look, numbered shots, Audio). The identity, no-text and no-voice rules
@@ -287,7 +315,7 @@ def render_ad_prompt(
     lines = [
         f"{_article(duration_s)} {duration_s}-second {orient} {aspect_ratio} film in "
         f"{len(p.shots)} shots, hard cuts between shots.",
-        references_block(p, image_names),
+        references_block(p, image_names, identity),
         f"Look: {look}",
     ]
     for s in p.shots:
@@ -341,6 +369,7 @@ def ad_prompt_problems(
     duration_s: int,
     max_chars: int,
     image_names: Sequence[str] = (),
+    identity: str | None = None,
 ) -> list[str]:
     """Deterministic checks (→ schema repair): the timecodes (against the storyboard's scene
     durations when given), the key shot exists, and the rendered text fits the model's limit."""
@@ -348,8 +377,9 @@ def ad_prompt_problems(
     if not 1 <= draft.key_shot <= len(draft.shots):
         problems.append(f"key_shot {draft.key_shot} is not one of the shots 1..{len(draft.shots)}")
     text = render_ad_prompt(
-        draft, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names
-    )
+        draft, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names,
+        identity=identity,
+    )  # fmt: skip
     if len(text) > max_chars:
         problems.append(
             f"the rendered prompt is {len(text)} characters; the limit is {max_chars}: shorten "

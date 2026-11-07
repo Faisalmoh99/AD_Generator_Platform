@@ -30,9 +30,11 @@ from adsmith.agent.media import MediaGateway, PreparedJob
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AccountLockedError, AgentError
-from adsmith.config import Settings
+from adsmith.config import PROJECT_ROOT, Settings
 from adsmith.domain.ad import ReferenceSpec, earns_image, ref_key, render_ad_prompt
+from adsmith.domain.base import stable_hash
 from adsmith.domain.budget import BudgetRefusedError
+from adsmith.domain.culture_bank import GulfObject
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.generation import Artifact
@@ -142,6 +144,14 @@ class PropsRunner:
         )
 
     async def _one(self, run_id: str, spec: ReferenceSpec, index: int) -> str:
+        obj = self.settings.culture_bank.object_for(spec.name)
+        library = self.settings.props_library and obj is not None and obj.ref_image
+        if (
+            library
+            and obj is not None
+            and await self._from_library(run_id, spec, obj) == "accepted"
+        ):
+            return "accepted"
         hint = ""
         for attempt in range(1, TRIES_PER_PROP + 1):
             state = self.storage.runs.load(run_id)
@@ -252,6 +262,64 @@ class PropsRunner:
             return "accepted"
         self.storage.cache.evict(prepared.request.cache_key())
         return verdict if verdict is not None else "failed"
+
+    async def _from_library(self, run_id: str, spec: ReferenceSpec, obj: GulfObject) -> str:
+        """A verified photo of the Gulf object, at $0 instead of a generated image. It is checked
+        once (the cheap vision check) and the pass is cached by the photo's hash, so later runs
+        use it without a call. A missing or rejected photo falls back to generation."""
+        assert obj.ref_image is not None
+        path = Path(obj.ref_image)
+        path = path if path.is_absolute() else PROJECT_ROOT / path
+        if not path.is_file():
+            self._note(run_id, f"Props: library photo for the {spec.name} is missing ({path}); "
+                       "generating one instead", level="warn")  # fmt: skip
+            return "missing"
+        art = self.storage.artifacts.ingest(path, kind="image", provider="library")
+        key = stable_hash("props.library.check.v1", [art.sha256, obj.id, obj.description])
+        cached = self.storage.cache.get(key) is not None
+        calls: list[LLMCallRecord] = []
+        verdict: QAVerdict | None = None
+        if not cached:
+            state = self.storage.runs.load(run_id)
+            try:
+                verdict, calls = await self.critic.review_prop_reference(
+                    state, art, spec, f"library photo: {obj.description}"
+                )
+            except AgentError as exc:
+                verdict, calls = None, exc.llm_calls
+        passed = cached or (verdict is not None and verdict.passed)
+        check = "cached pass" if cached else (
+            f"passed {verdict.score:.2f}" if verdict is not None and verdict.passed else "rejected"
+        )  # fmt: skip
+
+        def record(s: RunState) -> list[AgentEvent]:
+            events: list[AgentEvent] = []
+            for c in calls:
+                s.budget.record_actual("llm", c.cost_usd, ref=c.id, scene_id=None)
+                events.append(c.as_event(s.id, Stage.PROPS, None))
+            if passed:
+                s.reference_images.append(
+                    PropReference(artifact=art, name=spec.name, source="library",
+                                  cost_usd=0.0, check=f"library, {check}")
+                )  # fmt: skip
+                events.append(_ev(
+                    run_id, EventType.DECISION,
+                    f"Props: prop from library: the {spec.name} ({obj.ref_image}), $0, check "
+                    f"{check}", image=art.path, library=obj.ref_image,
+                ))  # fmt: skip
+            else:
+                issues = [i.observation for i in verdict.issues] if verdict else []
+                events.append(_ev(
+                    run_id, EventType.DECISION,
+                    f"Props: the library photo of the {spec.name} was rejected by the check; "
+                    "generating one instead", level="warn", issues=issues,
+                ))  # fmt: skip
+            return events
+
+        self.storage.runs.update(run_id, record, reason=f"prop {spec.name} from library")
+        if passed and not cached:
+            self.storage.cache.put(key, art)
+        return "accepted" if passed else "rejected"
 
     def _rerender(self, run_id: str) -> None:
         """Number the references in the prompt from the images that now exist; drop generated

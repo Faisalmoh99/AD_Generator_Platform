@@ -1158,3 +1158,20 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
   `general_pitfalls` in the culture bank (shown first in every insight prompt) and the
   hospitality pitfall on 12 hospitality entries. Judge text bound 400 → 600 characters.
 - **Tests**: 816 passed, 2 skipped (+3).
+
+## Coffee planning run + library, identity, product_active (2026-11-07)
+
+- **Run (approved, paid)**: `run_01M6SVSK8GD53SYGZ8SF7AA9TT`, «اعلان لقهوة سعودية مختصة», $0.738.
+  Pick «قبل أن يهزّ الفنجان» (8.50); the director fixed hook_motion and sizes_named; both Gulf
+  props (dallah, finjan) were drawn wrong by FLUX and rejected twice each ($0.10), so dropped.
+- **Fixes (user)**:
+  - Gulf prop library: `ref_image` on culture-bank objects (`assets/dallah.webp`,
+    `assets/finjan.jpeg`, verified photos). A prop that earns an image and matches such an object
+    uses the photo at $0 (`PropReference.source = "library"`), checked once by vision, the pass
+    cached by the photo's hash; "Props: prop from library" is logged; a missing or rejected photo
+    falls back to generation. `ADSMITH_PROPS_LIBRARY` (on; off in tests, which use a temp photo).
+  - Product identity clause by product type from the bible (bottle: cap; pouch/bag: seal and
+    emblem; box: wood and lining; otherwise colours, materials and emblem), stored on the prompt
+    (`AdPrompt.identity`) so the props re-render keeps it.
+  - Judge rule `product_active` (11 rules) + lesson `try_5`.
+- **Tests**: 823 passed, 2 skipped (+7).

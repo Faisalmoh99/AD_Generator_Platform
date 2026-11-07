@@ -32,6 +32,7 @@ from adsmith.domain.ad import (
     AdPrompt,
     AdPromptDraft,
     ad_prompt_problems,
+    identity_line,
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
@@ -222,6 +223,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     rules = ctx.settings.creative_rules
     bank = ctx.settings.culture_bank
     names = prop_image_names(state)
+    ident = identity_line(f"{bible.product.name} {bible.product.form}")
     template = ctx.prompts.get("ad_prompt_writer")
     rendered = template.render(
         brief=brief_block(state.brief),
@@ -247,8 +249,9 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     def convert(d: AdPromptDraft) -> AdGeneration:
         d = with_gulf_objects(d, bank)  # a named Gulf object gets its canonical description
         problems = ad_prompt_problems(
-            d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names
-        )
+            d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names,
+            identity=ident,
+        )  # fmt: skip
         problems += creative_rule_problems(d, rules)
         if problems:
             raise ValueError("; ".join(problems))
@@ -256,9 +259,12 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
             d,
             duration_s=duration,
             aspect_ratio=aspect,
-            text=render_ad_prompt(d, duration_s=duration, aspect_ratio=aspect, image_names=names),
+            text=render_ad_prompt(
+                d, duration_s=duration, aspect_ratio=aspect, image_names=names, identity=ident
+            ),
             template_version=template.template_id,
             bible_version=bible.version,
+            identity=ident,
         )
         return AdGeneration(
             prompt=ad_prompt,

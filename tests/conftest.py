@@ -39,6 +39,9 @@ def _isolated_env(
         if var.startswith("ADSMITH_") or var in _KEY_VARS:
             monkeypatch.delenv(var, raising=False)
     monkeypatch.chdir(tmp_path)  # no stray .env is picked up
+    # The Gulf prop library points at gitignored photos in assets/: off in tests, so a run does
+    # not depend on what is on this machine (tests that need it turn it on with a temp photo).
+    monkeypatch.setenv("ADSMITH_PROPS_LIBRARY", "0")
     yield
 
 
