@@ -203,6 +203,10 @@ id = "product_active"
 text = "The product does something in the story in at least one shot: it is opened, poured or scooped from, handed over, asked for, chosen or used, and that action matters to the turn. A product that only stands on a table in every shot fails, and so does an action with no meaning (turning a pouch toward a cup). Example fix: the host scoops from the open pouch into the dallah, or the guest asks for the pouch."
 
 [[judge]]
+id = "turn_readable"
+text = "The key moment reads on a phone screen in 2 seconds with the sound off: a large, clear action or change a viewer cannot miss, not a micro-movement. A tiny wrist motion ('starts to shake the cup and stops halfway') fails unless it is framed close and slowed: a close-up on the hand and the cup, the shake clearly begun, a full stop, then the face (his smile)."
+
+[[judge]]
 id = "physics_anchored"
 text = "Every motion names what carries the weight (gripped between fingers, resting in the palm, standing on the tray), every spray, steam or smoke event says its visible size and direction, and the key event unfolds slowly in visible steps across its whole shot. Nothing hovers, nothing happens 'fast'."
 

@@ -87,7 +87,7 @@ async def test_all_rules_pass_keeps_the_writers_prompt_in_one_call(tmp_path: Pat
     assert r.outcome == "kept" and r.failed == [] and r.after_text == r.before_text
     assert g.prompt.template_version == "ad_prompt_writer@v5"
     evs = summaries(orch, state.id)
-    assert evs[0].summary == "Creative director (round 1): all 12 rules pass"
+    assert evs[0].summary == "Creative director (round 1): all 13 rules pass"
     assert evs[-1].summary.startswith("Creative director: writer's prompt kept")
     req = next(x for x in llm.requests if x.template == "director@v4")
     assert any(type(p).__name__ == "ImagePart" for p in getattr(req.messages[0], "parts", ()))
@@ -125,7 +125,7 @@ async def test_a_failed_rule_rewrites_retimes_and_syncs_the_storyboard(tmp_path:
 
     assert r.before_text != r.after_text and no_refs(r.after_text) == no_refs(g.prompt.text)
     evs = summaries(orch, state.id)
-    assert "1 of 12 rules failed (turn_withheld)" in evs[0].summary
+    assert "1 of 13 rules failed (turn_withheld)" in evs[0].summary
     assert evs[-1].summary.startswith("Creative director: director's rewrite used (re-timed")
     # The round-2 request carries the round-1 verdicts.
     second = [x for x in llm.requests if x.template == "director@v4"][-1]

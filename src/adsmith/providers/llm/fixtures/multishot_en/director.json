@@ -61,6 +61,11 @@
      "rule_id": "physics_anchored",
      "passed": true,
      "note": "The bottle is lifted by its base and comes to rest in the guest's palm; the cup sets down on the tray; every motion is slow and states its contact."
+    },
+    {
+     "rule_id": "turn_readable",
+     "passed": true,
+     "note": "Shot 3 is a close-up of the bottle settling into the guest's open palm over two seconds: a clear change of hands, readable without sound."
     }
    ],
    "changes": [],

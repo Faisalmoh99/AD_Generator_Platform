@@ -1292,3 +1292,10 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
 - **Tests**: 11 new (`tests/unit/test_diversity.py`); the multishot fixture has six concepts
   (kept: The Last Guest, Amber Hour, First Rain; with the seeded host motifs, The Last Guest is
   dropped). 919 passed, 2 skipped.
+
+## Judge rule turn_readable (2026-11-07)
+
+- **Built**: judged rule `turn_readable` (13 rules): the key moment reads on a phone in 2 s with
+  the sound off, a large clear action, not a micro-movement; a small wrist motion passes only
+  framed close and slowed (the coffee run's half-shake). Director fixture verdict added.
+- **Tests**: +1; 920 passed, 2 skipped.

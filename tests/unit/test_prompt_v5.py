@@ -217,3 +217,10 @@ def test_the_director_judges_physics_and_sees_the_library(rules: CreativeRules) 
     block = rules.prompt_block()
     assert "what carries the weight" in block and "Halai product-review ad" in block
     assert "slow push-in" in block
+
+
+def test_the_director_judges_whether_the_turn_reads_on_a_phone(rules: CreativeRules) -> None:
+    assert "turn_readable" in rules.judge_ids
+    text = next(r.text for r in rules.judge if r.id == "turn_readable")
+    assert "phone screen in 2 seconds with the sound off" in text and "micro-movement" in text
+    assert "turn_readable" in rules.prompt_block()  # the writer sees it too
