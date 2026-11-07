@@ -123,6 +123,20 @@ def reference_lines(state: RunState) -> list[str]:
     return out
 
 
+def _print_copy(state: RunState) -> None:
+    """The copywriter's lines at the gate, code's pick marked, so a human can choose another."""
+    sel = state.copy_selection
+    if sel is None:
+        return
+    for i, t in enumerate(sel.taglines, 1):
+        mark = "→" if i - 1 == sel.tagline_index else " "
+        console.print(f"[dim]{mark} tagline {i}: «{t.text}» {t.weighted or 0:.2f}[/]")
+    for i, b in enumerate(sel.brands, 1):
+        mark = "→" if i - 1 == sel.brand_index else " "
+        console.print(f"[dim]{mark} brand {i}: «{b.text}»[/]")
+    console.print("[dim]Choose another: adsmith choose-copy <run> --tagline N --brand N[/]")
+
+
 def _print_generation(state: RunState) -> None:
     g = state.generation
     if g is None:
@@ -147,6 +161,7 @@ def _print_generation(state: RunState) -> None:
             console.print(
                 f"[dim]Creative director: {r.outcome} (rules failed in round 1: {failed})[/]"
             )
+        _print_copy(state)
         who = " (written by a human creative director)" if g.human_prompt else ""
         console.print(f"[bold]Prompt sent to the model{who}:[/]\n{g.prompt_text}")
     if g.qa is not None:
@@ -395,6 +410,18 @@ def decline(
     """Decline the estimate of a whole-ad generation: nothing is spent."""
     orch = _orchestrator()
     print_state(orch, commands.decline_generation(orch.rt.storage, run_id, reason=reason))
+
+
+@app.command("choose-copy")
+def choose_copy(
+    run_id: str,
+    tagline: Annotated[int | None, typer.Option(help="Tagline number (1-5)")] = None,
+    brand: Annotated[int | None, typer.Option(help="Brand name number (1-3)")] = None,
+) -> None:
+    """Choose one of the copywriter's taglines or brand names at the gate (logged as a
+    preference against the lines it beat)."""
+    orch = _orchestrator()
+    print_state(orch, commands.choose_copy(orch.rt.storage, run_id, tagline=tagline, brand=brand))
 
 
 @app.command("settle-actual")

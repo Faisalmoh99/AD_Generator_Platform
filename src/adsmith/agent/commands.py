@@ -33,10 +33,72 @@ from adsmith.domain.scene import SceneFailure, ShotSpec
 from adsmith.domain.scene_flags import enforce_scene_flags
 from adsmith.storage import Storage
 from adsmith.storage.account import SpendAccount
+from adsmith.storage.preferences import PreferenceOption, PreferenceRecord
 
 
 class CommandRejectedError(ValueError):
     """The command does not apply to the run's current state."""
+
+
+# ------------------------------------------------------------------ preferences (ADR-0029 part 3)
+def _context(s: RunState) -> dict[str, JsonValue]:
+    c = s.concepts.selected if s.concepts else None
+    return {
+        "request": s.brief.raw_request if s.brief else "",
+        "concept": c.title if c else None,
+        "insight": c.insight if c else None,
+        "device": c.device_id if c else None,
+    }
+
+
+def _select_scores(
+    storage: Storage, run_id: str
+) -> tuple[dict[int, dict[str, JsonValue]], int | None]:
+    """The judge's scores by concept number and its recommendation, from the select event."""
+    scores: dict[int, dict[str, JsonValue]] = {}
+    recommended = None
+    for e in storage.events.tail(run_id, limit=5000):
+        items = e.payload.get("scores")
+        if e.stage is not Stage.SELECT or not isinstance(items, list):
+            continue
+        scores = {}
+        for x in items:
+            if isinstance(x, dict) and isinstance(n := x.get("concept_number"), int):
+                scores[n] = x
+        rec = e.payload.get("recommended")
+        recommended = rec - 1 if isinstance(rec, int) else None
+    return scores, recommended
+
+
+def _record_generation(storage: Storage, state: RunState, kind: str, *, accepted: bool) -> None:
+    """A spend-gate (``prompt``) or finished-ad (``ad``) decision on the one whole-ad prompt.
+    When the director rewrote the writer's prompt, the writer's version is the other option."""
+    g = state.generation
+    if g is None:
+        return
+    options = [PreferenceOption(text=g.prompt_text[:6000])]
+    review = state.director_review
+    if review is not None and review.outcome == "rewritten":
+        options.append(PreferenceOption(text=review.before_text[:6000]))
+    context = _context(state) | {"model": g.model, "estimate_usd": g.approved_usd}
+    if kind == "ad" and g.qa is not None:
+        context["critic_score"] = g.qa.score
+    storage.preferences.record(
+        PreferenceRecord(
+            run_id=state.id,
+            kind="ad" if kind == "ad" else "prompt",
+            options=options,
+            chosen=0 if accepted else None,
+            recommended=0,
+            context=context,
+        )
+    )
+
+
+def _numbers(d: dict[str, JsonValue]) -> dict[str, float]:
+    return {
+        k: float(v) for k, v in d.items() if isinstance(v, int | float) and not isinstance(v, bool)
+    }
 
 
 def choose_concept(
@@ -70,9 +132,31 @@ def choose_concept(
             )
         ]
 
-    return storage.runs.update(
+    state = storage.runs.update(
         run_id, mutate, reason="concept chosen", expected_version=expected_version
     ).state
+    if state.concepts is not None and state.concepts.selected_id is not None:
+        scores, recommended = _select_scores(storage, run_id)
+        concepts = state.concepts.concepts
+        storage.preferences.record(
+            PreferenceRecord(
+                run_id=run_id,
+                kind="concept",
+                options=[
+                    PreferenceOption(
+                        text=f"{c.title}: {c.logline}"
+                        + (f" Image: {c.device_image}" if c.device_image else ""),
+                        scores=_numbers(scores.get(i, {})),
+                        weighted=_numbers(scores.get(i, {})).get("weighted"),
+                    )
+                    for i, c in enumerate(concepts, 1)
+                ],
+                chosen=[c.id for c in concepts].index(state.concepts.selected_id),
+                recommended=recommended,
+                context=_context(state),
+            )
+        )
+    return state
 
 
 def approve_storyboard(
@@ -483,9 +567,11 @@ def approve_generation(
             )
         ]
 
-    return storage.runs.update(
+    state = storage.runs.update(
         run_id, mutate, reason="generation approved", expected_version=expected_version
     ).state
+    _record_generation(storage, state, "prompt", accepted=True)
+    return state
 
 
 def decline_generation(storage: Storage, run_id: str, *, reason: str = "declined") -> RunState:
@@ -512,7 +598,9 @@ def decline_generation(storage: Storage, run_id: str, *, reason: str = "declined
             )
         ]
 
-    return storage.runs.update(run_id, mutate, reason="generation declined").state
+    state = storage.runs.update(run_id, mutate, reason="generation declined").state
+    _record_generation(storage, state, "prompt", accepted=False)
+    return state
 
 
 def accept_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
@@ -538,7 +626,9 @@ def accept_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
             )
         ]
 
-    return storage.runs.update(run_id, mutate, reason="ad accepted").state
+    state = storage.runs.update(run_id, mutate, reason="ad accepted").state
+    _record_generation(storage, state, "ad", accepted=True)
+    return state
 
 
 def switch_ad_model(storage: Storage, run_id: str, model_key: str, *, reason: str) -> RunState:
@@ -643,7 +733,9 @@ def regenerate_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
             )
         ]
 
-    return storage.runs.update(run_id, mutate, reason="ad regenerate").state
+    state = storage.runs.update(run_id, mutate, reason="ad regenerate").state
+    _record_generation(storage, state, "ad", accepted=False)
+    return state
 
 
 def replace_generation_prompt(
@@ -725,6 +817,30 @@ def _endcard_direction(s: RunState, *, brand: str | None, tagline: str | None) -
     return events
 
 
+def _record_copy(
+    storage: Storage, state: RunState, kind: str, *, chosen: int | None, written: str | None
+) -> None:
+    """A tagline or brand decision against the five (or three) the copywriter wrote."""
+    sel = state.copy_selection
+    if sel is None:
+        return
+    picks = sel.taglines if kind == "tagline" else sel.brands
+    if not picks:
+        return
+    storage.preferences.record(
+        PreferenceRecord(
+            run_id=state.id,
+            kind="tagline" if kind == "tagline" else "brand",
+            options=[PreferenceOption(text=p.text, scores=p.scores, weighted=p.weighted)
+                     for p in picks],
+            chosen=chosen,
+            recommended=sel.code_tagline_index if kind == "tagline" else sel.code_brand_index,
+            written=written,
+            context=_context(state) | {"dialect": sel.dialect},
+        )
+    )  # fmt: skip
+
+
 def set_endcard(
     storage: Storage, run_id: str, *, brand: str | None = None, tagline: str | None = None
 ) -> RunState:
@@ -737,7 +853,71 @@ def set_endcard(
             raise CommandRejectedError(f"run is at {s.stage}: the end card is already made")
         return _endcard_direction(s, brand=brand, tagline=tagline)
 
-    return storage.runs.update(run_id, mutate, reason="human end card").state
+    state = storage.runs.update(run_id, mutate, reason="human end card").state
+    if tagline is not None and state.brief is not None and state.brief.tagline:
+        _record_copy(storage, state, "tagline", chosen=None, written=state.brief.tagline)
+    if brand is not None and state.brief is not None and state.brief.brand_name:
+        _record_copy(storage, state, "brand", chosen=None, written=state.brief.brand_name)
+    return state
+
+
+def choose_copy(
+    storage: Storage, run_id: str, *, tagline: int | None = None, brand: int | None = None
+) -> RunState:
+    """Pick one of the copywriter's taglines (1-5) and/or brand names (1-3) at the gate instead
+    of code's pick (ADR-0029 part 3); the end card follows, and the choice is logged with the
+    lines it beat."""
+    if tagline is None and brand is None:
+        raise CommandRejectedError("give a tagline number or a brand number")
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        sel = s.copy_selection
+        if sel is None:
+            raise CommandRejectedError("this run has no copy to choose from")
+        if s.final is not None or s.stage in {Stage.DONE, Stage.DONE_PARTIAL, Stage.ERRORED}:
+            raise CommandRejectedError(f"run is at {s.stage}: the end card is already made")
+        if tagline is not None and not 1 <= tagline <= len(sel.taglines):
+            raise CommandRejectedError(f"choose a tagline between 1 and {len(sel.taglines)}")
+        if brand is not None and not 1 <= brand <= len(sel.brands):
+            raise CommandRejectedError(
+                f"choose a brand between 1 and {len(sel.brands)}"
+                if sel.brands
+                else "the brief already has a brand: there are no brand names to choose"
+            )
+        update: dict[str, object] = {}
+        if tagline is not None:
+            update["tagline_index"] = tagline - 1
+            update["code_tagline_pick"] = sel.code_tagline_index
+        if brand is not None:
+            update["brand_index"] = brand - 1
+            update["code_brand_pick"] = sel.code_brand_index
+        s.copy_selection = sel.model_copy(update=update)
+        new = s.copy_selection
+        if s.endcard is not None:
+            card: dict[str, object] = {}
+            if tagline is not None and not (s.brief and s.brief.tagline):
+                card["tagline"] = new.tagline
+            if brand is not None and not (s.brief and s.brief.brand_name) and new.brand:
+                card["brand_name"] = new.brand
+            s.endcard = s.endcard.model_copy(update=card)
+        parts = [f"tagline {tagline} «{new.tagline}»"] if tagline is not None else []
+        parts += [f"brand {brand} «{new.brand}»"] if brand is not None else []
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=s.stage,
+                type=EventType.DECISION,
+                summary=f"HUMAN: chose {' and '.join(parts)} for the end card",
+                payload={"human": True, "tagline": tagline, "brand": brand},
+            )
+        ]
+
+    state = storage.runs.update(run_id, mutate, reason="copy chosen").state
+    if tagline is not None:
+        _record_copy(storage, state, "tagline", chosen=tagline - 1, written=None)
+    if brand is not None:
+        _record_copy(storage, state, "brand", chosen=brand - 1, written=None)
+    return state
 
 
 def settle_actual(

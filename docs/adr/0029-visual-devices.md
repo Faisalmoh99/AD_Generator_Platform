@@ -76,3 +76,22 @@ divergent-then-convergent prompting, arXiv 2512.23601).
 - The novelty penalty also applies to a recent winner's device (`is_reused`).
 - `qa_ad_critic` v4 looks for the concept's device on screen: visible, at least half the frame,
   held for most of its shot, carrying the turn.
+
+## Addendum (part 3): human preferences logged at the gates
+
+- Fine-tuning, the honest answer for the employer: the Claude API offers no fine-tuning, and on
+  small data preference tuning adds almost nothing to a generator (arXiv 2603.20100). What pays
+  later is a judge trained on pairwise human picks (LitBench: 78 % agreement with people vs 73 %
+  for the best prompted judge), which needs a thousand or more pairs. So we log now, cheaply.
+- `storage/preferences.py` (`PreferenceLog`, table `preferences`, migration 4): one
+  `PreferenceRecord` per human decision with every option, the system's scores, its pick, the
+  human's pick or own text, and the context (request, concept, insight, device). Written after
+  the command commits (a write failure is logged, never fails the command) by `choose_concept`,
+  the new `choose_copy` (`adsmith choose-copy <run> --tagline N --brand N`: a human picks one of
+  the copywriter's lines; the end card follows; code's own pick is kept on `CopySelection`),
+  `set_endcard` (a human's own line beats all five), `approve_generation` / `decline_generation`
+  (the prompt, and the writer's version when the director replaced it) and `accept_ad` /
+  `regenerate_ad`.
+- `scripts/export_preferences.py` writes (preferred, rejected) JSONL pairs and prints how often
+  the human agreed with the system's pick: the first calibration number for every judge.
+- The gate printout lists the five taglines and three brands with code's pick marked.

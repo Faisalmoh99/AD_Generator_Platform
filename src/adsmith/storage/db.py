@@ -76,6 +76,18 @@ MIGRATIONS: tuple[str, ...] = (
     """
     ALTER TABLE motifs ADD COLUMN device TEXT;
     """,
+    # 4: human choices at the gates with the alternatives they beat (ADR-0029 part 3), the data
+    # for calibrating the judges and, much later, a trained judge.
+    """
+    CREATE TABLE preferences (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id      TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        kind        TEXT NOT NULL,             -- concept | tagline | brand | prompt | ad
+        record      TEXT NOT NULL              -- PreferenceRecord JSON
+    );
+    CREATE INDEX preferences_run ON preferences (run_id);
+    """,
 )
 
 

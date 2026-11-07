@@ -237,6 +237,18 @@ class CopySelection(DomainModel):
     tagline_index: int = Field(ge=0)
     brand_index: int | None = Field(default=None, ge=0)
     prompt_hash: str = ""
+    # Code's own picks, kept when a human chooses another line (ADR-0029 part 3); None = the
+    # current index is code's pick.
+    code_tagline_pick: int | None = Field(default=None, ge=0)
+    code_brand_pick: int | None = Field(default=None, ge=0)
+
+    @property
+    def code_tagline_index(self) -> int:
+        return self.tagline_index if self.code_tagline_pick is None else self.code_tagline_pick
+
+    @property
+    def code_brand_index(self) -> int | None:
+        return self.brand_index if self.code_brand_pick is None else self.code_brand_pick
 
     @property
     def tagline(self) -> str:
