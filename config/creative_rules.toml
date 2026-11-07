@@ -8,6 +8,9 @@
 # [[judge]] rules need judgement: the creative director (an LLM) rules on each by id.
 # [lessons] are shown to the director verbatim.
 
+# Camera moves that read in one Seedance shot (one per shot; community guides and our runs).
+camera_moves = ["slow push-in", "slow pull-back", "slow orbit", "gentle handheld drift", "slow tilt up", "slow truck left or right", "rack focus", "locked hold (last shot only)"]
+
 [params]
 max_shots = 4              # the format allows 3-4 (formats.toml)
 min_shot_s = 1.5           # the model cut try 2's 2 s shot 1 to 1.2 s; never plan less than this
@@ -19,6 +22,13 @@ product_min_share = 0.5    # of the runtime, same counting as product_min_shots
 handled_min_shots = 1      # shots where a person's hands hold or use the product
 max_locations = 1          # one location for the whole film (both references: one)
 max_references = 3         # prop or location references besides the product photo
+# Word budget (ADR-0028, user 2026-11-07): Seedance guides converge on 60-100 words with the
+# non-negotiables first ("8 requirements written, 4-5 honored"); ours were 350-400 words.
+max_words = 180            # the writer's words: look + every shot (action, camera, sound) + audio
+key_within_words = 30      # the identity line and the key-moment line end within these words
+max_words_look = 30        # location + look + lighting together
+max_words_shot = 35        # one shot: action + camera + sound (labels not counted)
+max_words_audio = 20
 
 # Words the video model took literally or that do not describe a picture. One table per word.
 # `pattern` is a case-insensitive regex (default: the word with word boundaries);
@@ -91,6 +101,62 @@ except_hero = true
 why = "both references move every second; a static shot reads as a still"
 use = "a slow push-in, a slow orbit or a gentle handheld drift"
 
+[[banned]]
+word = "fast"
+pattern = "\\b(fast|quick|quickly|rapid|rapidly|snaps?|whips?|swift|swiftly|sudden|suddenly)\\b"
+why = "the word most likely to degrade a Seedance shot (limbs and objects deform, events get skipped)"
+use = "slowly, in one continuous motion"
+
+[[banned]]
+word = "extreme close-up"
+pattern = "\\b(extreme close[- ]?up|ecu|macro)\\b"
+fields = "camera"
+why = "fingers drift or merge in extreme close-ups; medium and close shots of hands hold up"
+use = "close-up, 85mm, the hand and the object in one frame"
+
+# Seedance failure library (ADR-0028): what the model did wrong in our real generations and the
+# wording that prevents it. CHECKED BY CODE: when a shot's action or event matches `trigger`, the
+# same shot must also match `required` (case-insensitive regexes); a miss goes back to the model
+# with `use`. `key_only` limits the rule to the key shot.
+[[physics]]
+id = "contact"
+failure = "an object a hand should hold floats above the palm"
+seen = "try 2: the burner and the bottle lost contact with the hand"
+trigger = "\\b(holds?|holding|lifts?|lifting|raises?|raising|carries|carrying|hands? (it )?over|passes|passing|offers?|offering|cradles?|grips?)\\b"
+required = "\\b(palm|grip|gripped|gripping|fingers?|fingertips?|thumb|by (its|the) (base|neck|handle|body|side|edge)|in (his|her|their|both) hands?|rests? (in|on)|resting (in|on))\\b"
+use = "say what carries the weight: 'gripped between thumb and fingers', 'resting in her open palm', 'lifted by its base'"
+
+[[physics]]
+id = "visibility"
+failure = "a spray, steam or smoke event is invisible"
+seen = "try 2: the spray in the last shot could not be seen"
+trigger = "\\b(spray|sprays|sprayed|spraying|mist|mists|steam|smoke|pours?|pouring|poured)\\b"
+required = "\\b(visible|clearly|thick|thickens?|thickening|dense|ribbon|stream|plume|cloud|curl|curls|thread|column|jet|arc)\\b"
+use = "name the visible shape and size: 'a visible fine mist, a hand's width, toward the collar', 'a thin ribbon of golden coffee'"
+
+[[physics]]
+id = "transformation"
+failure = "a transformation is compressed into a fraction of a second or swapped"
+seen = "try 2: a 2.5 s smoke-to-bottle morph lasted 0.5 s"
+trigger = "\\b(condenses?|condensing|transforms?|morphs?|forms? into|reshapes?|gathers? into)\\b"
+required = "\\b(then|step by step|gradually|tighter|thickens?|slowly|until)\\b"
+use = "describe it in visible steps inside the shot: 'the smoke spirals tighter, thickens, then condenses into the bottle'"
+key_only = false
+
+# Reference ads we measured frame by frame (2026-11-07): their execution numbers, shown to the
+# writer and the director as targets. Neither has an idea; we keep ours and borrow their craft.
+[[templates]]
+id = "halai_product_review"
+source = "Halai product-review ad (15 s, measured frame by frame)"
+numbers = "11 shots in 15 s (~1.4 s each); the product on screen 93 % of the time and in a person's hands 54 %; one location; one warm grade; a camera or a person moving every second"
+borrow = "keep the product in frame and in hand for most of the film; give every shot a motion; one place, one grade"
+
+[[templates]]
+id = "valentino_seedance"
+source = "Valentino Seedance reference (measured)"
+numbers = "product on screen ~100 %; sound hits cut on the motion; −16 LUFS"
+borrow = "one named sound hit on the key motion; the product holds the last shot"
+
 # Judged by the creative director. The id is echoed in its verdicts (code checks one per id).
 [[judge]]
 id = "turn_withheld"
@@ -135,6 +201,10 @@ text = "No beat shows a host neglecting a guest, an elder or a parent, even for 
 [[judge]]
 id = "product_active"
 text = "The product does something in the story in at least one shot: it is opened, poured or scooped from, handed over, asked for, chosen or used, and that action matters to the turn. A product that only stands on a table in every shot fails, and so does an action with no meaning (turning a pouch toward a cup). Example fix: the host scoops from the open pouch into the dallah, or the guest asks for the pouch."
+
+[[judge]]
+id = "physics_anchored"
+text = "Every motion names what carries the weight (gripped between fingers, resting in the palm, standing on the tray), every spray, steam or smoke event says its visible size and direction, and the key event unfolds slowly in visible steps across its whole shot. Nothing hovers, nothing happens 'fast'."
 
 [lessons]
 try_1 = "One reference image only: the hostess held a red bottle with smoke instead of an incense burner, because nothing told the model what the burner looks like. 'Ember glow' became an open flame on the floor. 'Match cut' produced a crossfade with both objects on screen. The correct product was on screen 1.5 s of 8 (19 %), only as a still bottle at the end."

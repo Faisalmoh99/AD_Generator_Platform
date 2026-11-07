@@ -1,13 +1,13 @@
 [
   {
     "output": {
-      "location": "An empty traditional majlis at night with floor cushions, a brass tray and a carved wooden doorway.",
-      "look": "Warm low-key film look: amber and gold against deep brown shadows, soft grain; the amber bottle always reads against a darker background.",
-      "lighting": "Warm practical lamps from camera-left, deep soft shadows, a thin gold rim on glass and metal.",
+      "location": "An empty majlis at night.",
+      "look": "Warm amber grade, deep shadows, soft grain.",
+      "lighting": "Lamps from camera-left rim the glass.",
       "references": [
         {
           "name": "brass tray",
-          "description": "A round, flat, hammered brass tray with a low rim.",
+          "description": "A round hammered brass tray.",
           "role": "prop",
           "shots": [
             1,
@@ -20,7 +20,7 @@
         },
         {
           "name": "coffee cup",
-          "description": "A small white handleless Arabic coffee cup with a thin gold band.",
+          "description": "A small white handleless cup with a gold band.",
           "role": "prop",
           "shots": [
             1
@@ -36,10 +36,10 @@
           "number": 1,
           "start_s": 0,
           "end_s": 2,
-          "action": "A hand sets the coffee cup down on the brass tray; the amber bottle stands in soft focus behind it.",
-          "event": "a hand sets the cup down",
-          "camera": "close-up, 85mm, slow push-in, shallow focus",
-          "sound": "the soft clink of the cup, room tone",
+          "action": "A hand sets the coffee cup on the brass tray beside the bottle.",
+          "event": "the cup is set down",
+          "camera": "close-up, slow push-in",
+          "sound": "a cup clink",
           "shows_product": true,
           "product_in_frame": "small",
           "handled": false
@@ -48,10 +48,10 @@
           "number": 2,
           "start_s": 2,
           "end_s": 4,
-          "action": "At the carved doorway the host in a white thobe turns back toward the last guest.",
-          "event": "the host turns",
-          "camera": "medium shot, slow dolly in",
-          "sound": "a low oud note begins",
+          "action": "At the doorway the host in a white thobe turns back to the last guest.",
+          "event": "the host turns back",
+          "camera": "medium, slow dolly in",
+          "sound": "an oud note",
           "shows_product": false,
           "product_in_frame": "absent",
           "handled": false
@@ -60,10 +60,10 @@
           "number": 3,
           "start_s": 4,
           "end_s": 6,
-          "action": "The host lifts the bottle with both hands and offers it; the guest's open palm rises to take it.",
-          "event": "the host lifts and offers the bottle",
-          "camera": "macro close-up, slow push-in",
-          "sound": "strings swell under the oud, a soft glass touch on the palm",
+          "action": "The host lifts the bottle by its base into the guest's open palm.",
+          "event": "the bottle settles into his palm",
+          "camera": "close-up, slow push-in",
+          "sound": "a glass touch",
           "shows_product": true,
           "product_in_frame": "half",
           "handled": true
@@ -72,17 +72,17 @@
           "number": 4,
           "start_s": 6,
           "end_s": 8,
-          "action": "The bottle stands alone on the brass tray, the gold cap catching the last light.",
+          "action": "The bottle stands on the brass tray, light sliding across its gold cap.",
           "event": "light slides across the cap",
-          "camera": "medium close-up, slow push-in, lower fifth empty",
-          "sound": "the music resolves on one held note",
+          "camera": "slow push-in",
+          "sound": "a held note",
           "shows_product": true,
           "product_in_frame": "fills",
           "handled": false
         }
       ],
       "key_shot": 3,
-      "audio": "Room tone opens into a single oud line that builds with strings, with a soft glass touch as the bottle meets the guest's palm, and lands on a warm held note on the bottle."
+      "audio": "Room tone, then oud and strings, landing on a warm held note."
     }
   }
 ]

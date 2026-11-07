@@ -1,149 +1,154 @@
 [
-  {
-    "output": {
-      "verdicts": [
-        {
-          "rule_id": "turn_withheld",
-          "passed": true,
-          "note": "Shot 1 opens on the cup and a bottle in soft focus; the gift itself is withheld until shot 3."
-        },
-        {
-          "rule_id": "product_causes",
-          "passed": true,
-          "note": "The host lifts and offers the bottle in shot 3: the gesture is the turn."
-        },
-        {
-          "rule_id": "one_location",
-          "passed": true,
-          "note": "Every shot is in the same majlis; the doorway is part of it."
-        },
-        {
-          "rule_id": "hook_motion",
-          "passed": true,
-          "note": "A hand sets the cup down in the first second; the bottle is visible behind it."
-        },
-        {
-          "rule_id": "sizes_named",
-          "passed": true,
-          "note": "Every shot with the product has a size; the hero fills the frame."
-        },
-        {
-          "rule_id": "no_cliche",
-          "passed": true,
-          "note": "No desert, no smoke around the bottle, no gold tray museum shot."
-        },
-        {
-          "rule_id": "references_roles",
-          "passed": true,
-          "note": "The tray and the cup are described as brass and white porcelain, nothing like the bottle."
-        },
-        {
-          "rule_id": "sound_on_event",
-          "passed": true,
-          "note": "A soft glass touch as the bottle meets the guest's palm in shot 3."
-        },
-        {
-          "rule_id": "emotion_on_turn",
-          "passed": true,
-          "note": "The insight is about the host's generosity; shot 3 shows the host lifting and offering the bottle to the guest's open palm: people carry the turn, not a spray demo."
-        },
-        {
-          "rule_id": "culturally_gracious",
-          "passed": true,
-          "note": "The host never keeps the last guest waiting: he turns back toward him and offers the bottle with both hands."
-        },
-        {
-          "rule_id": "product_active",
-          "passed": true,
-          "note": "In shot 3 the host lifts the bottle and offers it to the guest: the product is handed over, and the hand-over is the turn."
-        }
-      ],
-      "changes": [],
-      "summary": "The prompt already keeps the bottle on screen and in the host's hands, and the turn reads in shot 3. Nothing to change.",
-      "rewrite": {
-        "location": "An empty traditional majlis at night with floor cushions, a brass tray and a carved wooden doorway.",
-        "look": "Warm low-key film look: amber and gold against deep brown shadows, soft grain; the amber bottle always reads against a darker background.",
-        "lighting": "Warm practical lamps from camera-left, deep soft shadows, a thin gold rim on glass and metal.",
-        "references": [
-          {
-            "name": "brass tray",
-            "description": "A round, flat, hammered brass tray with a low rim.",
-            "role": "prop",
-            "shots": [
-              1,
-              4
-            ],
-            "transforms_into_product": false,
-            "handled": false,
-            "max_size": "small",
-            "lookalike": false
-          },
-          {
-            "name": "coffee cup",
-            "description": "A small white handleless Arabic coffee cup with a thin gold band.",
-            "role": "prop",
-            "shots": [
-              1
-            ],
-            "transforms_into_product": false,
-            "handled": true,
-            "max_size": "small",
-            "lookalike": false
-          }
-        ],
-        "shots": [
-          {
-            "number": 1,
-            "start_s": 0,
-            "end_s": 2,
-            "action": "A hand sets the coffee cup down on the brass tray; the amber bottle stands in soft focus behind it.",
-            "event": "a hand sets the cup down",
-            "camera": "close-up, 85mm, slow push-in, shallow focus",
-            "sound": "the soft clink of the cup, room tone",
-            "shows_product": true,
-            "product_in_frame": "small",
-            "handled": false
-          },
-          {
-            "number": 2,
-            "start_s": 2,
-            "end_s": 4,
-            "action": "At the carved doorway the host in a white thobe turns back toward the last guest.",
-            "event": "the host turns",
-            "camera": "medium shot, slow dolly in",
-            "sound": "a low oud note begins",
-            "shows_product": false,
-            "product_in_frame": "absent",
-            "handled": false
-          },
-          {
-            "number": 3,
-            "start_s": 4,
-            "end_s": 6,
-            "action": "The host lifts the bottle with both hands and offers it; the guest's open palm rises to take it.",
-            "event": "the host lifts and offers the bottle",
-            "camera": "macro close-up, slow push-in",
-            "sound": "strings swell under the oud, a soft glass touch on the palm",
-            "shows_product": true,
-            "product_in_frame": "half",
-            "handled": true
-          },
-          {
-            "number": 4,
-            "start_s": 6,
-            "end_s": 8,
-            "action": "The bottle stands alone on the brass tray, the gold cap catching the last light.",
-            "event": "light slides across the cap",
-            "camera": "medium close-up, slow push-in, lower fifth empty",
-            "sound": "the music resolves on one held note",
-            "shows_product": true,
-            "product_in_frame": "fills",
-            "handled": false
-          }
-        ],
-        "key_shot": 3,
-        "audio": "Room tone opens into a single oud line that builds with strings, with a soft glass touch as the bottle meets the guest's palm, and lands on a warm held note on the bottle."
-      }
+ {
+  "output": {
+   "verdicts": [
+    {
+     "rule_id": "turn_withheld",
+     "passed": true,
+     "note": "Shot 1 opens on the cup and a bottle in soft focus; the gift itself is withheld until shot 3."
+    },
+    {
+     "rule_id": "product_causes",
+     "passed": true,
+     "note": "The host lifts and offers the bottle in shot 3: the gesture is the turn."
+    },
+    {
+     "rule_id": "one_location",
+     "passed": true,
+     "note": "Every shot is in the same majlis; the doorway is part of it."
+    },
+    {
+     "rule_id": "hook_motion",
+     "passed": true,
+     "note": "A hand sets the cup down in the first second; the bottle is visible behind it."
+    },
+    {
+     "rule_id": "sizes_named",
+     "passed": true,
+     "note": "Every shot with the product has a size; the hero fills the frame."
+    },
+    {
+     "rule_id": "no_cliche",
+     "passed": true,
+     "note": "No desert, no smoke around the bottle, no gold tray museum shot."
+    },
+    {
+     "rule_id": "references_roles",
+     "passed": true,
+     "note": "The tray and the cup are described as brass and white porcelain, nothing like the bottle."
+    },
+    {
+     "rule_id": "sound_on_event",
+     "passed": true,
+     "note": "A soft glass touch as the bottle meets the guest's palm in shot 3."
+    },
+    {
+     "rule_id": "emotion_on_turn",
+     "passed": true,
+     "note": "The insight is about the host's generosity; shot 3 shows the host lifting and offering the bottle to the guest's open palm: people carry the turn, not a spray demo."
+    },
+    {
+     "rule_id": "culturally_gracious",
+     "passed": true,
+     "note": "The host never keeps the last guest waiting: he turns back toward him and offers the bottle with both hands."
+    },
+    {
+     "rule_id": "product_active",
+     "passed": true,
+     "note": "In shot 3 the host lifts the bottle and offers it to the guest: the product is handed over, and the hand-over is the turn."
+    },
+    {
+     "rule_id": "physics_anchored",
+     "passed": true,
+     "note": "The bottle is lifted by its base and comes to rest in the guest's palm; the cup sets down on the tray; every motion is slow and states its contact."
     }
+   ],
+   "changes": [],
+   "summary": "The prompt already keeps the bottle on screen and in the host's hands, and the turn reads in shot 3. Nothing to change.",
+   "rewrite": {
+    "location": "An empty majlis at night.",
+    "look": "Warm amber grade, deep shadows, soft grain.",
+    "lighting": "Lamps from camera-left rim the glass.",
+    "references": [
+     {
+      "name": "brass tray",
+      "description": "A round hammered brass tray.",
+      "role": "prop",
+      "shots": [
+       1,
+       4
+      ],
+      "transforms_into_product": false,
+      "handled": false,
+      "max_size": "small",
+      "lookalike": false
+     },
+     {
+      "name": "coffee cup",
+      "description": "A small white handleless cup with a gold band.",
+      "role": "prop",
+      "shots": [
+       1
+      ],
+      "transforms_into_product": false,
+      "handled": true,
+      "max_size": "small",
+      "lookalike": false
+     }
+    ],
+    "shots": [
+     {
+      "number": 1,
+      "start_s": 0,
+      "end_s": 2,
+      "action": "A hand sets the coffee cup on the brass tray beside the bottle.",
+      "event": "the cup is set down",
+      "camera": "close-up, slow push-in",
+      "sound": "a cup clink",
+      "shows_product": true,
+      "product_in_frame": "small",
+      "handled": false
+     },
+     {
+      "number": 2,
+      "start_s": 2,
+      "end_s": 4,
+      "action": "At the doorway the host in a white thobe turns back to the last guest.",
+      "event": "the host turns back",
+      "camera": "medium, slow dolly in",
+      "sound": "an oud note",
+      "shows_product": false,
+      "product_in_frame": "absent",
+      "handled": false
+     },
+     {
+      "number": 3,
+      "start_s": 4,
+      "end_s": 6,
+      "action": "The host lifts the bottle by its base into the guest's open palm.",
+      "event": "the bottle settles into his palm",
+      "camera": "close-up, slow push-in",
+      "sound": "a glass touch",
+      "shows_product": true,
+      "product_in_frame": "half",
+      "handled": true
+     },
+     {
+      "number": 4,
+      "start_s": 6,
+      "end_s": 8,
+      "action": "The bottle stands on the brass tray, light sliding across its gold cap.",
+      "event": "light slides across the cap",
+      "camera": "slow push-in",
+      "sound": "a held note",
+      "shows_product": true,
+      "product_in_frame": "fills",
+      "handled": false
+     }
+    ],
+    "key_shot": 3,
+    "audio": "Room tone, then oud and strings, landing on a warm held note."
+   }
   }
+ }
 ]

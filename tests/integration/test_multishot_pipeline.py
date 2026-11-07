@@ -90,8 +90,8 @@ async def test_auto_mock_run_reaches_done_with_its_own_audio(tmp_path: Path) -> 
     assert g.computed_usd == pytest.approx(2.4192) and len(g.prompt.shots) == 4
     assert g.est_usd == pytest.approx(2.4192) and g.price_basis is not None
     assert "172,800 tokens" in g.price_basis
-    assert g.prompt.text.startswith("An 8-second vertical 9:16 film in 4 shots")
-    assert "No text, letters" in g.prompt.text
+    assert "An 8-second vertical 9:16 film, 4 shots, hard cuts." in g.prompt.text
+    assert "No text, logos" in g.prompt.text
     assert mock_provider(rt, state).calls == 1
     assert state.storyboard is not None
     assert all(sc.prompt is None and sc.keyframe is None for sc in state.storyboard.scenes)
@@ -350,7 +350,7 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
     g = v["generation"]
     assert g["status"] == "estimated" and g["est_usd"] == pytest.approx(2.4192)
     assert g["computed_usd"] == pytest.approx(2.4192)
-    assert g["prompt"].startswith("An 8-second") and g["approved_by"] is None
+    assert "An 8-second" in g["prompt"] and g["approved_by"] is None
     c = v["concepts"][0]
     assert (
         set(c["rubric"])

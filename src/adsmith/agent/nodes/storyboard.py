@@ -17,7 +17,12 @@ from adsmith.agent.nodes.common import (
 )
 from adsmith.config import LLMNode
 from adsmith.domain.enums import Stage
-from adsmith.domain.formats import AdFormat, format_block, grammar_problems
+from adsmith.domain.formats import (
+    AdFormat,
+    format_block,
+    grammar_problems,
+    whole_ad_shot_count,
+)
 from adsmith.domain.run import RunState
 from adsmith.domain.scene_flags import enforce_scene_flags, person_mentions
 from adsmith.domain.shot_lint import multi_action_problem, product_presence_problem
@@ -39,7 +44,9 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: 
     whole = grammar.generation == "whole"  # multishot: the shots of ONE generation
     max_scenes = (
         min(grammar.max_shots, int(duration // min_s))
-        if montage or whole
+        if montage
+        else whole_ad_shot_count(grammar, duration)
+        if whole
         else max(2, min(6, int(duration // min_s)))
     )
 
@@ -114,6 +121,13 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: 
         shot; the product seen before the hero. No vocabulary: one generation renders every shot
         from the real product photo, so there is no per-shot identity routing."""
         problems = grammar_problems(draft.scenes, grammar)
+        if requested is None and len(draft.scenes) != max_scenes:
+            mins = ", ".join(f"{k} {v:g} s" for k, v in grammar.purpose_min_s.items())
+            problems.append(
+                f"a {duration:g}-second ad gets exactly {max_scenes} shots (code picks the count "
+                f"from the length: {mins}, every other shot at least {grammar.kept_min:g} s), "
+                f"not {len(draft.scenes)}: merge or split beats, keep the concept"
+            )
         problems += [
             f"scene {i} subject_action {problem}"
             for i, s in enumerate(draft.scenes, 1)

@@ -46,7 +46,7 @@ def shot(n: int, start: float, end: float, **over: Any) -> dict[str, Any]:
         "start_s": start,
         "end_s": end,
         "action": f"beat {n}.",
-        "event": "a hand lifts",
+        "event": "a hand lifts it by its base",
         "camera": "close-up, slow push-in",
         "sound": "room tone",
         "shows_product": True,
@@ -210,7 +210,8 @@ def test_the_references_block_numbers_only_the_images_that_exist() -> None:
         references=[BURNER],
     )
     no_image = render_ad_prompt(d, duration_s=9, aspect_ratio="9:16")
-    assert "Image 1 is the product" in no_image and "It appears in shots 3-4." in no_image
+    assert no_image.startswith("Image 1 is the product")
+    assert "References: The product appears in shots 3-4." in no_image
     assert "The incense burner: a wide, low, carved dark-wood box" in no_image
     assert "Image 2" not in no_image
     assert "transforms into the product in shot 3; before that it is never the product" in (
@@ -223,10 +224,15 @@ def test_the_references_block_numbers_only_the_images_that_exist() -> None:
     assert "Image 3 is the incense burner: a wide" in with_image
     assert "Image 2 is the mabkhara, a prop; it is never the product." in with_image
     lines = with_image.splitlines()
-    assert lines[0] == "A 9-second vertical 9:16 film in 4 shots, hard cuts between shots."
-    assert lines[1].startswith("References: ") and lines[2].startswith("Look: A traditional")
-    assert lines[3].startswith("Shot 1 (0-2 s): Beat 1. Camera: close-up, slow push-in.")
-    assert "Framing: the product fills the frame." in lines[6]
+    assert (
+        lines[0] == "Image 1 is the product: keep its shape, colours, cap and materials identical."
+    )
+    assert lines[1] == "Key moment, shot 3, slowly over 2.5 s: a hand lifts it by its base."
+    assert lines[2] == "A 9-second vertical 9:16 film, 4 shots, hard cuts."
+    assert lines[3].startswith("References: ") and lines[4].startswith("Look: A traditional")
+    assert lines[5].startswith("Shot 1 (0-2 s): Beat 1. Camera: close-up, slow push-in.")
+    assert lines[6].startswith("Cut to: Shot 2 (2-4 s):")
+    assert "Product fills the frame." in lines[8]
     assert lines[-1].endswith("No voice, no dialogue.")
 
 
@@ -378,7 +384,7 @@ def test_a_text_only_prop_has_no_references_line() -> None:
         references=[pot],
     )
     text = render_ad_prompt(d, duration_s=9, aspect_ratio="9:16")
-    assert "dallah" not in text.splitlines()[1]
+    assert "dallah" not in next(x for x in text.splitlines() if x.startswith("References:"))
     assert "Image 2 is the dallah" in render_ad_prompt(
         d, duration_s=9, aspect_ratio="9:16", image_names=["dallah"]
     )
@@ -475,12 +481,9 @@ def test_over_the_limit_lines_are_shortened_before_anything_is_dropped() -> None
         p, refs, duration_s=9, aspect_ratio="9:16", max_chars=len(full) - 1, glosses=glosses
     )
     assert compact and dropped == []
-    line = text.splitlines()[1]
-    assert (
-        "Image 2 is the dallah (Saudi coffee pot). It appears in shots 1-4 and is never the "
-        "product." in line
-    )
-    assert "Image 3 is the tray. It appears" in line and "pinched at the waist" not in line
+    line = next(x for x in text.splitlines() if x.startswith("References:"))
+    assert "Image 2: the dallah (Saudi coffee pot), shots 1-4, never the product." in line
+    assert "Image 3: the tray, " in line and "pinched at the waist" not in line
 
 
 def test_generated_props_are_dropped_before_library_props_and_users_never() -> None:
@@ -496,7 +499,7 @@ def test_generated_props_are_dropped_before_library_props_and_users_never() -> N
         p, refs, duration_s=9, aspect_ratio="9:16", max_chars=len(only_user), glosses=glosses
     )
     assert dropped == [1, 2]  # the generated tray first, then the library finjan; never the user's
-    assert "Image 2 is the dallah." in text and "finjan (Arabic" not in text
+    assert "Image 2: the dallah, " in text and "finjan (Arabic" not in text
 
 
 def test_a_writer_typed_no_voice_line_is_not_repeated() -> None:

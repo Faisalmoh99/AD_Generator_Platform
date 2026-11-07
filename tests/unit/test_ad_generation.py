@@ -120,8 +120,9 @@ def test_a_prompt_that_follows_the_storyboard_has_no_problems() -> None:
 
 def test_rendered_prompt_carries_the_fixed_rules() -> None:
     text = render_ad_prompt(draft([4, 4, 4]), duration_s=12, aspect_ratio="9:16")
-    assert text.startswith("A 12-second vertical 9:16 film in 3 shots, hard cuts")
-    assert "Image 1 is the product: keep its shape" in text and "No text, letters" in text
+    assert text.startswith("Image 1 is the product: keep its shape")
+    assert "A 12-second vertical 9:16 film, 3 shots, hard cuts." in text
+    assert "No text, logos, subtitles or watermark." in text
     assert "Shot 2 (4-8 s): Beat 2." in text and "No voice, no dialogue." in text
 
 

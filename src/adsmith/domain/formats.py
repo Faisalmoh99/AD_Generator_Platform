@@ -134,6 +134,20 @@ def resolve_format(  # noqa: PLR0911 - an ordered list of rules
     return lib.default_other, "not a physical product and no format in the request"
 
 
+def whole_ad_shot_count(g: FormatGrammar, duration_s: float) -> int:
+    """How many shots a one-generation ad of ``duration_s`` gets (ADR-0028, the user's rule
+    2026-11-07: code picks it from the duration). The most shots that fit: every purpose with a
+    minimum (the turn, the hero) at that minimum, every other shot at the format's shortest.
+    6 s: the turn 2 + the hero 2 + one 1.5 s hook = 5.5 → 3 shots (four would need 7 s);
+    8 s: 2 + 2 + 2 × 1.5 = 7 → 4 shots."""
+    reserved = sum(g.purpose_min_s.values())
+    fixed = len(g.purpose_min_s)
+    for n in range(g.max_shots, g.min_shots - 1, -1):
+        if reserved + max(0, n - fixed) * g.kept_min <= duration_s + 1e-9:
+            return n
+    return g.min_shots
+
+
 def format_block(lib: FormatLibrary, fmt: AdFormat) -> str:
     """The format as prompt text (ideate, storyboard)."""
     g = lib.grammar(fmt)

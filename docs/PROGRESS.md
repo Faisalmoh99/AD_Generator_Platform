@@ -1232,3 +1232,27 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
   and a resume never resubmits). One test stub moved to the 3-argument `ad_endpoint`.
 - **Deviation**: none. `scripts/live_one_clip.py` (untracked, not ours) still fails ruff; the gate
   is run with it excluded.
+
+## P2: short Seedance prompt, physics library, shot count by length (2026-11-07)
+
+- **Built (ADR-0028 part 1)**: `render_ad_prompt` writes the product's identity first and a
+  code-written key-moment line second ("Key moment, shot N, slowly over X s: <event>"), then the
+  header, References (leaner compact prop lines; "No text, logos, subtitles or watermark."),
+  Look, shots with "Cut to:" before shots 2..n and a size sentence, Audio. Word budget in
+  `creative_rules.toml` (writer's words ≤ 180, look 30, shot 35, audio 20, identity + key moment
+  within the first 30 words), checked for the writer and the director. `[[physics]]` library
+  (contact, visibility, transformation) checked by code, the in-use product at least half the
+  frame, banned "fast…" and "macro/extreme close-up" on cameras, judge rule `physics_anchored`
+  (12 rules), `[[templates]]` (Halai, Valentino numbers), `camera_moves`. `whole_ad_shot_count`:
+  code picks 3 shots at 6 s and 4 at 8 s; the storyboard is sent back otherwise. Writer v5
+  (compressed try-2 exemplar), director v4. `scripts/prompt_audit.py` (local, $0).
+- **Audit of the five stored planning runs** (`prompt_audit.py`): stored prompts 411-509 words,
+  writer's words 281-351 (budget 180); every one fails the per-field budgets; 4 of 5 trip a
+  physics rule (the invisible spray in both perfume runs, the floating hold in coffee and dates).
+- **Decisions (user)**: 180 words with the identity and the key moment in the first 30; a 6 s ad
+  has 3 shots (hook 2, key 2, hero 2), picked by code.
+- **Deviation**: the 180 cap counts the writer's words, not the whole prompt: the code-written
+  lines alone take ~100 words with four shots and two props (measured). Stated in ADR-0028.
+- **Tests**: 23 new (`tests/unit/test_prompt_v5.py`, incl. a 6-second run that gets 3 shots after
+  one repair); layout pins moved in 6 test files; the multishot fixtures compressed to 108 writer
+  words. 895 passed, 2 skipped.

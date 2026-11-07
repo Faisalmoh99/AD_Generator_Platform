@@ -126,7 +126,9 @@ async def test_a_prop_that_looks_like_the_product_is_retried_then_dropped(
     g = state.generation
     assert g is not None
     # A dropped prop has no image, so no References line: it stays in the shot text only.
-    assert "brass tray" not in g.prompt.text.splitlines()[1]
+    assert "brass tray" not in next(
+        x for x in g.prompt.text.splitlines() if x.startswith("References:")
+    )
     assert "Image 2 is the coffee cup" in g.prompt.text
     assert "brass tray" in g.prompt.shots[0].action  # the shot still names the prop
     text = "\n".join(notes(orch, state.id))
@@ -183,7 +185,7 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
     logged = notes(orch, state.id)
     assert any("shortened to its name and a gloss" in n for n in logged)
     assert any("the coffee cup image (generated) is dropped" in n for n in logged)
-    assert "Image 2 is the brass tray. It appears in shots 1, 4" in state.generation.prompt.text
+    assert "Image 2: the brass tray, shots 1, 4, never the product." in state.generation.prompt.text
 
 
 async def test_the_log_says_which_props_come_from_the_library(tmp_path: Path) -> None:
@@ -213,7 +215,10 @@ async def test_a_prop_that_does_not_earn_an_image_stays_text_only(tmp_path: Path
     assert [r.name for r in state.reference_images] == ["coffee cup"]
     assert image_calls(orch, state) == 1
     assert state.generation is not None
-    assert "brass tray" not in state.generation.prompt.text.splitlines()[1]
+    refs_line = next(
+        x for x in state.generation.prompt.text.splitlines() if x.startswith("References:")
+    )
+    assert "brass tray" not in refs_line
     assert any("brass tray stay in the shot text only" in n for n in notes(orch, state.id))
 
 

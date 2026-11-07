@@ -37,6 +37,8 @@ from adsmith.domain.ad import (
     prompt_diff_summary,
     render_ad_prompt,
     timecode_problems,
+    word_problems,
+    writer_words,
 )
 from adsmith.domain.base import stable_hash
 from adsmith.domain.creative_rules import CreativeRules, creative_rule_problems
@@ -109,6 +111,11 @@ def rewrite_problems(
     )  # fmt: skip
     if too_long:
         problems.append(too_long)
+    problems += word_problems(
+        d, duration_s=duration_s, max_words=rules.params.max_words,
+        key_within_words=rules.params.key_within_words, existing=image_names, glosses=glosses,
+        identity=identity,
+    )  # fmt: skip
     return problems
 
 
@@ -264,16 +271,21 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
                 if previous
                 else "(first round)"
             ),
-            prompt_text=render_ad_prompt(
-                current,
-                duration_s=duration,
-                aspect_ratio=g.aspect_ratio,
-                image_names=names,
-                identity=ident,
+            prompt_text=(
+                text := render_ad_prompt(
+                    current,
+                    duration_s=duration,
+                    aspect_ratio=g.aspect_ratio,
+                    image_names=names,
+                    identity=ident,
+                )
             ),
             draft_json=current.model_dump_json(indent=1),
             duration=str(duration),
             max_chars=str(ep.max_prompt_chars),
+            max_words=str(rules.params.max_words),
+            words=str(writer_words(current)) if text else "0",
+            physics=rules.physics_block(),
             references_budget=budget_note(current),
             user_refs=", ".join(names) or "none",
             user_language=language_name(state.brief.language) if state.brief else "English",

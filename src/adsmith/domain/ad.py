@@ -36,9 +36,9 @@ Line = Annotated[str, Field(min_length=1, max_length=200)]
 TIMECODE_TOLERANCE_S = 0.25
 ProductSize = Literal["absent", "small", "half", "fills"]
 SIZE_TEXT: dict[str, str] = {
-    "small": "the product is small in frame",
-    "half": "the product fills about half the frame",
-    "fills": "the product fills the frame",
+    "small": "Product small in frame",
+    "half": "Product at half the frame",
+    "fills": "Product fills the frame",
 }
 
 
@@ -252,17 +252,30 @@ def identity_line(product_text: str) -> str:
     return GENERIC_IDENTITY
 
 
+NO_TEXT = "No text, logos, subtitles or watermark."
+
+
+def identity_sentence(p: AdPromptDraft | AdPrompt, identity: str | None = None) -> str:
+    """The first line of every prompt (ADR-0028): what Image 1 is and what must not change. The
+    model weighs the first words most (community guides, 2026), so identity comes first."""
+    ident = identity or (p.identity if isinstance(p, AdPrompt) and p.identity else BOTTLE_IDENTITY)
+    return f"Image 1 is the product: {ident}."
+
+
 def references_block(
     p: AdPromptDraft | AdPrompt,
     image_names: Sequence[str] = (),
     identity: str | None = None,
     glosses: Mapping[str, str] | None = None,
+    *,
+    with_identity: bool = True,
 ) -> str:
     """The References line, built by code. Image 1 is always the product photo; image k+2 is
     ``image_names[k]`` (the run's reference images, in the order they are sent). A reference
     with no image gets no line: it stays in the shot text only (user rule, 2026-11-07), except a
     prop that transforms into the product, whose line carries the turn. A reference image no spec
-    names is still declared a prop, so numbering and roles never drift.
+    names is still declared a prop, so numbering and roles never drift. ``with_identity=False``
+    leaves out the identity sentence (``render_ad_prompt`` writes it as the first line).
 
     With ``glosses`` (compact mode, used when the full text is over the model's limit) a prop
     with an image gets its name and a 2-4 word gloss instead of its description: the image
@@ -270,10 +283,9 @@ def references_block(
     never the product.")."""
     keys = [ref_key(n) for n in image_names]
     seen = [s.number for s in p.shots if s.shows_product]
-    ident = identity or (p.identity if isinstance(p, AdPrompt) and p.identity else BOTTLE_IDENTITY)
-    parts = [f"Image 1 is the product: {ident}."]
+    parts = [identity_sentence(p, identity)] if with_identity else []
     if seen:
-        parts.append(f"It appears in {shots_phrase(seen)}.")
+        parts.append(f"{'It' if with_identity else 'The product'} appears in {shots_phrase(seen)}.")
     used: set[int] = set()
     for r in p.references:
         k = ref_key(r.name)
@@ -288,14 +300,13 @@ def references_block(
             continue
         if glosses is not None and idx is not None:
             gloss = glosses.get(ref_key(r.name))
-            head = f"{head} ({gloss})." if gloss else f"{head}."
-            tail = f" It appears in {shots_phrase(r.shots)}"
+            name = f"the {r.name} ({gloss})" if gloss else f"the {r.name}"
             if r.transforms_into_product:
                 turn = p.key_shot if p.key_shot in r.shots else max(r.shots)
-                tail += f" and transforms into the product in shot {turn}."
+                what = f"transforms into the product in shot {turn}"
             else:
-                tail += " and is never the product."
-            parts.append(f"{head}{tail}")
+                what = "never the product"
+            parts.append(f"Image {idx + 2}: {name}, {shots_phrase(r.shots)}, {what}.")
             continue
         tail = f" It appears in {shots_phrase(r.shots)}"
         if r.transforms_into_product:
@@ -310,7 +321,7 @@ def references_block(
             parts.append(
                 f"Image {idx + 2} is the {ref_key(name)}, a prop; it is never the product."
             )
-    parts.append("No text, letters, numbers or logos anywhere.")
+    parts.append(NO_TEXT)
     return "References: " + " ".join(parts)
 
 
@@ -369,6 +380,28 @@ def _article(duration_s: int) -> str:
     return "An" if str(duration_s).startswith("8") or duration_s in (11, 18) else "A"
 
 
+def _key_shot(p: AdPromptDraft | AdPrompt) -> AdShotDraft | AdShot | None:
+    return next((s for s in p.shots if s.number == p.key_shot), None)
+
+
+def key_moment_line(p: AdPromptDraft | AdPrompt) -> str | None:
+    """The second line (ADR-0028): the turn, named before anything else, slow by rule. Seedance
+    compresses events it is not told to hold (try 2: a 2.5 s morph lasted 0.5 s)."""
+    k = _key_shot(p)
+    if k is None:
+        return None
+    what = (k.event or k.action).strip().rstrip(".")
+    secs = k.end_s - k.start_s
+    return (
+        f"Key moment, shot {k.number}, slowly over {secs:g} s: "
+        f"{what[0].lower() + what[1:] if len(what) > 1 and not what[1].isupper() else what}."
+    )
+
+
+def word_count(text: str) -> int:
+    return len(re.findall(r"\S+", text))
+
+
 def render_ad_prompt(
     p: AdPromptDraft | AdPrompt,
     *,
@@ -378,24 +411,32 @@ def render_ad_prompt(
     identity: str | None = None,
     glosses: Mapping[str, str] | None = None,
 ) -> str:
-    """The text the video model receives, in the structure of the human-directed prompt of try 2
-    (header, References, Look, numbered shots, Audio). The identity, no-text and no-voice rules
-    and the References block are written by code, so a prompt can never drop them."""
+    """The text the video model receives (ADR-0028): the product's identity first, then the key
+    moment (both inside the first ~30 words, where the model listens most), the header, the
+    References line (props, no-text rule), Look, the numbered shots with "Cut to:" between them
+    (models honour a shot list "far more reliably" with explicit cut cues), and Audio. The
+    identity, key-moment, no-text and no-voice lines are written by code, so a prompt can never
+    drop them."""
     orient = "vertical" if aspect_ratio in {"9:16", "3:4"} else "horizontal"
     look = " ".join(_capital(x) for x in (p.location, p.look, p.lighting) if x and x.strip())
-    lines = [
-        f"{_article(duration_s)} {duration_s}-second {orient} {aspect_ratio} film in "
-        f"{len(p.shots)} shots, hard cuts between shots.",
-        references_block(p, image_names, identity, glosses),
+    lines = [identity_sentence(p, identity)]
+    if key := key_moment_line(p):
+        lines.append(key)
+    lines += [
+        f"{_article(duration_s)} {duration_s}-second {orient} {aspect_ratio} film, "
+        f"{len(p.shots)} shots, hard cuts.",
+        references_block(p, image_names, identity, glosses, with_identity=False),
         f"Look: {look}",
     ]
-    for s in p.shots:
+    shots: Sequence[AdShotDraft | AdShot] = p.shots
+    for i, s in enumerate(shots):
         size = SIZE_TEXT.get(s.product_in_frame) if s.shows_product else None
         legacy = s.lighting if isinstance(s, AdShot) else ""  # prompts stored before v2
         light = f" Lighting: {_sentence(legacy)}" if legacy else ""
         lines.append(
-            f"Shot {s.number} ({s.start_s:g}-{s.end_s:g} s): {_capital(s.action)}"
-            + (f" Framing: {size}." if size else "")
+            ("Cut to: " if i else "")
+            + f"Shot {s.number} ({s.start_s:g}-{s.end_s:g} s): {_capital(s.action)}"
+            + (f" {size}." if size else "")
             + f" Camera: {_sentence(s.camera)}{light} Sound: {_sentence(s.sound)}"
         )
     lines.append(f"Audio: {_capital(strip_no_voice(p.audio))} No voice, no dialogue.")
@@ -462,7 +503,7 @@ def budgeted_length(
         d, duration_s=duration_s, aspect_ratio="9:16", image_names=names,
         identity=identity, glosses=glosses or {},
     )  # fmt: skip
-    refs_line = text.splitlines()[1]
+    refs_line = next(x for x in text.splitlines() if x.startswith("References:"))
     return len(text), len(refs_line), names
 
 
@@ -490,6 +531,58 @@ def length_problem(
     )
 
 
+def writer_words(d: AdPromptDraft | AdPrompt) -> int:
+    """The words the writer controls: location, look, lighting, every shot's action, camera and
+    sound, and the audio line. Code-written lines (identity, key moment, header, References,
+    labels, timecodes) are not counted: with four shots and two props they alone take ~100 words
+    (measured on the multishot fixture, ADR-0028)."""
+    shots: Sequence[AdShotDraft | AdShot] = d.shots
+    parts = [d.location, d.look, d.lighting, d.audio]
+    parts += [f"{s.action} {s.camera} {s.sound}" for s in shots]
+    return sum(word_count(x) for x in parts)
+
+
+def word_problems(
+    d: AdPromptDraft | AdPrompt,
+    *,
+    duration_s: int,
+    max_words: int,
+    key_within_words: int,
+    existing: Sequence[str] = (),
+    glosses: Mapping[str, str] | None = None,
+    identity: str | None = None,
+) -> list[str]:
+    """The word budget (ADR-0028, the user's rule 2026-11-07): the writer's own words (look,
+    shots, audio) are at most ``max_words``, and the product's identity and the key moment both
+    end within the first ``key_within_words`` words of the rendered prompt. Community guides
+    converge on 60-100 words with the non-negotiables first ("8 requirements written, 4-5
+    honored"); our writers produced 350-400."""
+    names = planned_images(d, existing)
+    text = render_ad_prompt(
+        d, duration_s=duration_s, aspect_ratio="9:16", image_names=names,
+        identity=identity, glosses=glosses or {},
+    )  # fmt: skip
+    problems: list[str] = []
+    own = writer_words(d)
+    if own > max_words:
+        problems.append(
+            f"the look, the shots and the audio take {own} words; the limit is {max_words}. Cut "
+            "adjectives and repeated nouns: each shot is one beat (who, the one motion, the "
+            "contact), one camera move, one sound; the look is one short sentence"
+        )
+    lines = text.splitlines()
+    head = word_count(lines[0]) + (word_count(lines[1]) if lines[1].startswith("Key moment") else 0)
+    if head > key_within_words:
+        k = _key_shot(d)
+        ev = word_count(k.event) if k is not None else 0
+        problems.append(
+            f"the identity line and the key-moment line take {head} words; both must end within "
+            f"the first {key_within_words}: shorten the key shot's event ({ev} words now) to the "
+            "one visible motion, e.g. 'his wrist stops mid-shake'"
+        )
+    return problems
+
+
 def ad_prompt_problems(
     draft: AdPromptDraft,
     durations: Sequence[float] | None,
@@ -499,6 +592,8 @@ def ad_prompt_problems(
     image_names: Sequence[str] = (),
     identity: str | None = None,
     glosses: Mapping[str, str] | None = None,
+    max_words: int | None = None,
+    key_within_words: int | None = None,
 ) -> list[str]:
     """Deterministic checks (→ schema repair): the timecodes (against the storyboard's scene
     durations when given), the key shot exists, and the prompt fits the model's limit WITH the
@@ -512,6 +607,11 @@ def ad_prompt_problems(
     )  # fmt: skip
     if too_long:
         problems.append(too_long)
+    if max_words is not None and key_within_words is not None:
+        problems += word_problems(
+            draft, duration_s=duration_s, max_words=max_words, key_within_words=key_within_words,
+            existing=image_names, glosses=glosses, identity=identity,
+        )  # fmt: skip
     return problems
 
 
@@ -572,10 +672,11 @@ def references_budget_note(
 
 # ----------------------------------------------------------------------------- human prompt
 _SHOT_LINE = re.compile(
-    r"^\s*Shot\s+(\d+)\s*\(\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*s\s*\)\s*:\s*(.+)$",
+    r"^\s*(?:Cut to:\s*)?Shot\s+(\d+)\s*\(\s*(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*s\s*\)"
+    r"\s*:\s*(.+)$",
     re.IGNORECASE,
 )
-_SECTION = re.compile(r"^\s*(References|Look|Audio)\s*:", re.IGNORECASE)
+_SECTION = re.compile(r"^\s*(References|Look|Audio|Key moment)\b", re.IGNORECASE)
 
 
 class HumanShot(DomainModel):

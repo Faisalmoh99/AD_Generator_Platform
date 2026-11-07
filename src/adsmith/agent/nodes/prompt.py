@@ -240,6 +240,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         shots=str(len(durations)),
         timecodes="; ".join(marks),
         max_chars=str(ep.max_prompt_chars),
+        max_words=str(rules.params.max_words),
         references_budget=references_budget_note(
             existing=names, glosses={}, max_chars=ep.max_prompt_chars, identity=ident
         ),
@@ -255,6 +256,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         problems = ad_prompt_problems(
             d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names,
             identity=ident, glosses=bank.glosses([r.name for r in d.references]),
+            max_words=rules.params.max_words, key_within_words=rules.params.key_within_words,
         )  # fmt: skip
         problems += creative_rule_problems(d, rules)
         if problems:

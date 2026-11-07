@@ -33,6 +33,12 @@ class CreativeParams(DomainModel):
     handled_min_shots: int = Field(ge=0, le=12)
     max_locations: int = Field(ge=1, le=4)
     max_references: int = Field(ge=0, le=8)
+    # Word budget (ADR-0028). Defaults keep an older rules file loadable.
+    max_words: int = Field(default=180, ge=40, le=600)
+    key_within_words: int = Field(default=30, ge=10, le=80)
+    max_words_look: int = Field(default=35, ge=5, le=200)
+    max_words_shot: int = Field(default=45, ge=10, le=200)
+    max_words_audio: int = Field(default=25, ge=5, le=200)
 
 
 class BannedWord(DomainModel):
@@ -56,6 +62,33 @@ class BannedWord(DomainModel):
         return re.search(self.regex, text, re.IGNORECASE) is not None
 
 
+class PhysicsRule(DomainModel):
+    """A Seedance failure and the wording that prevents it (ADR-0028), checked by code."""
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,39}$")
+    failure: Annotated[str, Field(min_length=1, max_length=200)]
+    seen: Annotated[str, Field(min_length=1, max_length=200)]
+    trigger: str
+    required: str
+    use: Annotated[str, Field(min_length=1, max_length=300)]
+    key_only: bool = False
+
+    @model_validator(mode="after")
+    def _compiles(self) -> Self:
+        re.compile(self.trigger, re.IGNORECASE)
+        re.compile(self.required, re.IGNORECASE)
+        return self
+
+
+class ReferenceTemplate(DomainModel):
+    """A reference ad's measured execution (ADR-0028): targets, not a format to copy."""
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,39}$")
+    source: Annotated[str, Field(min_length=1, max_length=200)]
+    numbers: Annotated[str, Field(min_length=1, max_length=400)]
+    borrow: Annotated[str, Field(min_length=1, max_length=300)]
+
+
 class JudgeRule(DomainModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{1,39}$")
     text: Annotated[str, Field(min_length=1, max_length=600)]
@@ -64,6 +97,11 @@ class JudgeRule(DomainModel):
 class CreativeRules(DomainModel):
     params: CreativeParams
     banned: list[BannedWord] = Field(default_factory=list)
+    physics: list[PhysicsRule] = Field(default_factory=list)
+    templates: list[ReferenceTemplate] = Field(default_factory=list)
+    camera_moves: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(
+        default_factory=list
+    )
     judge: list[JudgeRule] = Field(min_length=1)
     lessons: dict[str, str] = Field(default_factory=dict)
 
@@ -94,8 +132,21 @@ class CreativeRules(DomainModel):
                 "product.",
                 f"- {p.max_locations} location for the whole film; at most {p.max_references} "
                 "references besides the product photo.",
+                f"- Your words (look, every shot's action, camera and sound, audio) are at most "
+                f"{p.max_words}; the look at most {p.max_words_look}, each shot at most "
+                f"{p.max_words_shot}, the audio at most {p.max_words_audio}. Code writes the "
+                "product's identity and the "
+                "key shot's event as the first two lines: they must end within "
+                f"{p.key_within_words} words, so the key shot's event is the one visible motion "
+                "in a few words.",
             ]
         )
+
+    def physics_block(self) -> str:
+        return "\n".join(f"- {r.id}: {r.failure} ({r.seen}). Write: {r.use}" for r in self.physics)
+
+    def templates_block(self) -> str:
+        return "\n".join(f"- {t.source}: {t.numbers}. Borrow: {t.borrow}" for t in self.templates)
 
     def banned_block(self) -> str:
         lines = []
@@ -119,6 +170,13 @@ class CreativeRules(DomainModel):
             f"{self.params_block()}\n"
             "Words the video model takes literally or ignores (never use them):\n"
             f"{self.banned_block()}\n"
+            "Seedance failures we saw and the wording that prevents them (checked by code: a shot "
+            "whose motion matches one must use its wording):\n"
+            f"{self.physics_block()}\n"
+            "Camera moves that read in one shot (one per shot): "
+            f"{', '.join(self.camera_moves)}\n"
+            "Execution targets from reference ads we measured:\n"
+            f"{self.templates_block()}\n"
             "Judged by the creative director:\n"
             f"{self.judge_block()}"
         )
@@ -189,6 +247,45 @@ def size_problems(d: AdPromptDraft) -> list[str]:
     return problems
 
 
+def physics_problems(d: AdPromptDraft, physics: Sequence[PhysicsRule]) -> list[str]:
+    """The Seedance failure library (ADR-0028): a shot whose motion triggers a rule must use its
+    wording in the same shot (action or event)."""
+    problems: list[str] = []
+    for s in d.shots:
+        text = f"{s.action} {s.event}"
+        for r in physics:
+            if r.key_only and s.number != d.key_shot:
+                continue
+            if re.search(r.trigger, text, re.IGNORECASE) and not re.search(
+                r.required, text, re.IGNORECASE
+            ):
+                problems.append(f"shot {s.number} ({r.id}): {r.failure} ({r.seen}). {r.use}")
+    return problems
+
+
+def word_budget_problems(d: AdPromptDraft, p: CreativeParams) -> list[str]:
+    """Per-field word budgets (ADR-0028); the whole-prompt budget is checked on the rendered
+    text with its References line (``domain.ad.word_problems``)."""
+    problems: list[str] = []
+    look = len(f"{d.location} {d.look} {d.lighting}".split())
+    if look > p.max_words_look:
+        problems.append(
+            f"location + look + lighting take {look} words; at most {p.max_words_look}: one short "
+            "sentence each, no props (the shots name them)"
+        )
+    for s in d.shots:
+        n = len(f"{s.action} {s.camera} {s.sound}".split())
+        if n > p.max_words_shot:
+            problems.append(
+                f"shot {s.number} takes {n} words (action + camera + sound); at most "
+                f"{p.max_words_shot}: one beat, one move, one sound"
+            )
+    audio = len(d.audio.split())
+    if audio > p.max_words_audio:
+        problems.append(f"the audio line takes {audio} words; at most {p.max_words_audio}")
+    return problems
+
+
 def residue_problems(d: AdPromptDraft) -> list[str]:
     """Stray characters (template residue, unbalanced brackets) before anything is rendered:
     the writer of run_01M6SSVMPBEAY1WW1FWF4DGWRZ left a '}' in the audio line."""
@@ -212,7 +309,7 @@ def product_share(d: AdPromptDraft) -> tuple[list[int], float]:
     return [s.number for s in shots], (seconds / total if total > 0 else 0.0)
 
 
-def creative_rule_problems(  # noqa: PLR0912 - one flat list of independent rules
+def creative_rule_problems(  # noqa: PLR0912, PLR0915 - one flat list of independent rules
     d: AdPromptDraft, rules: CreativeRules
 ) -> list[str]:
     """Every rule code can check, as repair messages."""
@@ -295,4 +392,13 @@ def creative_rule_problems(  # noqa: PLR0912 - one flat list of independent rule
     problems += banned_problems(d, rules.banned)
     problems += size_problems(d)
     problems += residue_problems(d)
+    problems += physics_problems(d, rules.physics)
+    problems += word_budget_problems(d, p)
+    for s in d.shots:
+        if s.handled and s.product_in_frame == "small":
+            problems.append(
+                f"shot {s.number}: a hand uses the product but it is small in frame; a product "
+                "that acts is at least half the frame (try 2: the spray was invisible because the "
+                "bottle was tiny)"
+            )
     return problems
