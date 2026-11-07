@@ -1353,3 +1353,43 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
 - **What the video shows that the prompt did not get**: the father's face never appears (only
   his hands; the son smiles), the shot-3 cups are teacups with handles, the son's shot 1 holds
   the pouch to camera.
+
+## ADR-0029: visual devices, visual_magic, preferences, the execution path (2026-11-07)
+
+Context: the employer wants ideas with visual magic, not only true insights; the system-alone
+coffee video lost part of its idea in execution. Plan approved 2026-11-07 (order 0 → 1 → 2 → 4 →
+3 → test runs → studio slice). ADR-0029 with four addenda.
+- **Phase 0** (`9110c68`): lesson `try_7` (the coffee video: faceless father, cut sip, hold-up
+  opening, handles, second dallah, four events in the key shot).
+- **Phase 1** (`090f25a`): `config/visual_devices.toml` (12 devices with renderable wording,
+  proven/likely/unproven; two worked exemplars), ideate v9 (raw `device_sketches` first; each
+  concept has `device_id`, `device_image`, `device_shot`; different devices; no copied exemplar;
+  a whole-ad sketch has the film's shot count), the motif ledger keeps the device (migration 3).
+- **Phase 2** (`a99d3f8`): `visual_magic` at .20 (insight .15, hook .15, story .15, originality
+  .10, culture .10, product .15); the judge reads each concept's image first in a per-run shuffled
+  order mapped back by code (select v7); critic v4 looks for the device on screen; old verdicts load.
+- **Phase 4** (`e64ba80`): `preferences` table (migration 4): concept, tagline, brand, spend-gate
+  and finished-ad decisions with the options they beat; `adsmith choose-copy`;
+  `scripts/export_preferences.py` (pairwise JSONL, agreement with the system's pick).
+- **Phase 3** (`7476041`): `second_character` in the bible (continuity v7); "handleless" glued to
+  every finjan, generic cups refused, exactly one dallah; at most two beats in the key shot; the
+  key shot gets the device's minimum length; judged rules `device_lands`, `setup_filmed`,
+  `no_holdup_opening` (17 rules); writer v6 and director v5 receive the device's wording.
+- **Studio slice** (`3478bf1`): photo upload in the browser (one-generation ads), Decline, "Use"
+  for a tagline or brand, Download. Checked in Chrome on a zero-key run: upload → concepts →
+  spend gate → copy chosen → approve → download link; no console errors.
+- **Checks ($0)**: `prompt_audit.py` on the coffee video now flags shot 3's "cups" and the 4-beat
+  key shot (the two execution failures we saw); a zero-key 8 s multishot run reaches DONE with
+  all 17 rules passing.
+- **Deviations**: candidates use different devices (checked by code) instead of code-assigned
+  (theme, device) pairs; the shot-count check moved from phase 3 into ideate v9; a code check for
+  "device at half the frame" was left to the judged rule (a reflection or a trail is not the product).
+- **Deferred**: the production pack's shot list follows the storyboard, which `rewrite-prompt`
+  does not change (the coffee pack still lists the glass brewer); the studio's "your idea" field
+  and provider/duration/resolution controls (after Sunday).
+- **Note**: running `export_preferences.py` applied migrations 3 and 4 to `data/adsmith.db`
+  (additive: a column and a table).
+- **Tests**: 969 passed, 2 skipped (from 932). New: `test_visual_devices.py`,
+  `test_visual_magic.py`, `test_execution_fixes.py`, `test_preferences.py`, 3 studio API tests.
+- **Next (paid, waiting for approval)**: planning runs to the gate for «اعلان لعطر رجالي»
+  (`assets/perfume.jpeg`) and coffee (same request and photo as the coffee video), then one video.
