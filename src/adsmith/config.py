@@ -372,6 +372,9 @@ class Settings(BaseSettings):
     music_max_usd: float = Field(default=0.15, ge=0)
     # Prop reference images of a whole-ad prompt (ADR-0026): the run's cap on their images.
     props_max_usd: float = Field(default=0.20, ge=0)
+    # Whole-ad audio is normalised to this loudness at assembly (EBU R128, -1.5 dBTP); both
+    # competitor references measured -15.5 and -16.3 LUFS, our tries -26 and -19.7 (ADR-0026).
+    loudness_target_lufs: float | None = Field(default=-16.0, ge=-40, le=-5)
     # Hard ceiling for ALL real fal spend on this machine (prepaid balance, no auto top-up).
     # Every paid call reserves against it in the account ledger before it is submitted.
     fal_balance_usd: float | None = Field(default=None, ge=0)

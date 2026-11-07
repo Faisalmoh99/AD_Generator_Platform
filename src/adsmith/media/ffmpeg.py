@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import re
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -125,21 +127,73 @@ async def has_audio(path: Path) -> bool:
     return bool(out.strip())
 
 
+TRUE_PEAK_DB = -1.5
+LOUDNESS_RANGE = 11.0
+_LOUDNORM_JSON = re.compile(r"\{[^{}]*\"input_i\"[^{}]*\}", re.DOTALL)
+
+
+async def measure_loudness(
+    src: Path, *, seconds: float, target_lufs: float
+) -> dict[str, str] | None:
+    """First pass of two-pass EBU R128 loudness normalisation: the clip's measured loudness, or
+    None when it is silent (nothing to normalise)."""
+    proc = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(src), "-t", f"{seconds:.3f}", "-vn",
+        "-af", f"loudnorm=I={target_lufs}:TP={TRUE_PEAK_DB}:LRA={LOUDNESS_RANGE}:print_format=json",
+        "-f", "null", "-",
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    _, err = await proc.communicate()
+    text = err.decode(errors="replace")
+    if proc.returncode != 0:
+        raise PermanentProviderError(f"ffmpeg loudness: {text[-400:]}")
+    m = _LOUDNORM_JSON.search(text)
+    if m is None:
+        raise PermanentProviderError("ffmpeg loudness: no measurement in the output")
+    data: dict[str, str] = json.loads(m.group(0))
+    if data.get("input_i", "-inf") in {"-inf", "inf"}:
+        return None
+    return data
+
+
+def loudnorm_filter(measured: dict[str, str], target_lufs: float) -> str:
+    """Second pass: linear gain to the target from the first pass's measurement."""
+    return (
+        f"loudnorm=I={target_lufs}:TP={TRUE_PEAK_DB}:LRA={LOUDNESS_RANGE}"
+        f":measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
+        f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
+        f":offset={measured['target_offset']}:linear=true"
+    )
+
+
 async def normalise_clip_av(
-    src: Path, out: Path, *, seconds: float, width: int, height: int
+    src: Path,
+    out: Path,
+    *,
+    seconds: float,
+    width: int,
+    height: int,
+    loudness_lufs: float | None = None,
 ) -> Path:
     """Like ``normalise_clip`` but the clip's own audio is KEPT (re-encoded to the common format);
-    a clip without audio gets a silent track, so every part has the same streams."""
+    a clip without audio gets a silent track, so every part has the same streams. With
+    ``loudness_lufs`` the audio is normalised (two-pass EBU R128, true peak -1.5 dBTP) in this
+    same encode, so the end card's silent part still joins by stream copy (ADR-0026 phase 6)."""
+    audio_filter: list[str] = []
     if await has_audio(src):
         audio_in: list[str] = []
         audio_map = "0:a:0"
+        if loudness_lufs is not None:
+            measured = await measure_loudness(src, seconds=seconds, target_lufs=loudness_lufs)
+            if measured is not None:
+                audio_filter = ["-af", loudnorm_filter(measured, loudness_lufs)]
     else:
         audio_in = ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo"]
         audio_map = "1:a:0"
     await run(
         "-i", str(src), *audio_in, "-t", f"{seconds:.3f}", "-vf", _vf(width, height),
         "-map", "0:v:0", "-map", audio_map, "-c:v", "libx264", "-preset", "veryfast",
-        "-crf", "18", *_AUDIO, "-shortest", str(out),
+        "-crf", "18", *audio_filter, *_AUDIO, "-shortest", str(out),
     )  # fmt: skip
     return out
 

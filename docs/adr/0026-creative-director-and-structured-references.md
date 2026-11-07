@@ -128,3 +128,14 @@ system must write that prompt itself.
   refuses an id it was not given (→ repair). Stored `Insight` has `culture_anchor = "none"` by
   default, so earlier runs load. Ideate sees the anchor's Arabic text, meaning and pitfalls under
   each insight with no template change; the pack lists the anchors.
+
+## Addendum (2026-11-07): loudness (phase 6)
+
+- Whole-ad audio is normalised to `ADSMITH_LOUDNESS_TARGET_LUFS` (default −16 LUFS, true peak
+  −1.5 dBTP, LRA 11; the user's choice; both references measured −15.5 and −16.3 LUFS, our tries
+  −26 and −19.7). Two-pass EBU R128 (`measure_loudness`, then a linear `loudnorm` from the
+  measurement) inside the one encode of the generation's audio (`normalise_clip_av`), so the end
+  card's silent part still joins by stream copy; nothing runs after the concat. A silent clip is
+  left alone. Montage and narrative assembly do not use this path and are unchanged.
+- Checked on try 2's real audio: −19.7 → −15.4 LUFS, true peak −1.4 dBTP.
+- Auto-retime stays deferred (the user's decision).

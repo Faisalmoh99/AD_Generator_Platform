@@ -1103,3 +1103,13 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
   is missed and the scaled plan is used.
 - **Tests**: 788 passed, 2 skipped (+6: `tests/integration/test_critic_v3.py`; image counts and the v3 pin moved).
 - **Not run (paid)**: the critic re-run on try 2's real video (one Anthropic call, about $0.08) waits for approval.
+
+## Phase 6: loudness at whole-ad assembly (2026-11-07)
+
+- **Built**: `ffmpeg.measure_loudness` + `loudnorm_filter` (two-pass, linear), `normalise_clip_av(...,
+  loudness_lufs=)`, `Settings.loudness_target_lufs` (−16, `None` turns it off), a decision event at
+  assembly. ADR-0026 addendum.
+- **Checked ($0)**: try 2's generation audio −19.7 → −15.4 LUFS (scratch copy, the run's own
+  `final_v2.mp4` was not overwritten).
+- **Deferred**: auto-retime (user decision).
+- **Tests**: 791 passed, 2 skipped (+3: `tests/integration/test_loudness.py`).

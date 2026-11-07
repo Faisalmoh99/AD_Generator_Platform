@@ -257,6 +257,31 @@ async def _beat_cut(
     return windows, [decision(run_id, Stage.ASSEMBLE, summary, bpm=grid.bpm, durations=list(new))]
 
 
+async def _ad_segment(
+    source: Path,
+    out: Path,
+    clip_s: float,
+    w: int,
+    h: int,
+    ctx: NodeContext,
+    events: list[AgentEvent],
+) -> Path:
+    """The generation as one part with its own audio, normalised to the loudness target."""
+    target = ctx.settings.loudness_target_lufs
+    seg = await ffmpeg.normalise_clip_av(
+        source, out, seconds=clip_s, width=w, height=h, loudness_lufs=target
+    )
+    if target is not None:
+        events.append(
+            decision(
+                ctx.run_id, Stage.ASSEMBLE,
+                f"Audio normalised to {target:g} LUFS, true peak {ffmpeg.TRUE_PEAK_DB:g} dBTP "
+                "(two-pass EBU R128)",
+            )
+        )  # fmt: skip
+    return seg
+
+
 async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
     """Multishot (ADR-0023): the whole generated ad + the end card, its native audio kept (the
     end card gets a silent track). No music generation and no beat cut: the model made the sound
@@ -301,7 +326,7 @@ async def _assemble_whole(state: RunState, ctx: NodeContext) -> NodeResult:
                 ) + "; length and audio unchanged",
             )
         )  # fmt: skip
-    seg = await ffmpeg.normalise_clip_av(source, work / "ad.mp4", seconds=clip_s, width=w, height=h)
+    seg = await _ad_segment(source, work / "ad.mp4", clip_s, w, h, ctx, events)
     parts, expected = [seg], clip_s
     deltas: list[Delta] = []
     calls: list[LLMCallRecord] = []
