@@ -243,6 +243,8 @@ class HiggsfieldVideoEndpoint(_Frozen):
     pricing: HiggsfieldTokenPricing | None = None
     # A published per-second credit price (Kie.ai, ADR-0027): the quote is computed locally.
     credit_pricing: CreditPricing | None = None
+    # Set when the configured price is known to be wrong: the gate refuses to quote (ADR-0027).
+    unverified_price: str | None = Field(default=None, max_length=300)
     profile: VideoProfile | None = None
 
     @model_validator(mode="after")

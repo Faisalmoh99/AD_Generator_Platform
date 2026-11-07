@@ -63,3 +63,16 @@ Facts checked on docs.kie.ai and kie.ai on 2026-11-07 (no call was made):
 + The wallet matches Kie's console without a manual step.
 − An ambiguous submit leaves a held reservation until a human resolves it (fail-safe).
 − Kie's rate limits are unpublished: a 429 is retried by the recovery layer's backoff.
+
+## Addendum (2026-11-07): the standard price was refused; Seedance 2.0 Fast
+
+- The first real submit (`run_01M6TBP6H8VTXWGXFJR6XPVQ7M`, 6 s 480p on `bytedance/seedance-2`)
+  was refused with "402 Credits insufficient" on an 80-credit account although our computed price
+  was 70.2 credits; nothing was charged. The 11.7 / 24.8 credits/s card sits under a page header
+  "seedance-2-fast"; kie.ai/pricing lists the standard model "from 11.5/s" (its cheapest option)
+  and Fast "from 6.8/s" (Fast's with-video 480p rate on that card). So the card is Fast's.
+- `kie_seedance_20_fast` (`bytedance/seedance-2-fast`, 480p/720p, 11.7/24.8 credits/s, inferred
+  and to be verified from `creditsConsumed`) is now the Kie default. The standard entry carries
+  `unverified_price`: the gate refuses to quote it.
+- `adsmith set-ad-model <run> <key>` moves an unpaid generation (no request id, no video) to
+  another endpoint: same prompt, a new version, estimated again, waiting at the gate.

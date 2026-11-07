@@ -1310,3 +1310,11 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
   two images were mock placeholders because the command lacked `ADSMITH_MEDIA_PROVIDER=fal`.
 - **Tests**: +7 (`tests/unit/test_serving.py`, dropped candidates in `test_diversity.py`).
   927 passed, 2 skipped.
+
+## Kie: Seedance 2.0 Fast, unverified standard price, set-ad-model (2026-11-07)
+
+- **Found**: Kie refused the standard model at a computed 70.2 credits ("402 Credits
+  insufficient" on 80 credits; nothing charged). The published 11.7 credits/s is Fast's.
+- **Built**: `kie_seedance_20_fast` (default), `unverified_price` on the standard entry (never
+  quoted), `adsmith set-ad-model` (`commands.switch_ad_model`). ADR-0027 addendum.
+- **Tests**: +3; 930 passed, 2 skipped.

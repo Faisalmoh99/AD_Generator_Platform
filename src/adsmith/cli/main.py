@@ -490,6 +490,24 @@ def accept_ad(run_id: str, reason: Annotated[str, typer.Option(help="Why you acc
     print_state(orch, commands.accept_ad(orch.rt.storage, run_id, reason=reason))
 
 
+@app.command("set-ad-model")
+def set_ad_model(
+    run_id: str,
+    model: Annotated[str, typer.Argument(help="Catalog key, e.g. kie_seedance_20_fast")],
+    reason: Annotated[str, typer.Option(help="Why the model changes")],
+) -> None:
+    """Move an unpaid whole-ad generation to another endpoint; it is estimated again and waits at
+    the spend gate."""
+    orch = _orchestrator()
+    state = orch.rt.storage.runs.load(run_id)
+    try:
+        ad_endpoint(orch.rt.settings, model, state.config.ad_provider)
+    except KeyError as exc:
+        raise typer.BadParameter(f"{model} is not a whole-ad endpoint in models.toml") from exc
+    commands.switch_ad_model(orch.rt.storage, run_id, model, reason=reason)
+    print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
+
+
 @app.command("rewrite-prompt")
 def rewrite_prompt(
     run_id: str, reason: Annotated[str, typer.Option(help="Why the prompt is rewritten")]

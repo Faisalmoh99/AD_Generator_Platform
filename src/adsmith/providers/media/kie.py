@@ -447,6 +447,11 @@ class KieVideoProvider:
     async def quote(self, job: ReferenceVideoJob) -> PriceQuote:
         """The published per-second credit rate × the duration (no API call; nothing reserved)."""
         self.body(job)
+        if self.endpoint.unverified_price:
+            raise PermanentProviderError(
+                f"kie {self.model}: {self.endpoint.unverified_price}; not quoted (use another "
+                "endpoint, e.g. ADSMITH_KIE_VIDEO_MODEL=kie_seedance_20_fast)"
+            )
         q = credit_quote(self.pricing, resolution=job.resolution, duration_s=job.duration_s)
         self.check_estimate(q.reserved_usd, job.duration_s)
         return q

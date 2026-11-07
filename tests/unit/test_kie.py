@@ -47,7 +47,7 @@ from adsmith.storage.account import SpendAccount
 
 BASE = "https://api.kie.ai"
 UP = "https://kieai.redpandaai.co"
-MODEL = "bytedance/seedance-2"
+MODEL = "bytedance/seedance-2-fast"  # the default since the standard price was refused
 TMP = "https://tempfile.redpandaai.co/adsmith/photo.png"
 CDN = "https://cdn.kie.test"
 SECRET = "kie-secret-123"
@@ -166,7 +166,7 @@ async def _probe(_: Path) -> tuple[int, int, float]:
 def provider(tmp_path: Path, queue: KieQueue) -> KieVideoProvider:
     kie = settings(tmp_path).catalog.kie
     assert kie is not None
-    return KieVideoProvider(queue, kie.video.endpoints["kie_seedance_20"], _probe)
+    return KieVideoProvider(queue, kie.video.endpoints["kie_seedance_20_fast"], _probe)
 
 
 def job(**over: Any) -> ReferenceVideoJob:
@@ -210,7 +210,7 @@ def test_credit_quote_per_resolution(
 ) -> None:
     kie = settings(tmp_path).catalog.kie
     assert kie is not None
-    cp = kie.video.endpoints["kie_seedance_20"].credit_pricing
+    cp = kie.video.endpoints["kie_seedance_20_fast"].credit_pricing
     assert cp is not None and cp.credits(res, secs) == pytest.approx(n_credits)
     q = credit_quote(cp, resolution=res, duration_s=secs)
     assert q.computed_usd == pytest.approx(usd) and q.reserved_usd == pytest.approx(usd)
@@ -226,7 +226,7 @@ async def test_quote_is_local_and_free(tmp_path: Path) -> None:
 
 def test_keys_are_unique_across_providers_and_resolved_by_provider(tmp_path: Path) -> None:
     s = settings(tmp_path)
-    assert ad_model_key(s, None, "kie") == "kie_seedance_20"
+    assert ad_model_key(s, None, "kie") == "kie_seedance_20_fast"
     assert ad_model_key(s, None, "higgsfield") == "seedance_20_ref"
     assert ad_model_key(s, None, "mock") == "seedance_20_ref"
     assert ad_endpoint(s, "kie_seedance_20").credit_pricing is not None
@@ -559,7 +559,7 @@ def test_runtime_builds_the_provider_and_caps_media_by_the_kie_wallet(tmp_path: 
     rt = _kie_runtime(tmp_path, kie_resolution="480p")
     assert rt.kie_video().model == MODEL
     run = Orchestrator(rt).create_run("perfume ad")
-    assert run.config.ad_provider == "kie" and run.config.ad_model == "kie_seedance_20"
+    assert run.config.ad_provider == "kie" and run.config.ad_model == "kie_seedance_20_fast"
     assert run.config.ad_resolution == "480p"
     assert run.budget.media_limit_usd == pytest.approx(0.40)
     sid = rt.kie_account().reserve(endpoint=MODEL, est_usd=0.35, ref="earlier")
@@ -572,3 +572,15 @@ def test_runtime_builds_the_provider_and_caps_media_by_the_kie_wallet(tmp_path: 
 def test_a_real_kie_ad_gets_the_vision_critic(tmp_path: Path) -> None:
     s = settings(tmp_path, ad_provider="kie", kie_api_key=SECRET, kie_balance_usd=0.4)
     assert s.media_provider == "mock" and s.resolved_qa_mode() == "llm"
+
+
+async def test_the_standard_models_unverified_price_is_never_quoted(tmp_path: Path) -> None:
+    kie = settings(tmp_path).catalog.kie
+    assert kie is not None
+    std = kie.video.endpoints["kie_seedance_20"]
+    assert std.endpoint == "bytedance/seedance-2" and std.unverified_price
+    fake = FakeKie()
+    queue, _ = make_queue(fake)
+    with pytest.raises(PermanentProviderError, match="price unverified"):
+        await KieVideoProvider(queue, std, _probe).quote(job())
+    assert fake.requests == []

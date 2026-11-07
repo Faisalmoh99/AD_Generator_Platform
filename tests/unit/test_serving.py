@@ -113,3 +113,38 @@ async def test_a_paid_generation_is_never_rewritten_in_place(tmp_path: Path) -> 
     assert done.stage is Stage.DONE
     with pytest.raises(CommandRejectedError, match="regenerate-ad"):
         commands.rewrite_prompt(rt.storage, run.id, reason="too late")
+
+
+async def test_an_unpaid_generation_moves_to_another_model_and_is_estimated_again(
+    tmp_path: Path,
+) -> None:
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=True, product_photo=photo(tmp_path))
+    first = await orch.run_until_blocked(run.id)
+    assert first.concepts is not None
+    commands.choose_concept(rt.storage, run.id, first.concepts.concepts[0].id)
+    before = await orch.run_until_blocked(run.id)
+    assert before.stage is Stage.AWAITING_GENERATION_APPROVAL
+    assert before.generation is not None and before.generation.est_usd is not None
+    commands.switch_ad_model(rt.storage, run.id, "seedance_25_ref", reason="price refused")
+    s = rt.storage.runs.load(run.id)
+    g = s.generation
+    assert s.stage is Stage.ESTIMATE and s.config.ad_model == "seedance_25_ref"
+    assert g is not None and g.model == "seedance_25_ref" and g.version == 2
+    assert (
+        g.est_usd is None
+        and g.approved_by is None
+        and g.prompt_text == (before.generation.prompt_text)
+    )
+    evs = [e.summary for e in rt.storage.events.tail(run.id, limit=3000)]
+    assert any("HUMAN: whole-ad model seedance_20_ref → seedance_25_ref" in e for e in evs)
+
+
+async def test_a_model_is_never_switched_after_a_video_exists(tmp_path: Path) -> None:
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    assert (await orch.run_until_blocked(run.id)).stage is Stage.DONE
+    with pytest.raises(CommandRejectedError, match="regenerate-ad"):
+        commands.switch_ad_model(rt.storage, run.id, "seedance_25_ref", reason="too late")

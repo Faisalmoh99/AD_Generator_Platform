@@ -385,7 +385,7 @@ base_url = "https://api.kie.ai"
 upload_base_url = "https://kieai.redpandaai.co"
 
 [kie.video]
-default = "kie_seedance_20"
+default = "kie_seedance_20_fast"
 
 [kie.video.endpoints.kie_seedance_20]
 # input: prompt (3-20000 chars), reference_image_urls (<= 9; jpeg/png/webp/bmp/tiff/gif;
@@ -404,12 +404,58 @@ max_usd_per_second = 0.5
 # Our own cap: the same writer budget as on Higgsfield (Kie accepts up to 20,000 characters).
 max_prompt_chars = 2500
 
+# PRICE UNVERIFIED (2026-11-07): Kie refused a 6 s 480p request at our computed 70.2 credits
+# ("402 Credits insufficient" on an 80-credit account, run run_01M6TBP6H8VTXWGXFJR6XPVQ7M). The
+# 11.7 / 24.8 card on kie.ai sits under a "seedance-2-fast" header; the standard model costs
+# more ("from 11.5/s" on kie.ai/pricing is its cheapest option, with video input). The gate refuses
+# to quote this endpoint until its price is verified from a task's creditsConsumed.
+unverified_price = "price unverified: Kie refused 6 s 480p at a computed 70.2 credits (402 on an 80-credit balance); the standard model costs more than 11.7 credits/s"
+
 [kie.video.endpoints.kie_seedance_20.credit_pricing]
 credits_per_second = { "480p" = 11.7, "720p" = 24.8 }
 usd_per_credit = 0.005
 margin = 0.0
 
 [kie.video.endpoints.kie_seedance_20.profile]
+max_single_shot_s = 15
+strengths = [
+  "one generation holds several numbered shots with cuts, camera moves and native audio [observed on Higgsfield, same model]",
+  "the product and the props stay close to their reference photos across the shots [observed on Higgsfield, try 2]",
+  "a Saudi wardrobe and a Gulf prop render right when a reference image shows them [observed on Higgsfield, try 2]",
+]
+weaknesses = [
+  "compresses a planned event: a 2.5 s transformation lasted 0.5 s [observed, try 2]",
+  "an object a hand should hold floats above the palm unless contact is stated [observed, try 2]",
+  "a small product hides its own event (an invisible spray) [observed, try 2]",
+  "the cut points do not follow the planned timecodes exactly; it shortened a 2 s first shot to 1.2 s [observed, try 2]",
+  "readable text, logos and small engraved emblems drift or get invented [expected]",
+  "no seed: a re-generation is a new roll, never the same video [observed in the schema]",
+]
+
+
+[kie.video.endpoints.kie_seedance_20_fast]
+# Seedance 2.0 Fast on the same createTask endpoint and the same input fields; "2.0 Fast stops at
+# 720p" (kie.ai/seedance-2-0). PRICE INFERRED from the pricing page (2026-11-07): kie.ai/pricing
+# lists "bytedance/seedance-2 fast — from 6.8 per second", the with-video 480p figure of the card
+# whose header reads "seedance-2-fast"; that card's no-video rates are 11.7 (480p) and 24.8 (720p);
+# the standard model is priced higher. Verify with the first task's creditsConsumed.
+endpoint = "bytedance/seedance-2-fast"
+min_duration_s = 4
+max_duration_s = 15
+default_duration_s = 8
+resolutions = ["480p", "720p"]
+default_resolution = "720p"
+aspect_ratios = ["16:9", "4:3", "1:1", "3:4", "9:16", "21:9"]
+max_images = 9
+max_usd_per_second = 0.5
+max_prompt_chars = 2500
+
+[kie.video.endpoints.kie_seedance_20_fast.credit_pricing]
+credits_per_second = { "480p" = 11.7, "720p" = 24.8 }
+usd_per_credit = 0.005
+margin = 0.0
+
+[kie.video.endpoints.kie_seedance_20_fast.profile]
 max_single_shot_s = 15
 strengths = [
   "one generation holds several numbered shots with cuts, camera moves and native audio [observed on Higgsfield, same model]",

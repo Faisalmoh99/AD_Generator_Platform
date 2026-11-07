@@ -541,6 +541,44 @@ def accept_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
     return storage.runs.update(run_id, mutate, reason="ad accepted").state
 
 
+def switch_ad_model(storage: Storage, run_id: str, model_key: str, *, reason: str) -> RunState:
+    """A human moves an unpaid whole-ad generation to another endpoint of the same provider
+    (e.g. Kie refused the standard model's price, ADR-0027): same prompt, a new version, back to
+    ESTIMATE, so the new price is quoted and waits for approval at the gate. Refused once a task
+    was ever accepted by the provider (a request id exists) or a video exists. The caller checks
+    that ``model_key`` is in the catalog."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if g is None:
+            raise CommandRejectedError("this run has no whole-ad generation")
+        if g.artifact is not None or any(a.remote_request is not None for a in g.attempts):
+            raise CommandRejectedError(
+                "a task was already accepted by the provider: use `adsmith regenerate-ad`"
+            )
+        if s.stage not in {Stage.ESTIMATE, Stage.AWAITING_GENERATION_APPROVAL, *TERMINAL_STAGES}:
+            raise CommandRejectedError(f"run is at {s.stage}; switch the model at the gate")
+        old = s.config.ad_model
+        s.config.ad_model = model_key
+        g.model = model_key
+        if g.status != "pending":
+            g.renew(f"model {old} → {model_key}: {reason}")
+        s.final, s.error = None, None
+        s.stage = Stage.ESTIMATE
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.ESTIMATE,
+                type=EventType.DECISION,
+                summary=f"HUMAN: whole-ad model {old} → {model_key} ({reason}); same prompt, "
+                f"v{g.version}, estimated again and waiting for approval",
+                payload={"human": True, "from": old or "", "to": model_key},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="switch ad model").state
+
+
 def rewrite_prompt(storage: Storage, run_id: str, *, reason: str) -> RunState:
     """A human sends a whole-ad run back to the PROMPT stage after a rule changed (e.g. the
     serving rule, 2026-11-07): the writer and the director run again on the same concept,
