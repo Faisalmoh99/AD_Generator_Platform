@@ -183,7 +183,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         )
     sb, rules = state.storyboard, ctx.settings.creative_rules
     grammar = ctx.settings.formats.grammar(sb.format)
-    ep = ad_endpoint(ctx.settings, state.config.ad_model)
+    ep = ad_endpoint(ctx.settings, state.config.ad_model, state.config.ad_provider)
     names = prop_image_names(state)
     duration = g.prompt.duration_s
     writer = g.prompt.to_draft()

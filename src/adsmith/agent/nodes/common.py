@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from adsmith.config import FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
+from adsmith.config import AdVideoEndpoint, FalVideoEndpoint, Settings
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import Concept, InsightSet
 from adsmith.domain.culture_bank import CultureBank
@@ -132,7 +132,7 @@ def scene_duration_bounds(
     return max(narrative.kept_min, model_min), MULTI_SCENE_MAX_S, single_max
 
 
-def _ad_endpoint(settings: Settings, ad_model: str | None) -> HiggsfieldVideoEndpoint:
+def _ad_endpoint(settings: Settings, ad_model: str | None) -> AdVideoEndpoint:
     from adsmith.agent.context import ad_endpoint  # noqa: PLC0415
 
     return ad_endpoint(settings, ad_model)
@@ -154,7 +154,7 @@ def video_profile_block(
     whole_ad: bool = False,
 ) -> str:
     """The target video model's capability profile as prompt text (ideate, select, storyboard)."""
-    endpoint: FalVideoEndpoint | HiggsfieldVideoEndpoint = (
+    endpoint: FalVideoEndpoint | AdVideoEndpoint = (
         _ad_endpoint(settings, ad_model) if whole_ad else _video_endpoint(settings, video_model)
     )
     p = endpoint.profile

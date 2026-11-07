@@ -44,11 +44,12 @@ from adsmith.providers.media.base import (
     ReferenceVideoJob,
     VideoCapabilities,
     VideoJob,
+    credit_quote,
     token_quote,
 )
 
 if TYPE_CHECKING:
-    from adsmith.config import HiggsfieldTokenPricing
+    from adsmith.config import CreditPricing, HiggsfieldTokenPricing
 
 Sleep = Callable[[float], Awaitable[None]]
 FPS = 24
@@ -405,8 +406,10 @@ class MockReferenceVideoProvider:
         sleep: Sleep,
         long_side: int = 640,
         pricing: HiggsfieldTokenPricing | None = None,
+        credit_pricing: CreditPricing | None = None,
     ) -> None:
         self.model, self.usd_per_second, self.pricing = model, usd_per_second, pricing
+        self.credit_pricing = credit_pricing
         self.max_prompt_chars = max_prompt_chars
         self._latency, self._sleep, self._long = latency_s, sleep, long_side
         self._urls: dict[str, Path] = {}
@@ -422,6 +425,10 @@ class MockReferenceVideoProvider:
 
     async def quote(self, job: ReferenceVideoJob) -> PriceQuote:
         self.estimates += 1
+        cp = self.credit_pricing
+        if cp is not None and job.resolution in cp.credits_per_second:
+            return credit_quote(cp, resolution=job.resolution, duration_s=job.duration_s,
+                                source="mock")  # fmt: skip
         if self.pricing is not None and job.resolution in self.pricing.usd_per_1k_tokens:
             return token_quote(
                 self.pricing,

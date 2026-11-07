@@ -337,9 +337,8 @@ class PropsRunner:
         """Number the references in the prompt from the images that now exist, and fit the text
         within the model's limit (``fit_references``): compact prop lines first, then drop
         generated props, then library props, each drop a warning."""
-        max_chars = ad_endpoint(
-            self.settings, self.storage.runs.load(run_id).config.ad_model
-        ).max_prompt_chars
+        cfg = self.storage.runs.load(run_id).config
+        max_chars = ad_endpoint(self.settings, cfg.ad_model, cfg.ad_provider).max_prompt_chars
         bank = self.settings.culture_bank
 
         def mutate(s: RunState) -> list[AgentEvent]:

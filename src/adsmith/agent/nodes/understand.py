@@ -74,7 +74,7 @@ async def understand(state: RunState, ctx: NodeContext) -> NodeResult:
     update: dict[str, object] = {"format": fmt}
     if fmt is AdFormat.MULTISHOT:
         # One generation renders the whole ad: whole seconds, inside the model's range.
-        ep = ad_endpoint(ctx.settings, state.config.ad_model)
+        ep = ad_endpoint(ctx.settings, state.config.ad_model, state.config.ad_provider)
         fitted = float(min(max(round(brief.duration_s), ep.min_duration_s), ep.max_duration_s))
         if fitted != brief.duration_s:
             events.append(

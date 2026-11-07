@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.structured import StructuredCaller
-from adsmith.config import FalImageEndpoint, FalVideoEndpoint, HiggsfieldVideoEndpoint, Settings
+from adsmith.config import AdVideoEndpoint, FalImageEndpoint, FalVideoEndpoint, Settings
 from adsmith.domain.run import RunConfig, RunState
 from adsmith.providers.llm.base import LLMProvider
 from adsmith.providers.llm.scripted import ScriptedLLMProvider
@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from adsmith.providers.media.chaos import ChaosPolicy
     from adsmith.providers.media.fal import FalQueue
     from adsmith.providers.media.higgsfield import HiggsfieldQueue, HiggsfieldVideoProvider
+    from adsmith.providers.media.kie import KieQueue, KieVideoProvider
     from adsmith.providers.media.mock import MockMusicProvider
     from adsmith.storage.account import SpendAccount
 
@@ -62,6 +63,8 @@ class AgentRuntime:
     _fal_queue: FalQueue | None = None
     _hf_account: SpendAccount | None = None
     _hf_q: HiggsfieldQueue | None = None
+    _kie_account: SpendAccount | None = None
+    _kie_q: KieQueue | None = None
     _mock_music: MockMusicProvider | None = None
 
     @classmethod
@@ -231,6 +234,62 @@ class AgentRuntime:
             )
         return self._hf_q
 
+    def kie_account(self) -> SpendAccount:
+        """The Kie.ai wallet ledger (ADR-0027): same SQLite file, its own provider rows and its
+        own ceiling in USD (``ADSMITH_KIE_BALANCE_USD``). Refuses to exist without a ceiling."""
+        if self._kie_account is None:
+            from adsmith.storage.account import SpendAccount  # noqa: PLC0415
+
+            if self.settings.kie_balance_usd is None:
+                raise RuntimeError(
+                    "set ADSMITH_KIE_BALANCE_USD (the prepaid Kie balance, USD) before real spend"
+                )
+            self._kie_account = SpendAccount(
+                self.settings.account_db, balance_usd=self.settings.kie_balance_usd, provider="kie"
+            )
+        return self._kie_account
+
+    def kie_queue(self, *, with_account: bool = True) -> KieQueue:
+        """The Kie REST client. ``with_account=False`` serves the free balance call without a
+        wallet ceiling."""
+        from adsmith.providers.media.kie import KieQueue  # noqa: PLC0415
+
+        s = self.settings
+        catalog = s.catalog.kie
+        if s.kie_api_key is None or catalog is None:
+            raise RuntimeError("KIE_API_KEY and a [kie] catalog section are required")
+        if not with_account:
+            return KieQueue(
+                s.kie_api_key.get_secret_value(),
+                base_url=catalog.base_url,
+                upload_base_url=catalog.upload_base_url,
+            )
+        if self._kie_q is None:
+            self._kie_q = KieQueue(
+                s.kie_api_key.get_secret_value(),
+                base_url=catalog.base_url,
+                upload_base_url=catalog.upload_base_url,
+                account=self.kie_account(),
+                poll_interval_s=s.kie_poll_interval_s,
+                max_poll_interval_s=s.kie_max_poll_interval_s,
+                timeout_s=s.kie_timeout_s,
+                sleep=self.sleep,
+                rng=self.rng,
+            )
+        return self._kie_q
+
+    def kie_video(self, model_key: str | None = None) -> KieVideoProvider:
+        """The Kie reference-to-video provider for a catalog key (default: the setting, then the
+        catalog default)."""
+        from adsmith.media.frames import probe_video  # noqa: PLC0415
+        from adsmith.providers.media.kie import KieVideoProvider  # noqa: PLC0415
+
+        catalog = self.settings.catalog.kie
+        if catalog is None:
+            raise RuntimeError("config/models.toml has no [kie] section")
+        key = model_key or self.settings.kie_video_model or catalog.video.default
+        return KieVideoProvider(self.kie_queue(), catalog.video.endpoints[key], probe_video)
+
     def higgsfield_video(self, model_key: str | None = None) -> HiggsfieldVideoProvider:
         """The Higgsfield reference-to-video provider for a catalog key (default: the setting,
         then the catalog default)."""
@@ -251,12 +310,14 @@ class AgentRuntime:
                 self._ad_providers[run.id] = self.ad_provider_factory(run)
             elif run.config.ad_provider == "higgsfield":
                 self._ad_providers[run.id] = self.higgsfield_video(run.config.ad_model)
+            elif run.config.ad_provider == "kie":
+                self._ad_providers[run.id] = self.kie_video(run.config.ad_model)
             else:
                 from adsmith.providers.media.mock import (  # noqa: PLC0415
                     MockReferenceVideoProvider,
                 )
 
-                ep = ad_endpoint(self.settings, run.config.ad_model)
+                ep = ad_endpoint(self.settings, run.config.ad_model, run.config.ad_provider)
                 self._ad_providers[run.id] = MockReferenceVideoProvider(
                     model=f"mock:{ep.endpoint}",
                     usd_per_second=ep.mock_usd_per_second,
@@ -265,6 +326,7 @@ class AgentRuntime:
                     sleep=self.sleep,
                     long_side=run.config.media_long_side or self.settings.media_long_side,
                     pricing=ep.pricing,
+                    credit_pricing=ep.credit_pricing,
                 )
         return self._ad_providers[run.id]
 
@@ -276,6 +338,8 @@ class AgentRuntime:
             left = self.fal_account().summary().remaining_usd
         if run_config.ad_provider == "higgsfield":
             left = (left or 0.0) + self.hf_account().summary().remaining_usd
+        if run_config.ad_provider == "kie":
+            left = (left or 0.0) + self.kie_account().summary().remaining_usd
         return left
 
     def _fal_media(
@@ -441,20 +505,33 @@ def reference_enabled(settings: Settings, run: RunState) -> bool:
     return sb is not None and settings.formats.grammar(sb.format).identity == "reference"
 
 
-def ad_model_key(settings: Settings, ad_model: str | None) -> str:
-    """Catalog key of the reference-to-video endpoint: the run's, else the setting's, else the
-    catalog default."""
+def ad_model_key(settings: Settings, ad_model: str | None, provider: str | None = None) -> str:
+    """Catalog key of the reference-to-video endpoint: the run's, else the provider's setting,
+    else that provider's catalog default (Kie for ``kie``, Higgsfield otherwise; mock runs plan
+    with the limits of the provider they stand in for)."""
+    if ad_model:
+        return ad_model
+    if (provider or settings.ad_provider) == "kie":
+        kie = settings.catalog.kie
+        if kie is None:
+            raise RuntimeError("config/models.toml has no [kie] section")
+        return settings.kie_video_model or kie.video.default
     catalog = settings.catalog.higgsfield
     if catalog is None:
         raise RuntimeError("config/models.toml has no [higgsfield] section")
-    return ad_model or settings.hf_video_model or catalog.video.default
+    return settings.hf_video_model or catalog.video.default
 
 
-def ad_endpoint(settings: Settings, ad_model: str | None) -> HiggsfieldVideoEndpoint:
-    """The reference-to-video endpoint whose limits a whole-ad run plans for (mock runs too)."""
-    catalog = settings.catalog.higgsfield
-    assert catalog is not None
-    return catalog.video.endpoints[ad_model_key(settings, ad_model)]
+def ad_endpoint(
+    settings: Settings, ad_model: str | None, provider: str | None = None
+) -> AdVideoEndpoint:
+    """The reference-to-video endpoint whose limits a whole-ad run plans for (mock runs too).
+    Keys are unique across providers (checked when the catalog loads)."""
+    key = ad_model_key(settings, ad_model, provider)
+    for catalog in (settings.catalog.higgsfield, settings.catalog.kie):
+        if catalog is not None and key in catalog.video.endpoints:
+            return catalog.video.endpoints[key]
+    raise KeyError(f"no whole-ad endpoint {key!r} in config/models.toml")
 
 
 def video_capabilities(endpoint: FalVideoEndpoint) -> VideoCapabilities:

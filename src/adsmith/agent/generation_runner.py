@@ -45,6 +45,7 @@ from adsmith.domain.run import RunState
 from adsmith.domain.scene import SceneFailure
 from adsmith.logging import get_logger
 from adsmith.providers.media.base import (
+    AMBIGUOUS_SUBMIT,
     MediaLabel,
     PriceQuote,
     ReferenceVideoJob,
@@ -99,6 +100,14 @@ def _price_check_event(run_id: str, check: dict[str, object]) -> AgentEvent:
                else f"DIFFERS, ${check['usd_at_actual_size']:.3f} at the real size")
         )  # fmt: skip
         level = "info" if same else "warn"
+    if "credits_computed" in check:
+        consumed = check.get("credits_consumed")
+        parts.append(
+            f"credits computed {check['credits_computed']:g}, consumed "
+            + (f"{consumed:g}" if isinstance(consumed, float) else "not reported")
+        )
+        if check.get("credits_match") is False:
+            level = "warn"
     parts.append("compare with the console balance")
     return _ev(
         run_id, Stage.GENERATE, EventType.DECISION, "; ".join(p for p in parts if p),
@@ -268,7 +277,7 @@ class AdGenerationRunner:
         self._update(run_id, mutate, "ad estimate")
 
     # ------------------------------------------------------------------------ GENERATE
-    async def _generate(self, run_id: str) -> None:
+    async def _generate(self, run_id: str) -> None:  # noqa: PLR0911
         state = self.storage.runs.load(run_id)
         gen = state.generation
         if gen is None or gen.status != "estimated" or state.product_photo is None:
@@ -276,6 +285,19 @@ class AdGenerationRunner:
         if not gen.approved or gen.approved_usd is None:
             self._fail(run_id, Stage.GENERATE, FailureKind.PERMANENT,
                        "refusing to generate: the estimate was not approved")  # fmt: skip
+            return
+        if any(
+            a.scene_version == gen.version and (a.error_message or "").startswith(AMBIGUOUS_SUBMIT)
+            for a in gen.attempts
+        ):
+            # A paid submit of this version may have started a task (no idempotency key at the
+            # provider): never submit it again by code (ADR-0027). A human decides.
+            self._fail(
+                run_id, Stage.GENERATE, FailureKind.PERMANENT,
+                "an earlier submit of this generation may have started a paid task (its answer "
+                "was lost); nothing is resubmitted automatically. Check the provider console, then "
+                "`adsmith regenerate-ad` (new version) or `adsmith settle-actual`",
+            )  # fmt: skip
             return
         request = self._request(gen, state.product_photo.sha256, _ref_shas(state))
         key = request.cache_key()

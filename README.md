@@ -76,6 +76,13 @@ ADSMITH_LLM_PROVIDER=anthropic ADSMITH_AD_PROVIDER=higgsfield \
 uv run adsmith approve <run>        # or: adsmith decline <run>
 ```
 
+**Kie.ai** renders the same Seedance 2.0 reference-to-video model at a published per-second
+credit price (ADR-0027): `ADSMITH_AD_PROVIDER=kie ADSMITH_KIE_BALANCE_USD=<prepaid USD>`
+(`ADSMITH_KIE_RESOLUTION=480p` for the cheapest render; 6 s at 480p = 70.2 credits ≈ $0.35).
+`uv run adsmith kie-balance` shows the account's credits (a free call). The wallet settles at the
+credits Kie reports for the task. Kie has no idempotency key, so a submit whose answer is lost
+pauses the run with the money held and is never resubmitted by code.
+
 Money rules: the provider's own `/estimate` prices exactly the request; a run's budget or wallet
 that cannot cover it refuses before any spend; **real money always waits for a human at the spend
 gate**, even with `--auto`. The request id is persisted at submit, so a crash resumes by polling and

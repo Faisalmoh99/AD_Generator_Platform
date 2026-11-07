@@ -360,7 +360,7 @@ def approve(
                 f"--prompt-file is for the spend gate; run is at {state.stage}"
             )
         shown = state.generation.est_usd
-        ep = ad_endpoint(orch.rt.settings, state.config.ad_model)
+        ep = ad_endpoint(orch.rt.settings, state.config.ad_model, state.config.ad_provider)
         commands.replace_generation_prompt(
             orch.rt.storage, run_id, prompt_file.read_text(encoding="utf-8"),
             max_chars=ep.max_prompt_chars, source=str(prompt_file),
@@ -407,15 +407,35 @@ def settle_actual(
 ) -> None:
     """Book the real (console) charge of a whole-ad generation instead of the computed price."""
     orch = _orchestrator()
-    state = commands.settle_actual(
-        orch.rt.storage, orch.rt.hf_account(), run_id, usd=usd, version=version
-    )
-    s = orch.rt.hf_account().summary()
+    provider = orch.rt.storage.runs.load(run_id).config.ad_provider
+    account = orch.rt.kie_account() if provider == "kie" else orch.rt.hf_account()
+    state = commands.settle_actual(orch.rt.storage, account, run_id, usd=usd, version=version)
+    s = account.summary()
     console.print(
-        f"Booked ${usd:.3f}. Higgsfield ledger: settled ${s.settled_usd:.3f}, reserved "
+        f"Booked ${usd:.3f}. {provider} ledger: settled ${s.settled_usd:.3f}, reserved "
         f"${s.reserved_usd:.3f}, headroom ${s.remaining_usd:.3f} of ${s.balance_usd:.2f}."
     )
     print_state(orch, state)
+
+
+@app.command("kie-balance")
+def kie_balance() -> None:
+    """The Kie.ai account's remaining credits (a free call; needs KIE_API_KEY)."""
+    from adsmith.agent.recovery.errors import AgentError  # noqa: PLC0415
+
+    settings = Settings()
+    rt = AgentRuntime.from_settings(settings)
+    catalog = settings.catalog.kie
+    if catalog is None:
+        raise typer.BadParameter("config/models.toml has no [kie] section")
+    rate = catalog.video.endpoints[catalog.video.default].credit_pricing
+    try:
+        left = asyncio.run(rt.kie_queue(with_account=False).credits())
+    except (AgentError, RuntimeError) as exc:
+        console.print(f"[red]Kie balance unavailable: {exc}[/]")
+        raise typer.Exit(1) from exc
+    usd = f" ≈ ${left * rate.usd_per_credit:.2f}" if rate else ""
+    console.print(f"Kie credits: {left:g}{usd}")
 
 
 def _span(text: str) -> tuple[float, float]:

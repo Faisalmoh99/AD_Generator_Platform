@@ -199,6 +199,21 @@ class HiggsfieldTokenPricing(_Frozen):
         return [*rates, f"{self.fps} fps", f"/ {self.tokens_divisor}"]
 
 
+class CreditPricing(_Frozen):
+    """A per-second credit price (Kie.ai, ADR-0027): credits = seconds × the resolution's rate;
+    USD = credits × ``usd_per_credit``. ``margin`` is added on top for the reservation."""
+
+    credits_per_second: dict[str, float]
+    usd_per_credit: float = Field(gt=0)
+    margin: float = Field(default=0.0, ge=0, le=1)
+
+    def credits(self, resolution: str, seconds: float) -> float:
+        return round(self.credits_per_second[resolution] * seconds, 4)
+
+    def usd(self, resolution: str, seconds: float) -> float:
+        return round(self.credits(resolution, seconds) * self.usd_per_credit, 6)
+
+
 class HiggsfieldVideoEndpoint(_Frozen):
     """A Higgsfield reference-to-video endpoint (one multi-shot ad from reference images). Schema
     facts are verified against docs.higgsfield.ai (dates in models.toml). There is no published
@@ -223,6 +238,8 @@ class HiggsfieldVideoEndpoint(_Frozen):
     params: dict[str, int | float | str | bool] = Field(default_factory=dict)
     # Token formula used when /estimate answers with a description (no number). None = unknown.
     pricing: HiggsfieldTokenPricing | None = None
+    # A published per-second credit price (Kie.ai, ADR-0027): the quote is computed locally.
+    credit_pricing: CreditPricing | None = None
     profile: VideoProfile | None = None
 
     @model_validator(mode="after")
@@ -235,7 +252,15 @@ class HiggsfieldVideoEndpoint(_Frozen):
             self.pricing.usd_per_1k_tokens
         ):
             raise ValueError("pricing must cover every resolution of the endpoint")
+        if self.credit_pricing is not None and not set(self.resolutions) <= set(
+            self.credit_pricing.credits_per_second
+        ):
+            raise ValueError("credit_pricing must cover every resolution of the endpoint")
         return self
+
+
+# The reference-to-video endpoint schema is shared by every whole-ad provider (Higgsfield, Kie).
+AdVideoEndpoint = HiggsfieldVideoEndpoint
 
 
 class HiggsfieldVideoCatalog(_Frozen):
@@ -254,6 +279,23 @@ class HiggsfieldCatalog(_Frozen):
         return self
 
 
+class KieCatalog(_Frozen):
+    """Kie.ai (ADR-0027): the API host, the separate upload host and the video endpoints."""
+
+    base_url: str
+    upload_base_url: str
+    video: HiggsfieldVideoCatalog
+
+    @model_validator(mode="after")
+    def _default_exists(self) -> Self:
+        if self.video.default not in self.video.endpoints:
+            raise ValueError("kie.video.default not in endpoints")
+        for key, ep in self.video.endpoints.items():
+            if ep.credit_pricing is None:
+                raise ValueError(f"kie.video.endpoints.{key}: credit_pricing is required")
+        return self
+
+
 class ModelCatalog(_Frozen):
     default_profile: ProfileName
     profiles: dict[ProfileName, dict[LLMNode, NodeModel]]
@@ -261,9 +303,14 @@ class ModelCatalog(_Frozen):
     llm_models: dict[str, LLMModelSpec]
     fal: FalCatalog
     higgsfield: HiggsfieldCatalog | None = None
+    kie: KieCatalog | None = None
 
     @model_validator(mode="after")
     def _complete(self) -> Self:
+        if self.higgsfield is not None and self.kie is not None:
+            both = set(self.higgsfield.video.endpoints) & set(self.kie.video.endpoints)
+            if both:
+                raise ValueError(f"whole-ad endpoint keys must be unique across providers: {both}")
         for name, nodes in self.profiles.items():
             missing = set(LLMNode) - set(nodes)
             if missing:
@@ -324,8 +371,10 @@ class Settings(BaseSettings):
     fal_image_model: str | None = None
     # Who renders a whole-ad generation (the multishot format): mock (zero keys) or Higgsfield.
     # Separate from media_provider, which serves the per-scene keyframe/clip path (ADR-0022).
-    ad_provider: Literal["mock", "higgsfield"] = "mock"
+    ad_provider: Literal["mock", "higgsfield", "kie"] = "mock"
     hf_video_model: str | None = None  # catalog key under [higgsfield.video.endpoints]
+    kie_video_model: str | None = None  # catalog key under [kie.video.endpoints] (ADR-0027)
+    kie_resolution: str | None = None  # default: the endpoint's default_resolution
     hf_resolution: str | None = None  # default: the endpoint's default_resolution
     hf_generate_audio: bool = True
 
@@ -335,6 +384,8 @@ class Settings(BaseSettings):
     fal_key: SecretStr | None = Field(default=None, validation_alias="FAL_KEY")
     # "key-id:key-secret". Never logged, printed or put in an error message.
     hf_key: SecretStr | None = Field(default=None, validation_alias="HF_KEY")
+    # Kie.ai bearer key. Never logged, printed or put in an error message (ADR-0027).
+    kie_api_key: SecretStr | None = Field(default=None, validation_alias="KIE_API_KEY")
 
     # run behaviour
     aspect_ratio: AspectRatio = "9:16"
@@ -387,6 +438,11 @@ class Settings(BaseSettings):
     hf_poll_interval_s: float = Field(default=2.0, gt=0)  # docs: start at 2 s ...
     hf_max_poll_interval_s: float = Field(default=10.0, gt=0)  # ... back off to 10 s, jitter
     hf_timeout_s: float = Field(default=1800.0, gt=0)
+    # Hard ceiling for ALL real Kie.ai spend, in USD (own rows in the account ledger, ADR-0027).
+    kie_balance_usd: float | None = Field(default=None, ge=0)
+    kie_poll_interval_s: float = Field(default=3.0, gt=0)  # docs: start at 2-3 s ...
+    kie_max_poll_interval_s: float = Field(default=15.0, gt=0)  # ... and back off
+    kie_timeout_s: float = Field(default=1800.0, gt=0)  # "some video tasks take > 10 min"
 
     # paths
     data_dir: Path = PROJECT_ROOT / "data"
@@ -486,5 +542,11 @@ class Settings(BaseSettings):
         if self.ad_provider == "higgsfield" and self.hf_balance_usd is None:
             raise ValueError(
                 "ADSMITH_AD_PROVIDER=higgsfield requires ADSMITH_HF_BALANCE_USD (prepaid ceiling)"
+            )
+        if self.ad_provider == "kie" and self.kie_api_key is None:
+            raise ValueError("ADSMITH_AD_PROVIDER=kie requires KIE_API_KEY")
+        if self.ad_provider == "kie" and self.kie_balance_usd is None:
+            raise ValueError(
+                "ADSMITH_AD_PROVIDER=kie requires ADSMITH_KIE_BALANCE_USD (prepaid ceiling, USD)"
             )
         return self

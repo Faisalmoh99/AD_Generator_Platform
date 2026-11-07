@@ -17,7 +17,12 @@ from adsmith.domain.enums import ScenePhase
 from adsmith.domain.generation import RemoteRequest
 
 if TYPE_CHECKING:
-    from adsmith.config import HiggsfieldTokenPricing
+    from adsmith.config import CreditPricing, HiggsfieldTokenPricing
+
+
+# Prefix of the message of a paid submit whose answer was lost on a provider without an
+# idempotency key (Kie, ADR-0027). The generation runner never submits that version again.
+AMBIGUOUS_SUBMIT = "ambiguous submit"
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,7 +167,7 @@ class PriceQuote:
 
     computed_usd: float
     reserved_usd: float
-    source: Literal["estimate_api", "token_formula", "mock"]
+    source: Literal["estimate_api", "token_formula", "credit_formula", "mock"]
     basis: str
     width: int | None = None
     height: int | None = None
@@ -192,6 +197,29 @@ def token_quote(
         basis=basis,
         width=w,
         height=h,
+    )
+
+
+def credit_quote(
+    pricing: CreditPricing,
+    *,
+    resolution: str,
+    duration_s: int,
+    source: Literal["credit_formula", "mock"] = "credit_formula",
+) -> PriceQuote:
+    """Price a generation from a published per-second credit rate (Kie.ai, ADR-0027)."""
+    n_credits = pricing.credits(resolution, duration_s)
+    usd = pricing.usd(resolution, duration_s)
+    rate = pricing.credits_per_second[resolution]
+    basis = (
+        f"{duration_s} s x {rate:g} credits/s ({resolution}) = {n_credits:g} credits x "
+        f"${pricing.usd_per_credit:g} = ${usd:.3f}; +{pricing.margin:.0%} margin"
+    )
+    return PriceQuote(
+        computed_usd=usd,
+        reserved_usd=round(usd * (1 + pricing.margin), 6),
+        source=source,
+        basis=basis,
     )
 
 

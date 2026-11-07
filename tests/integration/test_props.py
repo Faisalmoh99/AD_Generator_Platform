@@ -173,7 +173,7 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
         )
     )  # fmt: skip
 
-    def at_limit(s: Any, model: str | None) -> Any:
+    def at_limit(s: Any, model: str | None, provider: str | None = None) -> Any:
         return SimpleNamespace(max_prompt_chars=limit)
 
     monkeypatch.setattr(props_module, "ad_endpoint", at_limit)

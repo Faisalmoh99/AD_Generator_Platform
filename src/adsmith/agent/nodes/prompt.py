@@ -214,7 +214,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     concept = state.concepts.selected
     assert concept is not None
     sb, bible, cfg = state.storyboard, state.bible, state.config
-    ep = ad_endpoint(ctx.settings, cfg.ad_model)
+    ep = ad_endpoint(ctx.settings, cfg.ad_model, cfg.ad_provider)
     duration = round(sb.target_duration_s)
     durations = [s.duration_s for s in sb.scenes]
     t, marks = 0.0, []
@@ -247,7 +247,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         user_refs=", ".join(names) or "none",
     )
     aspect = state.brief.aspect_ratio
-    model_key = ad_model_key(ctx.settings, cfg.ad_model)
+    model_key = ad_model_key(ctx.settings, cfg.ad_model, cfg.ad_provider)
     images = await product_photo_parts(state, ctx)
 
     def convert(d: AdPromptDraft) -> AdGeneration:

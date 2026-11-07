@@ -1206,3 +1206,29 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
 - **Effect**: the props stage only shrinks the References line (compact lines are already
   counted), so library props are not dropped to fit.
 - **Tests**: 832 passed, 2 skipped (+3).
+
+## P1: Kie.ai provider for the whole-ad path (2026-11-07)
+
+Context: the meeting on 2026-11-08 needs a video made by the system alone; Higgsfield has $0.50,
+one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027.
+- **Built**: `providers/media/kie.py` (`KieQueue`: stream upload on `kieai.redpandaai.co`,
+  createTask, recordInfo polling 3 s ×1.5 → 15 s with jitter, download, free `credits()`;
+  `KieVideoProvider`: body validated before HTTP, local quote from the published credit rate,
+  settle at `creditsConsumed`); `classify_kie` for Kie's HTTP-200-with-error-code answers;
+  `CreditPricing` + `credit_quote`; `[kie]` catalog (`kie_seedance_20`, 480p 11.7 and 720p 24.8
+  credits/s, only priced resolutions offered); settings `ADSMITH_AD_PROVIDER=kie`, `KIE_API_KEY`,
+  `ADSMITH_KIE_BALANCE_USD`, `ADSMITH_KIE_VIDEO_MODEL`, `ADSMITH_KIE_RESOLUTION`; Kie wallet rows
+  (`provider = "kie"`); `ad_endpoint`/`ad_model_key` take the run's provider (keys unique across
+  providers); the mock provider prices by credits when the endpoint has them; `adsmith
+  kie-balance`; `settle-actual` books on the run's own wallet; the price-check event shows
+  computed vs consumed credits.
+- **Decisions (user)**: budget at 11.7/24.8 credits/s, settle at `creditsConsumed`; no
+  seedance-2-fast now; an ambiguous submit (answer lost after sending) keeps the reservation,
+  pauses the run, and a resume never submits that version again.
+- **Fix found by a test**: a 429 while polling dropped the task handle, so the retry submitted a
+  second paid task. Rate limits now keep the handle like transient errors.
+- **Tests**: 40 new, 872 passed, 2 skipped (`tests/unit/test_kie.py`, `tests/integration/test_kie_pipeline.py`: kill
+  during a Kie generation → resume polls the same task and pays once; an ambiguous submit pauses
+  and a resume never resubmits). One test stub moved to the 3-argument `ad_endpoint`.
+- **Deviation**: none. `scripts/live_one_clip.py` (untracked, not ours) still fails ruff; the gate
+  is run with it excluded.

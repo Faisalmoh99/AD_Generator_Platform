@@ -124,3 +124,29 @@ def classify_higgsfield_http(  # noqa: PLR0911 - flat mapping
     if status in {401, 403}:
         return PermanentProviderError(f"{msg} (check HF_KEY)")
     return PermanentProviderError(msg)
+
+
+# Kie.ai (docs.kie.ai, read 2026-11-07, ADR-0027). The API answers HTTP 200 even on errors: the
+# JSON body's ``code`` carries the error (401 key, 402 credits, 408 no result for 10 min, 422
+# validation, 429 rate limit, 455 maintenance, 500 server, 501 generation failed, 505 feature
+# disabled). A task that ends in state ``fail`` carries ``failCode``/``failMsg`` and is not charged.
+_KIE_TRANSIENT = frozenset({408, 455, 500, 502, 503, 504})
+_KIE_POLICY_MARKERS = ("nsfw", "sensitive", "policy", "moderation", "safety", "flagged", "violat")
+_KIE_CREDIT_MARKERS = ("insufficient", "credits", "balance")
+
+
+def classify_kie(code: int, msg: str, headers: object = None, *, step: str = "") -> AgentError:
+    """Map a Kie body ``code`` (or an HTTP status, same numbers) onto the taxonomy."""
+    text = f"kie {step}: code {code}: {msg[:600]}"
+    lowered = msg.lower()
+    if code == _TOO_MANY_REQUESTS:
+        return RateLimitedError(text, retry_after_s=_retry_after(headers))
+    if code in _KIE_TRANSIENT or code > _SERVER_ERROR + 5:
+        return TransientProviderError(text)
+    if code == 402 or (code != 401 and any(m in lowered for m in _KIE_CREDIT_MARKERS)):
+        return AccountLockedError(f"{text} (the Kie account has no usable credits)")
+    if code == 401:
+        return PermanentProviderError(f"{text} (check KIE_API_KEY)")
+    if any(m in lowered for m in _KIE_POLICY_MARKERS):
+        return ContentPolicyError(text, category="kie_safety")
+    return PermanentProviderError(text)

@@ -75,8 +75,13 @@ EXPORT_AFTER: frozenset[Stage] = frozenset(
 
 
 def run_config_from_settings(settings: Settings, request: str, *, interactive: bool) -> RunConfig:
-    hf = settings.catalog.higgsfield
-    ad_model = settings.hf_video_model or (hf.video.default if hf else None)
+    hf, kie = settings.catalog.higgsfield, settings.catalog.kie
+    if settings.ad_provider == "kie":
+        ad_model = settings.kie_video_model or (kie.video.default if kie else None)
+        ad_resolution = settings.kie_resolution
+    else:
+        ad_model = settings.hf_video_model or (hf.video.default if hf else None)
+        ad_resolution = settings.hf_resolution
     scenario = settings.scripted_scenario
     if settings.llm_provider == "scripted" and scenario is None:
         guess = f"perfume_{detect_language(request)}"
@@ -104,7 +109,7 @@ def run_config_from_settings(settings: Settings, request: str, *, interactive: b
         music_path=str(settings.music_path.resolve()) if settings.music_path else None,
         generate_music=settings.generate_music and settings.music_path is None,
         ad_model=ad_model,
-        ad_resolution=settings.hf_resolution,
+        ad_resolution=ad_resolution,
         ad_generate_audio=settings.hf_generate_audio,
     )
 
@@ -185,7 +190,7 @@ class Orchestrator:
         if whole and "target_duration_s" not in s.model_fields_set and config.ad_model:
             # A multishot ad defaults to the endpoint's demo length (8 s), not the montage's 15 s;
             # a duration in the request text still wins (the brief reads it).
-            ep = ad_endpoint(s, config.ad_model)
+            ep = ad_endpoint(s, config.ad_model, config.ad_provider)
             config = config.model_copy(update={"target_duration_s": float(ep.default_duration_s)})
         photo, refs = self._ingest_images(product_photo, ref_images)
         if chaos is not None:
