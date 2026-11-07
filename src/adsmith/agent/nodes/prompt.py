@@ -33,6 +33,7 @@ from adsmith.domain.ad import (
     AdPromptDraft,
     ad_prompt_problems,
     identity_line,
+    references_budget_note,
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
@@ -239,6 +240,9 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         shots=str(len(durations)),
         timecodes="; ".join(marks),
         max_chars=str(ep.max_prompt_chars),
+        references_budget=references_budget_note(
+            existing=names, glosses={}, max_chars=ep.max_prompt_chars, identity=ident
+        ),
         photo="attached as Image 0" if state.product_photo is not None else "none",
         user_refs=", ".join(names) or "none",
     )
@@ -250,7 +254,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         d = with_gulf_objects(d, bank)  # a named Gulf object gets its canonical description
         problems = ad_prompt_problems(
             d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names,
-            identity=ident,
+            identity=ident, glosses=bank.glosses([r.name for r in d.references]),
         )  # fmt: skip
         problems += creative_rule_problems(d, rules)
         if problems:

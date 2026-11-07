@@ -1194,3 +1194,15 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
     v6 and `ideate` v7 now say modesty is dress, a woman's face in a headscarf may be fully
     visible, and faces are never cropped for consistency in one generation; lesson `try_6`.
 - **Tests**: 829 passed, 2 skipped (+6).
+
+## References budget inside the writer and director (2026-11-07)
+
+- **Built**: `planned_images` (the run's images then the props that earn one, max 3),
+  `budgeted_length` / `length_problem` (the whole prompt with the compact References lines of
+  every image it will be sent with), used by the writer's and the director's code checks;
+  `references_budget_note` tells the writer before writing what the References line takes and
+  what each image prop adds; the director is told the exact References length for its draft.
+  Writer v4 and director v3: location, look and lighting never list props the shots name.
+- **Effect**: the props stage only shrinks the References line (compact lines are already
+  counted), so library props are not dropped to fit.
+- **Tests**: 832 passed, 2 skipped (+3).

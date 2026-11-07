@@ -518,3 +518,42 @@ def test_modesty_is_dress_and_faces_may_be_shown(rules: CreativeRules) -> None:
     assert 'no "eyes never shown"' in cont
     assert "never crop a face for consistency" in lib.get("ideate").system
     assert "her eyes are never shown" in rules.lessons["try_6"]
+
+
+# ------------------------------------------------------------------------ the References budget
+
+
+def test_planned_images_are_the_runs_images_then_props_that_earn_one() -> None:
+    from adsmith.domain.ad import planned_images  # noqa: PLC0415
+
+    p = _with_props()  # dallah, tray, finjan: all handled, in 4 shots
+    assert planned_images(p) == ["dallah", "tray", "finjan"]
+    assert planned_images(p, ["Tray.png"]) == ["Tray.png", "dallah", "finjan"]
+
+
+def test_the_length_check_counts_the_references_lines_before_any_image_exists() -> None:
+    from adsmith.domain.ad import ad_prompt_problems, budgeted_length  # noqa: PLC0415
+
+    d = _with_props().to_draft()
+    glosses = {"dallah": "Saudi coffee pot", "finjan": "Arabic coffee cup"}
+    bare = len(render_ad_prompt(d, duration_s=9, aspect_ratio="9:16"))  # no images yet
+    total, refs, names = budgeted_length(d, duration_s=9, glosses=glosses)
+    assert names == ["dallah", "tray", "finjan"] and total > bare
+    problems = ad_prompt_problems(d, None, duration_s=9, max_chars=total - 1, glosses=glosses)
+    text = "; ".join(problems)
+    assert f"is {total} characters; the limit is {total - 1}" in text
+    assert f"The References line takes {refs} of them" in text
+    assert "never list props in the look" in text
+    assert ad_prompt_problems(d, None, duration_s=9, max_chars=total, glosses=glosses) == []
+
+
+def test_the_writer_and_director_are_told_the_budget() -> None:
+    from adsmith.agent.prompts import PromptLibrary  # noqa: PLC0415
+    from adsmith.domain.ad import references_budget_note  # noqa: PLC0415
+
+    note = references_budget_note(existing=[], glosses={}, max_chars=2500, identity=None)
+    assert "takes about" in note and "more for each prop that will get a reference image" in note
+    lib = PromptLibrary(Settings().prompts_dir)
+    writer, director = lib.get("ad_prompt_writer"), lib.get("director")
+    assert "never the props" in writer.system
+    assert "references_budget" in writer.variables and "references_budget" in director.variables

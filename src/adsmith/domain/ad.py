@@ -433,6 +433,63 @@ def timecode_problems(
     return problems
 
 
+MAX_PROP_IMAGES = 3
+
+
+def planned_images(d: AdPromptDraft | AdPrompt, existing: Sequence[str] = ()) -> list[str]:
+    """The reference images the prompt will be sent with: the run's images (``existing``, in
+    order) then the props that earn an image (library or generated), at most three."""
+    have = {ref_key(n) for n in existing}
+    extra = [r.name for r in d.references if earns_image(r) and ref_key(r.name) not in have]
+    return [*existing, *extra[:MAX_PROP_IMAGES]]
+
+
+def budgeted_length(
+    d: AdPromptDraft | AdPrompt,
+    *,
+    duration_s: int,
+    existing: Sequence[str] = (),
+    glosses: Mapping[str, str] | None = None,
+    identity: str | None = None,
+) -> tuple[int, int, list[str]]:
+    """(length of the whole prompt with the compact References lines of every image it will be
+    sent with, length of that References line, the image names). The writer and the director
+    are checked against this, so the props stage never has to drop a prop to fit (user,
+    2026-11-07: the dates prompt came out at 2,893 characters once its two library props were
+    added)."""
+    names = planned_images(d, existing)
+    text = render_ad_prompt(
+        d, duration_s=duration_s, aspect_ratio="9:16", image_names=names,
+        identity=identity, glosses=glosses or {},
+    )  # fmt: skip
+    refs_line = text.splitlines()[1]
+    return len(text), len(refs_line), names
+
+
+def length_problem(
+    d: AdPromptDraft | AdPrompt,
+    *,
+    duration_s: int,
+    max_chars: int,
+    existing: Sequence[str] = (),
+    glosses: Mapping[str, str] | None = None,
+    identity: str | None = None,
+) -> str | None:
+    total, refs, names = budgeted_length(
+        d, duration_s=duration_s, existing=existing, glosses=glosses, identity=identity
+    )
+    if total <= max_chars:
+        return None
+    props = ", ".join(names) or "none"
+    return (
+        f"the prompt, with the References lines of the images it will be sent with ({props}), "
+        f"is {total} characters; the limit is {max_chars}. The References line takes {refs} "
+        f"of them, so the rest must fit in {max_chars - refs}: shorten the look, the lighting "
+        "and the shots' action, camera and sound (and never list props in the look that the "
+        "shots already name)"
+    )
+
+
 def ad_prompt_problems(
     draft: AdPromptDraft,
     durations: Sequence[float] | None,
@@ -441,22 +498,76 @@ def ad_prompt_problems(
     max_chars: int,
     image_names: Sequence[str] = (),
     identity: str | None = None,
+    glosses: Mapping[str, str] | None = None,
 ) -> list[str]:
     """Deterministic checks (→ schema repair): the timecodes (against the storyboard's scene
-    durations when given), the key shot exists, and the rendered text fits the model's limit."""
+    durations when given), the key shot exists, and the prompt fits the model's limit WITH the
+    compact References lines of every image it will be sent with (``budgeted_length``)."""
     problems = timecode_problems(draft, durations, duration_s=duration_s)
     if not 1 <= draft.key_shot <= len(draft.shots):
         problems.append(f"key_shot {draft.key_shot} is not one of the shots 1..{len(draft.shots)}")
-    text = render_ad_prompt(
-        draft, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names,
-        identity=identity,
+    too_long = length_problem(
+        draft, duration_s=duration_s, max_chars=max_chars, existing=image_names,
+        glosses=glosses, identity=identity,
     )  # fmt: skip
-    if len(text) > max_chars:
-        problems.append(
-            f"the rendered prompt is {len(text)} characters; the limit is {max_chars}: shorten "
-            "each shot's action, camera and sound, and the look"
-        )
+    if too_long:
+        problems.append(too_long)
     return problems
+
+
+def references_budget_note(
+    *, existing: Sequence[str], glosses: Mapping[str, str], max_chars: int, identity: str | None
+) -> str:
+    """Before writing: what the References line already takes, and what each prop that will get
+    an image adds (an estimate from the compact line; the code check counts the real ones)."""
+    probe = AdPromptDraft.model_validate(
+        {
+            "location": "x",
+            "look": "x",
+            "lighting": "x",
+            "audio": "x",
+            "key_shot": 1,
+            "references": [
+                {
+                    "name": "dallah",
+                    "description": "x",
+                    "role": "prop",
+                    "shots": [1, 2, 3, 4],
+                    "transforms_into_product": False,
+                    "handled": True,
+                    "max_size": "small",
+                    "lookalike": False,
+                }
+            ],
+            "shots": [
+                {
+                    "number": n,
+                    "start_s": 2.0 * (n - 1),
+                    "end_s": 2.0 * n,
+                    "action": "x",
+                    "event": "x",
+                    "camera": "x",
+                    "sound": "x",
+                    "shows_product": True,
+                    "product_in_frame": "half",
+                    "handled": False,
+                }
+                for n in (1, 2, 3, 4)
+            ],
+        }
+    )
+    base = references_block(probe.model_copy(update={"references": []}), existing, identity)
+    with_one = references_block(
+        probe, [*existing, "dallah"], identity, {**glosses, "dallah": "Saudi coffee pot"}
+    )
+    per_prop = len(with_one) - len(base)
+    return (
+        f"The References line, written by code, takes about {len(base)} characters now and "
+        f"about {per_prop} more for each prop that will get a reference image (one that is "
+        f"handled, in 2+ shots, at half the frame or more, a look-alike, or that transforms "
+        f"into the product). Everything you write must fit in {max_chars} characters minus "
+        "that line; the code check counts the real lines."
+    )
 
 
 # ----------------------------------------------------------------------------- human prompt

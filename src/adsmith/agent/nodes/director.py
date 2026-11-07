@@ -11,7 +11,7 @@ same writer prompt is never reviewed twice (``prompt_hash``). The review never b
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from adsmith.agent.context import NodeContext, ad_endpoint
 from adsmith.agent.deltas import Delta, SetAdGeneration, SetDirectorReview, SyncStoryboardDurations
@@ -32,6 +32,8 @@ from adsmith.domain.ad import (
     AdGeneration,
     AdPrompt,
     AdPromptDraft,
+    budgeted_length,
+    length_problem,
     prompt_diff_summary,
     render_ad_prompt,
     timecode_problems,
@@ -75,6 +77,7 @@ def rewrite_problems(
     max_chars: int,
     image_names: Sequence[str],
     identity: str | None = None,
+    glosses: Mapping[str, str] | None = None,
 ) -> list[str]:
     """Code checks on a director rewrite. Timecodes are checked against the rewrite's OWN
     durations (the director may re-time), within the grammar: same shot count as the storyboard,
@@ -100,13 +103,12 @@ def rewrite_problems(
     if not 1 <= d.key_shot <= len(d.shots):
         problems.append(f"key_shot {d.key_shot} is not one of the shots 1..{len(d.shots)}")
     problems += creative_rule_problems(d, rules)
-    text = render_ad_prompt(
-        d, duration_s=duration_s, aspect_ratio="9:16", image_names=image_names, identity=identity
-    )
-    if len(text) > max_chars:
-        problems.append(
-            f"the rendered prompt is {len(text)} characters; the limit is {max_chars}: shorten it"
-        )
+    too_long = length_problem(
+        d, duration_s=duration_s, max_chars=max_chars, existing=image_names,
+        glosses=glosses, identity=identity,
+    )  # fmt: skip
+    if too_long:
+        problems.append(too_long)
     return problems
 
 
@@ -201,6 +203,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
             problems += rewrite_problems(
                 d.rewrite, sb=sb, grammar=grammar, rules=rules, duration_s=duration,
                 max_chars=ep.max_prompt_chars, image_names=names, identity=ident,
+                glosses=bank.glosses([r.name for r in d.rewrite.references]),
             )  # fmt: skip
             if problems:
                 raise ValueError("; ".join(problems))
@@ -222,6 +225,20 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         return convert
 
     drafts: dict[int, AdPromptDraft] = {}
+
+    def budget_note(current: AdPromptDraft) -> str:
+        """Exact, for this draft: the References line it will be sent with, and what is left."""
+        _, refs_len, planned = budgeted_length(
+            current, duration_s=duration, existing=names,
+            glosses=bank.glosses([r.name for r in current.references]), identity=ident,
+        )  # fmt: skip
+        props = ", ".join(planned) or "none"
+        return (
+            f"With the images this prompt will be sent with ({props}), the References line "
+            f"takes {refs_len} characters; everything else must fit in "
+            f"{ep.max_prompt_chars - refs_len}. The code check counts the References lines of "
+            "your rewrite's own props."
+        )
 
     def render(
         round_no: int, current: AdPromptDraft, previous: DirectorRound | None
@@ -257,6 +274,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
             draft_json=current.model_dump_json(indent=1),
             duration=str(duration),
             max_chars=str(ep.max_prompt_chars),
+            references_budget=budget_note(current),
             user_refs=", ".join(names) or "none",
             user_language=language_name(state.brief.language) if state.brief else "English",
         )
