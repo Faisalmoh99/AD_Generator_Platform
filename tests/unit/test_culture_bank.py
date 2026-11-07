@@ -122,3 +122,45 @@ async def test_an_unknown_anchor_goes_back_to_the_model(settings: Settings) -> N
     req = next(r for r in provider.requests if r.template == "insight@v2")
     body = "\n".join(p.text for p in getattr(req.messages[0], "parts", ()))
     assert "<culture_bank>" in body and "bakhoor_farewell" in body
+
+
+# ----------------------------------------------------------------------------- Gulf objects
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("dallah", "dallah"), ("brass coffee pot", "dallah"), ("دلة", "dallah"),
+        ("small coffee cup", "finjan"), ("incense burner", "mabkhara"),
+        ("wooden chest", "mandoos"), ("hospitality tray", None),
+    ],
+)  # fmt: skip
+def test_a_prop_name_finds_its_gulf_object(
+    bank: CultureBank, name: str, expected: str | None
+) -> None:
+    obj = bank.object_for(name)
+    assert (obj.id if obj else None) == expected
+
+
+def test_the_dallah_is_described_as_the_gulf_version(bank: CultureBank) -> None:
+    obj = bank.object_for("dallah")
+    assert obj is not None
+    assert "crescent beak spout" in obj.description and "pinched at the waist" in obj.description
+    assert any("gooseneck" in n for n in obj.not_like)
+    entry = bank.get("dallah_on_the_fire")
+    assert entry is not None and entry.objects == ["dallah"]
+
+
+def test_code_puts_the_gulf_description_into_the_prompt(bank: CultureBank) -> None:
+    from adsmith.domain.ad import AdPromptDraft  # noqa: PLC0415
+    from adsmith.domain.culture_bank import with_gulf_objects  # noqa: PLC0415
+    from tests.unit.test_creative_rules import good  # noqa: PLC0415
+
+    pot = {
+        "name": "dallah", "description": "a tall brass coffee pot with a long curved spout",
+        "role": "prop", "shots": [2], "transforms_into_product": False, "handled": True,
+        "max_size": "half", "lookalike": False,
+    }  # fmt: skip
+    d = AdPromptDraft.model_validate(good().model_dump() | {"references": [pot]})
+    out = with_gulf_objects(d, bank)
+    assert "crescent beak spout" in out.references[0].description

@@ -6,6 +6,7 @@ References line numbers them; a prop that resembles the product is retried once,
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -14,6 +15,7 @@ import pytest
 from PIL import Image
 
 from adsmith.agent.orchestrator import Orchestrator
+from adsmith.domain.ad import render_ad_prompt
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import EventType
 from adsmith.domain.run import RunState
@@ -90,7 +92,9 @@ async def test_each_named_prop_gets_an_image_and_a_number(tmp_path: Path) -> Non
     g = state.generation
     assert g is not None
     assert "Image 2 is the brass tray: a round" in g.prompt.text
-    assert "Image 3 is the coffee cup: a small white" in g.prompt.text
+    assert (
+        "Image 3 is the coffee cup: a small handleless Arabic coffee cup (finjan)" in g.prompt.text
+    )
     assert notes(orch, state.id)[-1].startswith(
         "Props: references renumbered: Image 1: the product photo; Image 2: brass tray"
     )
@@ -121,14 +125,14 @@ async def test_a_prop_that_looks_like_the_product_is_retried_then_dropped(
     assert state.budget.by_category["image"] == pytest.approx(0.075)  # rejected images are paid
     g = state.generation
     assert g is not None
-    assert (
-        "The brass tray: a round" in g.prompt.text and "Image 2 is the coffee cup" in g.prompt.text
-    )
+    # A dropped prop has no image, so no References line: it stays in the shot text only.
+    assert "brass tray" not in g.prompt.text.splitlines()[1]
+    assert "Image 2 is the coffee cup" in g.prompt.text
     assert "brass tray" in g.prompt.shots[0].action  # the shot still names the prop
     text = "\n".join(notes(orch, state.id))
     assert "the brass tray image was rejected" in text and "it is dropped" in text
     second = [r for r in orch.rt._provider_override.requests  # type: ignore[union-attr]
-              if r.template == "qa_prop_ref@v1"][1]  # fmt: skip
+              if r.template == "qa_prop_ref@v2"][1]  # fmt: skip
     assert second.messages[0].parts[-1].text.count("A flat round tray, no glass and no cap") == 1
 
 
@@ -160,7 +164,14 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
     run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
     state = await orch.run_until_blocked(run.id, stop_before=Stage.PROPS)
     assert state.generation is not None
-    limit = len(state.generation.prompt.text) + 15  # room for ONE "Image N is the" prefix
+    g0 = state.generation
+    # Room for the first prop's References line only.
+    limit = len(
+        render_ad_prompt(
+            g0.prompt, duration_s=g0.prompt.duration_s, aspect_ratio=g0.aspect_ratio,
+            image_names=["brass tray"],
+        )
+    )  # fmt: skip
 
     def at_limit(s: Any, model: str | None) -> Any:
         return SimpleNamespace(max_prompt_chars=limit)
@@ -170,3 +181,56 @@ async def test_props_are_dropped_last_first_when_the_prompt_is_too_long(
     assert [r.name for r in state.reference_images] == ["brass tray"]
     assert state.generation is not None and len(state.generation.prompt.text) <= limit
     assert any("the coffee cup image is dropped" in n for n in notes(orch, state.id))
+
+
+async def test_a_prop_that_does_not_earn_an_image_stays_text_only(tmp_path: Path) -> None:
+    rt = runtime(settings(tmp_path))
+    llm = rt._provider_override
+    assert isinstance(llm, ScriptedLLMProvider)
+    writer = copy.deepcopy(llm._scripts["ad_prompt_writer"][0])
+    tray = writer["output"]["references"][0]
+    tray.update({"shots": [1], "handled": False, "max_size": "small", "lookalike": False})
+    llm.override("ad_prompt_writer", [writer])
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
+    assert [r.name for r in state.reference_images] == ["coffee cup"]
+    assert image_calls(orch, state) == 1
+    assert state.generation is not None
+    assert "brass tray" not in state.generation.prompt.text.splitlines()[1]
+    assert any("brass tray stay in the shot text only" in n for n in notes(orch, state.id))
+
+
+async def test_a_generic_version_of_a_gulf_object_fails_the_check(tmp_path: Path) -> None:
+    generic = {
+        **PASS,
+        "score": 0.55,
+        "checks": {**PASS["checks"], "matches_shot_spec": False},  # type: ignore[dict-item]
+        "issues": [
+            {
+                "category": "composition",
+                "severity": "major",
+                "observation": "A white mug with a handle, not a handleless finjan.",
+                "fix": "A small handleless white porcelain finjan with a thin gold band.",
+                "frame_index": 1,
+            }
+        ],
+    }
+    steps = [{"when": "Name: coffee cup", "output": generic}, {"output": PASS}]
+    orch, state = await to_estimate(tmp_path, qa_mode="llm", prop_steps=steps)
+    assert [r.name for r in state.reference_images] == ["brass tray"]  # the cup is dropped
+    req = next(
+        r
+        for r in orch.rt._provider_override.requests  # type: ignore[union-attr]
+        if r.template == "qa_prop_ref@v2" and "Name: coffee cup" in r.messages[0].parts[-1].text
+    )
+    body = req.messages[0].parts[-1].text
+    assert "the traditional version is required): yes" in body
+    assert "Never: a mug or any cup with a handle" in body
+    # The image prompt itself asks for the Gulf version and names the wrong ones.
+    g = state.generation
+    assert g is not None
+    cup = next(r for r in g.prompt.references if r.name == "coffee cup")
+    image_prompt = orch.rt.props_runner(state)._prompt(state, cup, "")
+    assert "a small handleless Arabic coffee cup (finjan)" in image_prompt
+    assert "The traditional Gulf version, never a mug or any cup with a handle" in image_prompt

@@ -13,7 +13,10 @@
             1,
             4
           ],
-          "transforms_into_product": false
+          "transforms_into_product": false,
+          "handled": false,
+          "max_size": "small",
+          "lookalike": false
         },
         {
           "name": "coffee cup",
@@ -22,7 +25,10 @@
           "shots": [
             1
           ],
-          "transforms_into_product": false
+          "transforms_into_product": false,
+          "handled": true,
+          "max_size": "small",
+          "lookalike": false
         }
       ],
       "shots": [

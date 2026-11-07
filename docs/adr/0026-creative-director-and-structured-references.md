@@ -139,3 +139,30 @@ system must write that prompt itself.
   left alone. Montage and narrative assembly do not use this path and are unchanged.
 - Checked on try 2's real audio: −19.7 → −15.4 LUFS, true peak −1.4 dBTP.
 - Auto-retime stays deferred (the user's decision).
+
+## Addendum (2026-11-07): fixes after the first real planning run
+
+Run `run_01M6SSVMPBEAY1WW1FWF4DGWRZ` (women's perfume, planning only, $0.715) showed five gaps.
+- **Emotion on the turn**: a new judged rule `emotion_on_turn` (9 rules now): when the insight is
+  a person's feeling, the key shot shows that person reacting (face or body); hands and a wrist
+  alone fail. The run's key shot was a hand and a wrist only; the lesson `try_3` says so.
+- **Props only when they earn an image** (`earns_image`, code): handled by a person, in 2+ shots,
+  at half the frame or more, a look-alike of the product, or transforming into it. Otherwise the
+  prop stays in the shot text, with no image and no References line (the run's dallah: one wide
+  shot, small). The writer and the director now fill `handled`, `max_size` and `lookalike` per
+  reference (`ReferenceDraft`; the stored `ReferenceSpec` has defaults, so earlier runs load). A
+  reference without an image gets no References line, except a prop that transforms into the
+  product.
+- **Gulf objects** (`[[objects]]` in `config/culture_bank.toml`: dallah, finjan, mabkhara,
+  mandoos, najr, bisht; entries link them): a prop whose name matches gets the canonical
+  description by code (`with_gulf_objects`, writer and director), and the prop image prompt
+  (`prop_reference` v2) and its check (`qa_prop_ref` v2) use it with the versions it must not
+  look like. The run's dallah came out as a European gooseneck pot and passed at 0.88.
+- **The described object is now hard at the prop check** (`composition_hard`): before, a wrong
+  object only lowered the score (`matches_shot_spec` is a soft check elsewhere).
+- **One source of size**: code refuses an action or event that states the product's size ("half
+  the frame"), and a product "at the edge", "in the corner" or "in soft focus" marked half or
+  fills (the run said "a third" in the action and "half" in the framing).
+- **Stray characters**: code refuses `{ } < >` and unbalanced brackets in any written field (the
+  run's audio line ended with "}").
+- Templates: `ad_prompt_writer` v3, `director` v2, `prop_reference` v2, `qa_prop_ref` v2.

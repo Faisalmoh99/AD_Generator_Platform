@@ -41,6 +41,11 @@
           "rule_id": "sound_on_event",
           "passed": true,
           "note": "A soft glass touch as the bottle meets the guest's palm in shot 3."
+        },
+        {
+          "rule_id": "emotion_on_turn",
+          "passed": true,
+          "note": "The insight is about the host's generosity; shot 3 shows the host lifting and offering the bottle to the guest's open palm: people carry the turn, not a spray demo."
         }
       ],
       "changes": [],
@@ -58,7 +63,10 @@
               1,
               4
             ],
-            "transforms_into_product": false
+            "transforms_into_product": false,
+            "handled": false,
+            "max_size": "small",
+            "lookalike": false
           },
           {
             "name": "coffee cup",
@@ -67,7 +75,10 @@
             "shots": [
               1
             ],
-            "transforms_into_product": false
+            "transforms_into_product": false,
+            "handled": true,
+            "max_size": "small",
+            "lookalike": false
           }
         ],
         "shots": [

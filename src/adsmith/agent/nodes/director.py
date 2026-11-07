@@ -38,6 +38,7 @@ from adsmith.domain.ad import (
 )
 from adsmith.domain.base import stable_hash
 from adsmith.domain.creative_rules import CreativeRules, creative_rule_problems
+from adsmith.domain.culture_bank import with_gulf_objects
 from adsmith.domain.director import (
     DirectorReview,
     DirectorReviewDraft,
@@ -184,9 +185,11 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     template = ctx.prompts.get("director")
     images = await product_photo_parts(state, ctx)
     ids = rules.judge_ids
+    bank = ctx.settings.culture_bank
 
     def convert_for(round_no: int) -> Callable[[DirectorReviewDraft], DirectorRound]:
         def convert(d: DirectorReviewDraft) -> DirectorRound:
+            d = d.model_copy(update={"rewrite": with_gulf_objects(d.rewrite, bank)})
             got = [v.rule_id for v in d.verdicts]
             problems = []
             if sorted(got) != sorted(ids):
@@ -227,6 +230,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
             banned=rules.banned_block(),
             judge=rules.judge_block(),
             lessons=rules.lessons_block(),
+            gulf_objects=bank.objects_block(),
             cliches=cliches_block(state),
             storyboard=storyboard_block(sb),
             round=str(round_no),

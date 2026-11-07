@@ -29,6 +29,9 @@ BURNER = {
     "role": "prop",
     "shots": [1, 2, 3],
     "transforms_into_product": True,
+    "handled": True,
+    "max_size": "half",
+    "lookalike": False,
 }
 
 
@@ -298,3 +301,84 @@ def test_multishot_needs_the_product_in_three_shots_and_two_second_turns(
     text = "; ".join(grammar_problems(StoryboardDraft.model_validate(raw).scenes, g))
     assert "the product is visible in shots [3, 4]" in text
     assert "scene 3 (reveal) lasts 1.5 s" in text and "scene 4 (product) lasts 1.5 s" in text
+
+
+# ----------------------------------------------------------------------------- 2026-11-07 fixes
+
+
+def test_emotion_on_turn_is_a_judged_rule_with_this_runs_lesson(rules: CreativeRules) -> None:
+    assert "emotion_on_turn" in rules.judge_ids
+    rule = next(r for r in rules.judge if r.id == "emotion_on_turn")
+    assert "face or the body" in rule.text and "Hands and a wrist alone fail" in rule.text
+    assert "hand and a wrist" in rules.lessons["try_3"]
+    assert "emotion_on_turn" in rules.prompt_block()
+
+
+def test_the_action_never_states_the_products_size(rules: CreativeRules) -> None:
+    d = good()
+    d.shots[0] = d.shots[0].model_copy(
+        update={"action": "The bottle stands on the console, filling about half the frame."}
+    )
+    problems = creative_rule_problems(d, rules)
+    assert any("shot 1 action states a size" in p and "Framing line" in p for p in problems)
+
+
+@pytest.mark.parametrize("words", ["at the right edge", "in soft focus", "in the corner"])
+def test_a_peripheral_product_cannot_fill_half_the_frame(rules: CreativeRules, words: str) -> None:
+    d = good()
+    d.shots[0] = d.shots[0].model_copy(update={"action": f"The bottle stands {words}."})
+    problems = creative_rule_problems(d, rules)
+    assert any("shot 1 puts the product" in p and "'half'" in p for p in problems)
+    d.shots[0] = d.shots[0].model_copy(update={"product_in_frame": "small"})
+    assert not any("puts the product" in p for p in creative_rule_problems(d, rules))
+
+
+@pytest.mark.parametrize(
+    ("field", "text", "message"),
+    [
+        ("audio", "warm music swells and settles.}", 'audio contains a stray "}"'),
+        ("look", "warm grade <look>", 'look contains a stray "<"'),
+        ("lighting", "warm key (from the left", 'lighting has unbalanced "()"'),
+    ],
+)
+def test_stray_characters_go_back_to_the_model(
+    rules: CreativeRules, field: str, text: str, message: str
+) -> None:
+    d = good().model_copy(update={field: text})
+    assert any(message in p for p in creative_rule_problems(d, rules))
+
+
+def test_a_prop_earns_an_image_only_when_it_can_be_got_wrong() -> None:
+    from adsmith.domain.ad import ReferenceDraft, earns_image  # noqa: PLC0415
+
+    base: dict[str, Any] = {
+        "name": "dallah", "description": "a brass pot", "role": "prop", "shots": [2],
+        "transforms_into_product": False, "handled": False, "max_size": "small",
+        "lookalike": False,
+    }  # fmt: skip
+    assert not earns_image(ReferenceDraft.model_validate(base))  # this run's dallah
+    for change in (
+        {"handled": True}, {"shots": [1, 2]}, {"max_size": "half"}, {"max_size": "fills"},
+        {"lookalike": True}, {"transforms_into_product": True},
+    ):  # fmt: skip
+        assert earns_image(ReferenceDraft.model_validate(base | change)), change
+    assert not earns_image(ReferenceDraft.model_validate(base | {"role": "location"}))
+
+
+def test_a_text_only_prop_has_no_references_line() -> None:
+    hidden = {"shows_product": False, "product_in_frame": "absent"}
+    pot = {**BURNER, "name": "dallah", "transforms_into_product": False, "shots": [2]}
+    d = draft(
+        [
+            shot(1, 0, 2, handled=True),
+            shot(2, 2, 4, **hidden),
+            shot(3, 4, 6.5),
+            shot(4, 6.5, 9, product_in_frame="fills"),
+        ],
+        references=[pot],
+    )
+    text = render_ad_prompt(d, duration_s=9, aspect_ratio="9:16")
+    assert "dallah" not in text.splitlines()[1]
+    assert "Image 2 is the dallah" in render_ad_prompt(
+        d, duration_s=9, aspect_ratio="9:16", image_names=["dallah"]
+    )

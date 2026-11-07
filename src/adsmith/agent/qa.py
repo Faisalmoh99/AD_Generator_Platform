@@ -448,9 +448,12 @@ class LLMCritic:
             parts += [TextPart(label), ImagePart("image/jpeg", base64.b64encode(jpeg).decode())]
         n_images = len(parts) // 2
         category = state.brief.product_category if state.brief else "the product"
+        obj = self.ctx.settings.culture_bank.object_for(spec.name)
         rendered = self.ctx.prompts.get("qa_prop_ref").render(
             name=spec.name,
-            description=spec.description,
+            description=obj.description if obj else spec.description,
+            gulf="yes" if obj is not None else "no",
+            not_like="; ".join(obj.not_like) if obj else "",
             transforms="yes" if spec.transforms_into_product else "no",
             category=category,
             image_prompt=prompt,
@@ -463,7 +466,11 @@ class LLMCritic:
                 problems.append("a still has no motion: use another category")
             if problems:
                 raise ValueError("; ".join(problems))
-            verdict = QAVerdict.from_draft(gate_draft(d), threshold=threshold)
+            # The described object IS the spec of a prop image: a wrong or generic object (a
+            # European pot for a dallah) fails; it is not a soft composition note.
+            verdict = QAVerdict.from_draft(
+                gate_draft(d), threshold=threshold, composition_hard=True
+            )
             return verdict.model_copy(update={"frames_inspected": n_images})
 
         res = await self.ctx.llm.call_and_convert(

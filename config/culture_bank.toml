@@ -17,9 +17,52 @@ dates = ["dates", "date fruit", "ruttab", "rutab", "sukkari", "ajwa", "khalas", 
 fashion = ["abaya", "thobe", "fashion", "clothing", "bisht", "عباية", "عبايات", "ثوب", "أزياء", "بشت"]
 food = ["food", "sweets", "chocolate", "pastry", "حلويات", "حلا", "شوكولاتة"]
 
+# Physical objects (ADR-0026, 2026-11-07): the canonical Gulf version of an object a prop may be.
+# When a prompt's prop matches one by name, code uses this description for the prompt, the prop
+# image and its vision check, which fails a generic or non-Gulf version (run
+# run_01M6SSVMPBEAY1WW1FWF4DGWRZ drew a European gooseneck pot for "dallah").
+# Fields: id · names (English and Arabic, matched against the prop's name) · description (one
+# physical line, at most 200 characters) · not_like (the wrong versions a model tends to draw).
+[[objects]]
+id = "dallah"
+names = ["dallah", "dalla", "arabic coffee pot", "coffee pot", "دلة", "دلّة"]
+description = "a Saudi dallah: brass body pinched at the waist above a wide base, a tall crescent beak spout, a domed lid with a pointed finial, a curved side handle"
+not_like = ["a European or Turkish coffee pot", "a gooseneck kettle with a thin straight spout", "a teapot", "a moka pot"]
+
+[[objects]]
+id = "finjan"
+names = ["finjan", "fenjan", "arabic coffee cup", "coffee cup", "فنجان", "فناجين"]
+description = "a small handleless Arabic coffee cup (finjan), white porcelain with a thin gold band, about egg-cup size, a third full of light golden coffee"
+not_like = ["a mug or any cup with a handle", "an espresso cup on a saucer", "dark black coffee"]
+
+[[objects]]
+id = "mabkhara"
+names = ["mabkhara", "incense burner", "bakhoor burner", "burner", "مبخرة"]
+description = "a Gulf mabkhara: a carved dark-wood or brass pedestal, wider at the base, with a small bowl on top holding glowing charcoal and oud"
+not_like = ["a church censer on chains", "an incense-stick holder", "a candle", "a perfume bottle"]
+
+[[objects]]
+id = "mandoos"
+names = ["mandoos", "wooden chest", "chest", "مندوس"]
+description = "a mandoos: a low dark teak chest covered with brass studs and brass plates in geometric patterns, with a hinged lid"
+not_like = ["a pirate treasure chest", "a modern storage box", "a plain suitcase"]
+
+[[objects]]
+id = "najr"
+names = ["najr", "brass mortar", "mortar", "نجر", "هاون"]
+description = "a heavy brass mortar (najr) with a long brass pestle, used to pound roasted coffee beans with cardamom"
+not_like = ["a stone kitchen mortar", "an electric coffee grinder"]
+
+[[objects]]
+id = "bisht"
+names = ["bisht", "cloak", "بشت"]
+description = "a bisht: a flowing sheer wool cloak in black, brown or cream with wide gold-embroidered trim along the front edges, worn open over a white thobe"
+not_like = ["a bathrobe", "a cape", "a Western overcoat"]
+
 # ------------------------------------------------------------------- scent: oud, bakhoor, perfume
 [[entries]]
 id = "bakhoor_before_guests"
+objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير البيت قبل وصول الضيوف"
 meaning_en = "The host lights the burner minutes before guests arrive, so the scent welcomes them before anyone speaks: generosity begins with the senses."
@@ -29,6 +72,7 @@ pitfalls = ["no open flame near curtains or children", "the scent is a welcome, 
 
 [[entries]]
 id = "bakhoor_farewell"
+objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير الضيف قبل انصرافه"
 meaning_en = "At the end of a gathering the burner is passed to the guests, who perfume their ghutra and sleeves: an honour, and a graceful sign that the visit is ending."
@@ -38,6 +82,7 @@ pitfalls = ["the elder is dignified, never a caricature", "no rushing the guest 
 
 [[entries]]
 id = "after_oud_no_sitting"
+objects = ["mabkhara"]
 kind = "proverb"
 text_ar = "بعد العود ما فيه قعود"
 meaning_en = "Once the incense has been passed round, nobody stays: the scent closes the visit without a word being said."
@@ -47,6 +92,7 @@ pitfalls = ["never shown as rudeness to the guest", "the proverb is spoken in th
 
 [[entries]]
 id = "thobe_censing"
+objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير الثوب والشماغ قبل الخروج"
 meaning_en = "Before leaving for an occasion, a man holds the burner under his shemagh and sleeves for a quiet minute: preparing to honour the people he will meet."
@@ -65,6 +111,7 @@ pitfalls = ["no romantic contact between unrelated men and women"]
 
 [[entries]]
 id = "oud_on_the_bisht"
+objects = ["bisht"]
 kind = "object"
 text_ar = "ريحة العود في بشت الأب"
 meaning_en = "A father's bisht or ghutra keeps his oud for years: children know him by it, and the scent becomes family memory."
@@ -83,6 +130,7 @@ pitfalls = ["no religious text on screen", "the gift is offered with the right h
 
 [[entries]]
 id = "grandmother_chest"
+objects = ["mandoos"]
 kind = "object"
 text_ar = "مندوس الجدة"
 meaning_en = "The grandmother's wooden chest holds her oud, her perfume oils and her keepsakes; opening it releases the smell of the family's past."
@@ -102,6 +150,7 @@ pitfalls = ["women only, modest framing, no men present", "no faces of real brid
 # --------------------------------------------------------------------- coffee and hospitality
 [[entries]]
 id = "coffee_right_hand"
+objects = ["dallah", "finjan"]
 kind = "gesture"
 text_ar = "تقديم القهوة باليمين وبدء الصب بالكبير"
 meaning_en = "Coffee is poured and served with the right hand, starting with the eldest or the most honoured guest: an order of respect everyone in the room reads."
@@ -111,6 +160,7 @@ pitfalls = ["the pourer stands, the cup is filled only a little", "never the lef
 
 [[entries]]
 id = "shake_the_cup"
+objects = ["finjan"]
 kind = "gesture"
 text_ar = "هزّ الفنجان"
 meaning_en = "A guest shakes the small cup gently to say 'enough'; until then the host keeps pouring. A silent language every Saudi knows."
@@ -120,6 +170,7 @@ pitfalls = ["the cup is a small handleless finjan, filled a third"]
 
 [[entries]]
 id = "four_cups"
+objects = ["finjan"]
 kind = "proverb"
 text_ar = "الهيف والضيف والكيف والسيف"
 meaning_en = "The traditional cups: the host tastes the first (al-haif) to show it is good, then the guest's cup, the cup of pleasure, and the cup of the sword (standing by the host)."
@@ -129,6 +180,7 @@ pitfalls = ["no weapons shown with the 'sword' cup: it is a pledge, not a fight"
 
 [[entries]]
 id = "dates_with_coffee"
+objects = ["finjan", "dallah"]
 kind = "ritual"
 text_ar = "التمر مع القهوة"
 meaning_en = "Saudi coffee is always served with dates: the bitterness of cardamom coffee and the sweetness of the date belong together, and offering both is the welcome."
@@ -138,6 +190,7 @@ pitfalls = ["Saudi coffee is light gold with cardamom, not dark espresso"]
 
 [[entries]]
 id = "dallah_on_the_fire"
+objects = ["dallah"]
 kind = "object"
 text_ar = "الدلة على النار"
 meaning_en = "A dallah kept warm means the door is open: whoever comes will be served. It is the symbol of a generous house."
@@ -147,6 +200,7 @@ pitfalls = ["a brass or steel dallah with its beak spout, not a European coffee 
 
 [[entries]]
 id = "mortar_call"
+objects = ["najr"]
 kind = "ritual"
 text_ar = "صوت النجر"
 meaning_en = "The rhythm of coffee beans pounded in the brass mortar (najr) carried across the camp and the neighbourhood: an invitation to come and drink."
@@ -156,6 +210,7 @@ pitfalls = ["the rhythm is a musical, joyful beat, not noise"]
 
 [[entries]]
 id = "morning_coffee"
+objects = ["finjan"]
 kind = "ritual"
 text_ar = "قهوة الصباح قبل الكلام"
 meaning_en = "In many homes the day starts with the first cup of coffee and dates, often with the parents, before anyone talks about work."
@@ -192,6 +247,7 @@ pitfalls = ["the majlis as a place of meaning, not a museum set of trays and lan
 
 [[entries]]
 id = "kashta"
+objects = ["dallah"]
 kind = "occasion"
 text_ar = "الكشتة"
 meaning_en = "A winter outing to the desert or the wadi with family or friends: a small fire, coffee on the coals, the cold evening shared."
@@ -293,6 +349,7 @@ pitfalls = []
 
 [[entries]]
 id = "milka"
+objects = ["bisht"]
 kind = "occasion"
 text_ar = "الملكة"
 meaning_en = "The marriage contract ceremony: families meet, perfume and gifts are exchanged, the groom's family is welcomed."

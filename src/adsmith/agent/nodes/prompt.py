@@ -36,6 +36,7 @@ from adsmith.domain.ad import (
 )
 from adsmith.domain.continuity import ContinuityBible
 from adsmith.domain.creative_rules import creative_rule_problems
+from adsmith.domain.culture_bank import with_gulf_objects
 from adsmith.domain.enums import Stage
 from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
@@ -219,6 +220,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         marks.append(f"shot {i} {t:g}-{t + d:g} s ({sb.scenes[i - 1].purpose.value})")
         t += d
     rules = ctx.settings.creative_rules
+    bank = ctx.settings.culture_bank
     names = prop_image_names(state)
     template = ctx.prompts.get("ad_prompt_writer")
     rendered = template.render(
@@ -226,6 +228,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         concept=concept_block(concept),
         bible=bible.prompt_block(),
         creative_rules=rules.prompt_block(),
+        gulf_objects=bank.objects_block(),
         cliches=cliches_block(state),
         storyboard=storyboard_block(sb),
         duration=str(duration),
@@ -242,6 +245,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     images = await product_photo_parts(state, ctx)
 
     def convert(d: AdPromptDraft) -> AdGeneration:
+        d = with_gulf_objects(d, bank)  # a named Gulf object gets its canonical description
         problems = ad_prompt_problems(
             d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names
         )

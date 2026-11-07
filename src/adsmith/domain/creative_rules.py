@@ -154,6 +154,54 @@ def banned_problems(d: AdPromptDraft, banned: Sequence[BannedWord]) -> list[str]
     return problems
 
 
+# One source of size (2026-11-07): the Framing line rendered by code from product_in_frame is the
+# only place the product's size is stated; run_01M6SSVMPBEAY1WW1FWF4DGWRZ said "a third" in the
+# action and "half" in the framing.
+_SIZE_IN_TEXT = re.compile(
+    r"\b(fills?|filling|half|third|quarter|two[- ]thirds|small|tiny|large|big)\b[^.;]{0,40}"
+    r"\bframe\b|\bframe\b[^.;]{0,15}\b(half|third|quarter)\b",
+    re.IGNORECASE,
+)
+_PERIPHERAL = re.compile(r"\b(edge|corner|soft focus|out of focus|blurred)\b", re.IGNORECASE)
+_TEMPLATE_RESIDUE = re.compile(r"[{}<>]")
+_PAIRS = (("(", ")"), ("[", "]"))
+
+
+def size_problems(d: AdPromptDraft) -> list[str]:
+    problems: list[str] = []
+    for s in d.shots:
+        for field in ("action", "event"):
+            m = _SIZE_IN_TEXT.search(getattr(s, field))
+            if m:
+                problems.append(
+                    f'shot {s.number} {field} states a size ("{m.group(0)}"); remove it: the '
+                    "Framing line, written by code from product_in_frame, is the only place for "
+                    "the product's size"
+                )
+        if s.shows_product and s.product_in_frame in HERO_SIZES:
+            m = _PERIPHERAL.search(s.action)
+            if m:
+                problems.append(
+                    f'shot {s.number} puts the product "{m.group(0)}" but product_in_frame is '
+                    f"'{s.product_in_frame}': a product at the edge or out of focus cannot fill "
+                    "half the frame; choose one (product_in_frame 'small', or bring it forward)"
+                )
+    return problems
+
+
+def residue_problems(d: AdPromptDraft) -> list[str]:
+    """Stray characters (template residue, unbalanced brackets) before anything is rendered:
+    the writer of run_01M6SSVMPBEAY1WW1FWF4DGWRZ left a '}' in the audio line."""
+    problems: list[str] = []
+    for where, text, _ in _texts(d):
+        if m := _TEMPLATE_RESIDUE.search(text):
+            problems.append(f'{where} contains a stray "{m.group(0)}": remove it')
+        for a, b in _PAIRS:
+            if text.count(a) != text.count(b):
+                problems.append(f'{where} has unbalanced "{a}{b}": close or remove it')
+    return problems
+
+
 def product_share(d: AdPromptDraft) -> tuple[list[int], float]:
     """Shots (and the share of the runtime) where the product, or a prop that transforms into
     it, is on screen (the user's rule, 2026-11-07: a transforming prop counts)."""
@@ -245,4 +293,6 @@ def creative_rule_problems(  # noqa: PLR0912 - one flat list of independent rule
         if r.transforms_into_product and r.role != "prop":
             problems.append(f"reference '{r.name}': only a prop can transform into the product")
     problems += banned_problems(d, rules.banned)
+    problems += size_problems(d)
+    problems += residue_problems(d)
     return problems

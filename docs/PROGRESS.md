@@ -1129,3 +1129,19 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
   (women's perfume, Saudi specialty coffee, premium dates: Anthropic + fal props, about $0.50–0.65
   each) and the critic re-run on try 2. The real generation is out of scope (no top-up).
 - **Tests**: 792 passed, 2 skipped (+1: the pack test).
+
+## First real planning run + fixes (2026-11-07)
+
+- **Run (approved, paid)**: `run_01M6SSVMPBEAY1WW1FWF4DGWRZ`, «اعلان لعطر نسائي» with
+  `assets/perfume_women.jpeg`, `ADSMITH_FAL_BALANCE_USD=22.04` for this run (the fal ceiling is a
+  lifetime total; $21.035 was already booked). $0.715 (Anthropic $0.665, two props $0.05).
+  Price $2.419 for 8 s; the generation was refused against the media cap, nothing generated.
+  Concept «الدقيقة الأخيرة» picked at 8.15; the director failed `hook_motion` and rewrote in two
+  rounds.
+- **Fixes (user, code/prompts/rules only)**: `emotion_on_turn` judge rule + lesson; props only
+  when they earn an image; Gulf object descriptions in the culture bank used by the writer, the
+  director, the prop image and its check (which now fails the wrong object); one source of size;
+  stray-character check. Templates writer v3, director v2, prop_reference v2, qa_prop_ref v2.
+  ADR-0026 addendum.
+- **Tests**: 813 passed, 2 skipped (+21 for the five fixes).
+- **Next**: re-run the women's perfume planning (same request and photo) to compare, after approval.

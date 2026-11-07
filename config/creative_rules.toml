@@ -124,7 +124,12 @@ text = "Every prop that matters is a reference with a one-line physical descript
 id = "sound_on_event"
 text = "The audio line names one sound hit exactly on the key shot's event (the spray, the latch, the glass settling)."
 
+[[judge]]
+id = "emotion_on_turn"
+text = "When the insight is about a person's feeling, the key shot shows that person reacting at the turn: the face or the body (eyes close, a breath in, a private smile, the shoulders drop). Hands and a wrist alone fail this rule: they turn the idea into a spray demo that any brand could run."
+
 [lessons]
 try_1 = "One reference image only: the hostess held a red bottle with smoke instead of an incense burner, because nothing told the model what the burner looks like. 'Ember glow' became an open flame on the floor. 'Match cut' produced a crossfade with both objects on screen. The correct product was on screen 1.5 s of 8 (19 %), only as a still bottle at the end."
 try_2 = "With the burner as Image 2 and roles in a References block, the props and the Saudi wardrobe were right. But the smoke-to-bottle morph lasted 0.5 s although the shot was planned at 2.5 s, the bottle floated above the palm, the spray in the last shot was invisible because the bottle was tiny, and the model cut the 2 s first shot to 1.2 s. The correct product was on screen 1.2 s of 9 (13 %)."
 references = "Halai's product-review ad keeps the product on screen 93 % of the time and in a person's hands 54 %: lift, open, spray the wrist, smell with eyes closed. One location, one warm grade, a camera or a person moving every second. The Valentino reference cuts sound hits to its motion. Neither has an idea; we keep ours and borrow their execution."
+try_3 = "Planning run run_01M6SSVMPBEAY1WW1FWF4DGWRZ (women's perfume, no video): the insight was the hostess who gives to everyone and reaches herself last, but the key shot showed only a hand and a wrist being sprayed: the ad read like a competitor's spray template and lost its own insight. The turn needs her face or body reacting (eyes close, a breath, a private smile). The writer also put the product's size in the action text ('a third') while the framing said 'half', and left a stray '}' in the audio line."

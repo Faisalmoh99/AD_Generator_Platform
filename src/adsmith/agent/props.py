@@ -31,7 +31,7 @@ from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
 from adsmith.agent.recovery.errors import AccountLockedError, AgentError
 from adsmith.config import Settings
-from adsmith.domain.ad import ReferenceSpec, ref_key, render_ad_prompt
+from adsmith.domain.ad import ReferenceSpec, earns_image, ref_key, render_ad_prompt
 from adsmith.domain.budget import BudgetRefusedError
 from adsmith.domain.enums import Stage
 from adsmith.domain.events import AgentEvent, EventType
@@ -68,13 +68,21 @@ def _ev(
 
 
 def wanted_props(state: RunState) -> list[ReferenceSpec]:
-    """The prompt's prop references that no reference image covers yet (by name)."""
+    """The prompt's prop references that earn an image (``earns_image``) and that no reference
+    image covers yet (by name)."""
     g = state.generation
     if g is None or g.human_prompt is not None:
         return []
     have = {ref_key(r.name) for r in state.reference_images}
-    props = [r for r in g.prompt.references if r.role == "prop"][:MAX_PROPS]
+    props = [r for r in g.prompt.references if earns_image(r)][:MAX_PROPS]
     return [r for r in props if ref_key(r.name) not in have]
+
+
+def text_only_props(state: RunState) -> list[ReferenceSpec]:
+    g = state.generation
+    if g is None:
+        return []
+    return [r for r in g.prompt.references if r.role == "prop" and not earns_image(r)]
 
 
 @dataclass
@@ -99,6 +107,13 @@ class PropsRunner:
     async def run(self, run_id: str) -> None:
         state = self.storage.runs.load(run_id)
         todo = wanted_props(state)
+        if skipped := text_only_props(state):
+            names = ", ".join(r.name for r in skipped)
+            self._note(
+                run_id,
+                f"Props: {names} stay in the shot text only (not handled, in one shot, small, "
+                "not a look-alike): no image, no References line",
+            )
         if not todo:
             self._note(run_id, "Props: no prop image to generate")
             self._rerender(run_id)
@@ -112,11 +127,13 @@ class PropsRunner:
 
     def _prompt(self, state: RunState, spec: ReferenceSpec, hint: str) -> str:
         category = state.brief.product_category if state.brief else "perfume"
+        obj = self.settings.culture_bank.object_for(spec.name)
         return (
             self.prompts.get("prop_reference")
             .render(
                 name=spec.name,
-                description=spec.description,
+                description=obj.description if obj else spec.description,
+                not_like="; ".join(obj.not_like) if obj else "",
                 category=category,
                 transforms=spec.transforms_into_product,
                 hint=hint,

@@ -42,10 +42,13 @@ SIZE_TEXT: dict[str, str] = {
 }
 
 
-class ReferenceSpec(DomainModel):
-    """A non-product reference the prompt relies on (ADR-0026): a prop the video model must not
-    confuse with the product, or the location. Code renders the References block from these and
-    the reference images that exist, so the image numbering is always right."""
+PropSize = Literal["small", "half", "fills"]
+
+
+class ReferenceDraft(DomainModel):
+    """A non-product reference the prompt relies on (ADR-0026), as the writer and the director
+    write it (every field required): a prop the video model must not confuse with the product,
+    or the location. Code renders the References block from these and the images that exist."""
 
     name: Annotated[str, Field(min_length=1, max_length=40)] = Field(
         description="Short English name used in the shots, e.g. 'incense burner'."
@@ -57,6 +60,34 @@ class ReferenceSpec(DomainModel):
     shots: list[Annotated[int, Field(ge=1, le=12)]] = Field(min_length=1, max_length=12)
     transforms_into_product: bool = Field(
         description="True only for a prop that visibly transforms into the product on screen."
+    )
+    handled: bool = Field(description="A person's hand holds or uses this prop on screen.")
+    max_size: PropSize = Field(description="The largest it appears in frame across its shots.")
+    lookalike: bool = Field(
+        description="It shares the product's material or shape family (glass flask, gold cap): "
+        "a video model could confuse the two."
+    )
+
+
+class ReferenceSpec(ReferenceDraft):
+    """A stored reference. Defaults keep references written before these fields loadable."""
+
+    handled: bool = False
+    max_size: PropSize = "small"
+    lookalike: bool = False
+
+
+def earns_image(r: ReferenceDraft) -> bool:
+    """A prop gets a generated reference image only when the video model can get it wrong in a
+    way a viewer sees (user rule, 2026-11-07): it is handled, in 2+ shots, at half the frame or
+    more, a look-alike of the product, or it transforms into the product. Otherwise it stays in
+    the shot text only (the dallah of run_01M6SSVMPBEAY1WW1FWF4DGWRZ: one wide shot, small)."""
+    return r.role == "prop" and (
+        r.handled
+        or len(set(r.shots)) >= 2
+        or r.max_size in ("half", "fills")
+        or r.lookalike
+        or r.transforms_into_product
     )
 
 
@@ -85,7 +116,7 @@ class AdPromptDraft(DomainModel):
         description="One look for the whole ad: grade, contrast, texture."
     )
     lighting: Line = Field(description="One lighting logic for the whole film.")
-    references: list[ReferenceSpec] = Field(max_length=3)
+    references: list[ReferenceDraft] = Field(max_length=3)
     shots: list[AdShotDraft] = Field(min_length=2, max_length=8)
     key_shot: int = Field(ge=1, le=12, description="The shot where the turn happens.")
     audio: Annotated[str, Field(min_length=1, max_length=400)] = Field(
@@ -199,9 +230,10 @@ def _capital(text: str) -> str:
 
 def references_block(p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = ()) -> str:
     """The References line, built by code. Image 1 is always the product photo; image k+2 is
-    ``image_names[k]`` (the run's reference images, in the order they are sent). A reference with
-    no image keeps its description (the model still needs to know what it is); a reference image
-    no spec names is still declared a prop, so numbering and roles never drift."""
+    ``image_names[k]`` (the run's reference images, in the order they are sent). A reference
+    with no image gets no line: it stays in the shot text only (user rule, 2026-11-07), except a
+    prop that transforms into the product, whose line carries the turn. A reference image no spec
+    names is still declared a prop, so numbering and roles never drift."""
     keys = [ref_key(n) for n in image_names]
     seen = [s.number for s in p.shots if s.shows_product]
     parts = ["Image 1 is the product: keep its shape, colours, cap and materials identical."]
@@ -212,6 +244,8 @@ def references_block(p: AdPromptDraft | AdPrompt, image_names: Sequence[str] = (
         k = ref_key(r.name)
         idx = keys.index(k) if k in keys else None
         head = f"Image {idx + 2} is the {r.name}" if idx is not None else f"The {r.name}"
+        if idx is None and not (r.role == "prop" and r.transforms_into_product):
+            continue  # text only: the shots name it
         if idx is not None:
             used.add(idx)
         if r.role == "location":
