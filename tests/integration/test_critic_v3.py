@@ -79,7 +79,7 @@ async def test_the_hook_and_the_key_shot_are_sampled_densely(tmp_path: Path) -> 
     state = await orch.run_until_blocked(run.id)
     g = state.generation
     assert g is not None and isinstance(g.qa, AdVerdict)
-    req = next(r for r in rt._provider_override.requests if r.template == "qa_ad_critic@v4")
+    req = next(r for r in rt._provider_override.requests if r.template == "qa_ad_critic@v5")
     texts = [p.text for p in req.messages[0].parts if hasattr(p, "text")]
     assert sum(1 for t in texts if t.startswith("Image ") and " first two seconds at " in t) == 3
     assert sum(1 for t in texts if t.startswith("Image ") and " shot 3 at " in t) == 8  # key

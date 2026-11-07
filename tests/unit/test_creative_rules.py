@@ -45,7 +45,7 @@ def shot(n: int, start: float, end: float, **over: Any) -> dict[str, Any]:
         "number": n,
         "start_s": start,
         "end_s": end,
-        "action": f"beat {n}.",
+        "action": f"beat {n}, the bottle on the tray.",
         "event": "a hand lifts it by its base",
         "camera": "close-up, slow push-in",
         "sound": "room tone",
@@ -230,7 +230,9 @@ def test_the_references_block_numbers_only_the_images_that_exist() -> None:
     assert lines[1] == "Key moment, shot 3, slowly over 2.5 s: a hand lifts it by its base."
     assert lines[2] == "A 9-second vertical 9:16 film, 4 shots, hard cuts."
     assert lines[3].startswith("References: ") and lines[4].startswith("Look: A traditional")
-    assert lines[5].startswith("Shot 1 (0-2 s): Beat 1. Camera: close-up, slow push-in.")
+    assert lines[5].startswith(
+        "Shot 1 (0-2 s): Beat 1, the bottle on the tray. Camera: close-up, slow push-in."
+    )
     assert lines[6].startswith("Cut to: Shot 2 (2-4 s):")
     assert "Product fills the frame." in lines[8]
     assert lines[-1].endswith("No voice, no dialogue.")

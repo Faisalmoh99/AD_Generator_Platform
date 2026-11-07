@@ -29,6 +29,7 @@ key_within_words = 30      # the identity line and the key-moment line end withi
 max_words_look = 30        # location + look + lighting together
 max_words_shot = 35        # one shot: action + camera + sound (labels not counted)
 max_words_audio = 20
+word_tolerance = 0.10      # a word overage up to 10 % is a logged warning, not a failure
 key_max_beats = 2          # beats in the key shot (';' or '.'): the coffee video had four in 2.5 s
 
 # Words the video model took literally or that do not describe a picture. One table per word.
@@ -155,6 +156,15 @@ wrong = "\\b(glass brewer|brewer|carafe|v60|pour[- ]?over|chemex|kettle|teapot|f
 why = "Saudi qahwa in a finjan is poured only from a dallah (a glass brewer or kettle belongs to dark specialty coffee in ordinary cups)"
 use = "the father lifts the dallah in his left hand and pours a thin ribbon of golden coffee into the finjan"
 
+# What carries an unheld product (2026-11-07, the perfume video run_01M6VG1SG2R0E76X3HXMEVPPNP).
+# CHECKED BY CODE: a shot that shows the product with no hand on it names what it stands or lies
+# on ("on the bench", "in her open palm", "gripped"); until it does, it does not count toward the
+# product-shots rule. A preposition is required: "between palm trunks" is not a palm.
+[support]
+surface = "\\b(on|upon|atop|against|across)\\s+(?:\\w+\\s+){0,3}(table|tray|sand|shelf|bench|floor|ground|rock|stone|cushion|rug|carpet|counter|ledge|sill|windowsill|plinth|pedestal|stand|box|desk|step|marble|wood|cloth|mat|lap|seat|dashboard)s?\\b|\\b(in|into)\\s+(?:his|her|their|the|an?|both|one)\\s+(?:open\\s+|cupped\\s+|outstretched\\s+)?(palms?|hands?|fingers|lap|grip)\\b|\\b(gripped|grips|held|holds|cradled|cradles|clasped|pinched)\\b"
+why = "the perfume video: shot 2 began 'from the open bottle' with no hand or surface, and the bottle floated in mid-air beside the mother"
+use = "say what it stands or lies on ('standing on the bench beside her', 'resting on the sand', 'in his open palm'), or leave the product out of that shot"
+
 # Reference ads we measured frame by frame (2026-11-07): their execution numbers, shown to the
 # writer and the director as targets. Neither has an idea; we keep ours and borrow their craft.
 [[templates]]
@@ -235,6 +245,10 @@ id = "no_holdup_opening"
 text = "No shot opens with a person holding the product up to the camera or presenting it to the lens: it is the generic product-review opening (the coffee video's critic: 'a generic hold-up-the-product opening with no tension'). The product acts in the story instead: poured, opened, passed, used."
 
 [[judge]]
+id = "reunion_payoff"
+text = "When the turn is two people meeting or connecting (a homecoming, a reunion, a gift handed over, an honour given), the last shot shows BOTH people: both faces, or both bodies clearly present in the frame with the product, never hands alone. The perfume video ended on two hands, and the critic said the reunion was never shown and the son barely present as a person."
+
+[[judge]]
 id = "physics_anchored"
 text = "Every motion names what carries the weight (gripped between fingers, resting in the palm, standing on the tray), every spray, steam or smoke event says its visible size and direction, and the key event unfolds slowly in visible steps across its whole shot. Nothing hovers, nothing happens 'fast'."
 
@@ -247,3 +261,4 @@ try_4 = "Planning re-run run_01M6SV0XZVPCFS6XA9HD7EE71M: the key shot had 'face 
 try_5 = "Coffee planning run run_01M6SVSK8GD53SYGZ8SF7AA9TT: the coffee pouch only stood on the tray in every shot, and the last shot's 'his hand turns the pouch toward the cup' was an action with no meaning. The product must do something that matters: the host scoops from the open pouch into the dallah, or the guest asks for the pouch."
 try_6 = "Dates planning run run_01M6T075QBXT7VV9EW7K5V4MNC: no rule forbade faces, yet the concept said the grandmother's face must stay partial 'to avoid face-consistency problems', the storyboard framed 'no eyes or full face', the bible wrote 'her eyes are never shown', and the director kept her eyes out of frame 'as the bible requires'. Face consistency is a risk only across separate generations, not inside one; modesty is dress, not hiding a face. A woman's face in a headscarf may be fully visible."
 try_7 = "System-alone coffee video run_01M6TBP6H8VTXWGXFJR6XPVQ7M (6 s, 3 shots, Seedance Fast 480p): the idea was an elder honouring the younger, but the bible described only the son, so the father appeared as hands and a torso and his face never showed at the turn; emotion_on_turn passed on the wrong person (the son smiled). The concept had four beats (waiting, the silent sip, the pour, drinking together) and the ad had three shots, so the sip was cut and the turn landed softly. To satisfy product_active, hook_motion and the half-frame size, shot 1 became the son holding the pouch up to camera, a generic opening. 'Handleless' was said once in the References line and the shots said 'cups', so the finjans got handles; the dallah reference image also appeared a second time as set dressing; the key shot carried four events (tilt, fill, offer, smile) in 2.5 s."
+try_8 = "Perfume video run_01M6VG1SG2R0E76X3HXMEVPPNP (6 s, Seedance Fast 480p, the trail-to-follow device): the device rendered large and readable and the mother's smiling face closed the key shot, but shot 2 began 'from the open bottle, small in frame' with no hand and no surface, added only to keep the product in three shots, and the bottle floated in mid-air beside her. The payoff showed hands only: the critic said the reunion is never shown and the son is barely present as a person. An unheld product names what it stands on; a reunion ends on both people."

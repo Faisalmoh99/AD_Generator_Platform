@@ -21,7 +21,7 @@ from adsmith.agent import commands
 from adsmith.agent.context import AgentRuntime, ad_endpoint
 from adsmith.agent.orchestrator import Orchestrator
 from adsmith.cli.live import LiveTrace
-from adsmith.config import Settings
+from adsmith.config import Settings, secret_source
 from adsmith.domain.enums import SceneStatus, Stage
 from adsmith.domain.events import EventType
 from adsmith.domain.formats import AdFormat
@@ -153,6 +153,8 @@ def _print_generation(state: RunState) -> None:
     if state.stage is Stage.AWAITING_GENERATION_APPROVAL:
         if g.price_basis:
             console.print(f"[dim]Price: {g.price_basis}[/]")
+        if g.provider == "kie":
+            console.print(f"[dim]Kie key from: {secret_source('KIE_API_KEY')}[/]")
         for line in reference_lines(state):
             console.print(f"[dim]{line}[/]")
         if state.director_review is not None:
@@ -463,6 +465,7 @@ def kie_balance() -> None:
         raise typer.Exit(1) from exc
     usd = f" ≈ ${left * rate.usd_per_credit:.2f}" if rate else ""
     console.print(f"Kie credits: {left:g}{usd}")
+    console.print(f"Kie key from: {secret_source('KIE_API_KEY')}")
 
 
 def _span(text: str) -> tuple[float, float]:

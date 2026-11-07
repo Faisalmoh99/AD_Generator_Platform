@@ -47,7 +47,8 @@ async def test_prompt_cache_is_warmed_by_first_scene(settings: Settings) -> None
 
 async def test_one_scene_prompt_failure_is_isolated(settings: Settings) -> None:
     pw = steps("prompt_writer")
-    scripted = [pw[0], {"raw": "nope"}, {"raw": "nope"}, {"raw": "nope"}, pw[2], pw[3]]
+    nope = [{"raw": "nope"}] * 5  # the first answer + 4 repairs (the writer is a heavy node)
+    scripted = [pw[0], *nope, pw[2], pw[3]]
     orch, _ = make_orch(settings, full_scripts(prompt_writer=scripted))
     run = orch.create_run(REQUEST, interactive=False)
     state = await orch.run_until_blocked(run.id, stop_before=Stage.KEYFRAME)

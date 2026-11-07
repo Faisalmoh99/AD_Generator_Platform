@@ -87,7 +87,7 @@ async def test_all_rules_pass_keeps_the_writers_prompt_in_one_call(tmp_path: Pat
     assert r.outcome == "kept" and r.failed == [] and r.after_text == r.before_text
     assert g.prompt.template_version == "ad_prompt_writer@v6"
     evs = summaries(orch, state.id)
-    assert evs[0].summary == "Creative director (round 1): all 17 rules pass"
+    assert evs[0].summary == "Creative director (round 1): all 18 rules pass"
     assert evs[-1].summary.startswith("Creative director: writer's prompt kept")
     req = next(x for x in llm.requests if x.template == "director@v5")
     assert any(type(p).__name__ == "ImagePart" for p in getattr(req.messages[0], "parts", ()))
@@ -125,7 +125,7 @@ async def test_a_failed_rule_rewrites_retimes_and_syncs_the_storyboard(tmp_path:
 
     assert r.before_text != r.after_text and no_refs(r.after_text) == no_refs(g.prompt.text)
     evs = summaries(orch, state.id)
-    assert "1 of 17 rules failed (turn_withheld)" in evs[0].summary
+    assert "1 of 18 rules failed (turn_withheld)" in evs[0].summary
     assert evs[-1].summary.startswith("Creative director: director's rewrite used (re-timed")
     # The round-2 request carries the round-1 verdicts.
     second = [x for x in llm.requests if x.template == "director@v5"][-1]
@@ -144,7 +144,7 @@ async def test_a_rewrite_that_never_passes_the_checks_falls_back_with_a_warning(
     assert r is not None and g is not None and state.stage is Stage.AWAITING_GENERATION_APPROVAL
     assert r.outcome == "fallback" and r.rounds == [] and "ember" in r.note
     assert g.prompt.template_version == "ad_prompt_writer@v6"
-    assert llm.calls_for("director") == 3  # the first answer + 2 repairs, then fallback
+    assert llm.calls_for("director") == 5  # the first answer + 4 repairs (heavy node), fallback
     last = summaries(orch, state.id)[-1]
     assert last.level == "warn" and "the rewrite failed the code checks" in last.summary
 
@@ -157,7 +157,7 @@ async def test_round_two_failing_uses_the_round_one_rewrite(tmp_path: Path) -> N
     r, g = state.director_review, state.generation
     assert r is not None and g is not None
     assert r.outcome == "rewritten" and len(r.rounds) == 1 and "round 2 failed" in r.note
-    assert g.prompt.shots[1].end_s == 3.5 and llm.calls_for("director") == 4
+    assert g.prompt.shots[1].end_s == 3.5 and llm.calls_for("director") == 6  # 1 + (1 + 4)
 
 
 async def test_the_same_prompt_is_not_reviewed_twice(tmp_path: Path) -> None:
@@ -191,3 +191,22 @@ def test_the_trace_follows_the_request_language() -> None:
     assert _round_summary(state, rnd, 8) == (
         "مراجعة المخرج (الجولة 1): 1 من 8 قواعد لم تتحقق (one_location)، فأُعيدت الكتابة"
     )
+
+
+async def test_the_pack_lists_the_final_prompts_shots(tmp_path: Path) -> None:
+    """A director rewrite (or a human prompt) changes the shots; the pack follows it, never the
+    storyboard's first plan (the coffee pack still listed a replaced glass brewer)."""
+    steps = [{"output": failing_round(retimed())}, {"output": fixture()}]
+    orch, _, state = await run_to_gate(tmp_path, steps)
+    g = state.generation
+    assert g is not None and state.director_review is not None
+    assert state.director_review.outcome == "rewritten"
+    pack = orch.rt.storage.artifacts.run_dir(state.id) / "production_pack" / "storyboard.md"
+    text = pack.read_text()
+    assert "_As sent to the model (prompt by director@v5)._" in text
+    for s in g.prompt.shots:
+        assert f"- Action: {s.action}" in text
+    import json  # noqa: PLC0415
+
+    data = json.loads((pack.parent / "storyboard.json").read_text())
+    assert [x["action"] for x in data["final_shots"]] == [s.action for s in g.prompt.shots]

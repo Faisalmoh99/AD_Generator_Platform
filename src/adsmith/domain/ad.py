@@ -551,6 +551,7 @@ def word_problems(
     existing: Sequence[str] = (),
     glosses: Mapping[str, str] | None = None,
     identity: str | None = None,
+    tolerance: float = 0.0,
 ) -> list[str]:
     """The word budget (ADR-0028, the user's rule 2026-11-07): the writer's own words (look,
     shots, audio) are at most ``max_words``, and the product's identity and the key moment both
@@ -564,7 +565,7 @@ def word_problems(
     )  # fmt: skip
     problems: list[str] = []
     own = writer_words(d)
-    if own > max_words:
+    if own > max_words * (1 + tolerance) + 1e-9:
         problems.append(
             f"the look, the shots and the audio take {own} words; the limit is {max_words}. Cut "
             "adjectives and repeated nouns: each shot is one beat (who, the one motion, the "
@@ -594,6 +595,7 @@ def ad_prompt_problems(
     glosses: Mapping[str, str] | None = None,
     max_words: int | None = None,
     key_within_words: int | None = None,
+    tolerance: float = 0.0,
 ) -> list[str]:
     """Deterministic checks (→ schema repair): the timecodes (against the storyboard's scene
     durations when given), the key shot exists, and the prompt fits the model's limit WITH the
@@ -610,7 +612,7 @@ def ad_prompt_problems(
     if max_words is not None and key_within_words is not None:
         problems += word_problems(
             draft, duration_s=duration_s, max_words=max_words, key_within_words=key_within_words,
-            existing=image_names, glosses=glosses, identity=identity,
+            existing=image_names, glosses=glosses, identity=identity, tolerance=tolerance,
         )  # fmt: skip
     return problems
 

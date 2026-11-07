@@ -217,7 +217,7 @@ class StructuredCaller:
     def _on_invalid(self, st: _CallState, resp: LLMResponse, exc: ValueError) -> None:
         errors = format_errors(exc)
         self._log(st, resp, "invalid", "; ".join(errors))
-        if st.repairs >= self.settings.llm_max_repairs:
+        if st.repairs >= self.settings.max_repairs(st.node):
             raise InvalidLLMOutputError(
                 f"{st.node} output invalid after {st.repairs} repair attempt(s)",
                 validation_errors=errors,

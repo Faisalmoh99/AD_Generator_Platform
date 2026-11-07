@@ -16,7 +16,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from adsmith.domain.ad import AdPromptDraft
+from adsmith.domain.ad import AdPromptDraft, writer_words
 from adsmith.domain.base import DomainModel
 
 HERO_SIZES = {"half", "fills"}
@@ -41,6 +41,9 @@ class CreativeParams(DomainModel):
     max_words_audio: int = Field(default=25, ge=5, le=200)
     # The key shot's beats (ADR-0029: the coffee video's key shot had four in 2.5 s).
     key_max_beats: int = Field(default=2, ge=1, le=6)
+    # A word-budget overage up to this share is a logged warning, not a failure (user,
+    # 2026-11-07: the perfume writer failed its last repair 38 words against 35).
+    word_tolerance: float = Field(default=0.10, ge=0, le=0.5)
 
 
 class BannedWord(DomainModel):
@@ -99,6 +102,24 @@ class ServingRule(DomainModel):
         return self
 
 
+class SupportRule(DomainModel):
+    """What carries an unheld product (checked by code, 2026-11-07): the perfume run's shot 2
+    started "from the open bottle" with no hand and no surface, and Seedance hung the bottle in
+    mid-air beside the mother."""
+
+    surface: str  # regex: a named support (table, tray, sand, a palm, ...)
+    why: Annotated[str, Field(min_length=1, max_length=300)]
+    use: Annotated[str, Field(min_length=1, max_length=300)]
+
+    @model_validator(mode="after")
+    def _compiles(self) -> Self:
+        re.compile(self.surface, re.IGNORECASE)
+        return self
+
+    def supported(self, text: str) -> bool:
+        return re.search(self.surface, text, re.IGNORECASE) is not None
+
+
 class ReferenceTemplate(DomainModel):
     """A reference ad's measured execution (ADR-0028): targets, not a format to copy."""
 
@@ -119,6 +140,7 @@ class CreativeRules(DomainModel):
     physics: list[PhysicsRule] = Field(default_factory=list)
     templates: list[ReferenceTemplate] = Field(default_factory=list)
     serving: ServingRule | None = None
+    support: SupportRule | None = None
     camera_moves: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(
         default_factory=list
     )
@@ -329,27 +351,54 @@ def serving_problems(d: AdPromptDraft, rule: ServingRule | None) -> list[str]:
     return problems
 
 
+def over_budget(n: int, limit: int, tolerance: float) -> bool:
+    """A failure only above the tolerance (10 %: 38 words against 35 is a warning)."""
+    return n > limit * (1 + tolerance) + 1e-9
+
+
+def _field_counts(d: AdPromptDraft, p: CreativeParams) -> list[tuple[str, int, int]]:
+    out = [("location + look + lighting", len(f"{d.location} {d.look} {d.lighting}".split()),
+            p.max_words_look)]  # fmt: skip
+    out += [
+        (f"shot {s.number}", len(f"{s.action} {s.camera} {s.sound}".split()), p.max_words_shot)
+        for s in d.shots
+    ]
+    out.append(("the audio line", len(d.audio.split()), p.max_words_audio))
+    return out
+
+
 def word_budget_problems(d: AdPromptDraft, p: CreativeParams) -> list[str]:
     """Per-field word budgets (ADR-0028); the whole-prompt budget is checked on the rendered
-    text with its References line (``domain.ad.word_problems``)."""
+    text with its References line (``domain.ad.word_problems``). An overage within
+    ``word_tolerance`` is a warning (``word_budget_warnings``), not a failure."""
     problems: list[str] = []
-    look = len(f"{d.location} {d.look} {d.lighting}".split())
-    if look > p.max_words_look:
-        problems.append(
-            f"location + look + lighting take {look} words; at most {p.max_words_look}: one short "
-            "sentence each, no props (the shots name them)"
-        )
-    for s in d.shots:
-        n = len(f"{s.action} {s.camera} {s.sound}".split())
-        if n > p.max_words_shot:
+    for where, n, limit in _field_counts(d, p):
+        if not over_budget(n, limit, p.word_tolerance):
+            continue
+        if where.startswith("location"):
             problems.append(
-                f"shot {s.number} takes {n} words (action + camera + sound); at most "
-                f"{p.max_words_shot}: one beat, one move, one sound"
+                f"location + look + lighting take {n} words; at most {limit}: one short "
+                "sentence each, no props (the shots name them)"
             )
-    audio = len(d.audio.split())
-    if audio > p.max_words_audio:
-        problems.append(f"the audio line takes {audio} words; at most {p.max_words_audio}")
+        elif where.startswith("shot"):
+            problems.append(
+                f"{where} takes {n} words (action + camera + sound); at most {limit}: one beat, "
+                "one move, one sound"
+            )
+        else:
+            problems.append(f"the audio line takes {n} words; at most {limit}")
     return problems
+
+
+def word_budget_warnings(d: AdPromptDraft, p: CreativeParams) -> list[str]:
+    """Overages within the tolerance (per field and the writer's total): logged, never sent
+    back to the model."""
+    counts = [*_field_counts(d, p), ("the writer's words", writer_words(d), p.max_words)]
+    return [
+        f"{where} {n} words (budget {limit}, within {p.word_tolerance:.0%})"
+        for where, n, limit in counts
+        if n > limit and not over_budget(n, limit, p.word_tolerance)
+    ]
 
 
 def residue_problems(d: AdPromptDraft) -> list[str]:
@@ -365,11 +414,26 @@ def residue_problems(d: AdPromptDraft) -> list[str]:
     return problems
 
 
-def product_share(d: AdPromptDraft) -> tuple[list[int], float]:
+def unsupported_shots(d: AdPromptDraft, rule: SupportRule | None) -> list[int]:
+    """Shots that show the product with no hand on it and no named surface under it."""
+    if rule is None:
+        return []
+    return [
+        s.number
+        for s in d.shots
+        if s.shows_product and not s.handled and not rule.supported(f"{s.action} {s.event}")
+    ]
+
+
+def product_share(d: AdPromptDraft, support: SupportRule | None = None) -> tuple[list[int], float]:
     """Shots (and the share of the runtime) where the product, or a prop that transforms into
-    it, is on screen (the user's rule, 2026-11-07: a transforming prop counts)."""
+    it, is on screen (the user's rule, 2026-11-07: a transforming prop counts). With a
+    ``support`` rule, an unheld product with no named surface does not count (it floats)."""
     stand_in = {n for r in d.references if r.transforms_into_product for n in r.shots}
-    shots = [s for s in d.shots if s.shows_product or s.number in stand_in]
+    floating = set(unsupported_shots(d, support))
+    shots = [
+        s for s in d.shots if (s.shows_product and s.number not in floating) or s.number in stand_in
+    ]
     total = d.shots[-1].end_s - d.shots[0].start_s if d.shots else 0.0
     seconds = sum(s.end_s - s.start_s for s in shots)
     return [s.number for s in shots], (seconds / total if total > 0 else 0.0)
@@ -453,7 +517,13 @@ def creative_rule_problems(  # noqa: PLR0912, PLR0915 - one flat list of indepen
                 f"shot {s.number} names an image number; name the object (the References line "
                 "is written by code)"
             )
-    seen, share = product_share(d)
+    seen, share = product_share(d, rules.support)
+    if rules.support is not None:
+        for n_ in unsupported_shots(d, rules.support):
+            problems.append(
+                f"shot {n_} shows the product with no hand on it and no surface under it "
+                f"({rules.support.why}); {rules.support.use}"
+            )
     need = min(p.product_min_shots, n)
     if len(seen) < need or share + 1e-9 < p.product_min_share:
         problems.append(

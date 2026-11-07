@@ -46,6 +46,7 @@ from adsmith.domain.creative_rules import (
     CreativeRules,
     creative_rule_problems,
     device_length_problems,
+    word_budget_warnings,
 )
 from adsmith.domain.culture_bank import CultureBank, object_problems, with_gulf_objects
 from adsmith.domain.director import (
@@ -122,7 +123,7 @@ def rewrite_problems(
     problems += word_problems(
         d, duration_s=duration_s, max_words=rules.params.max_words,
         key_within_words=rules.params.key_within_words, existing=image_names, glosses=glosses,
-        identity=identity,
+        identity=identity, tolerance=rules.params.word_tolerance,
     )  # fmt: skip
     if bank is not None:
         problems += object_problems(d, bank)
@@ -378,4 +379,12 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         outcome=outcome, before=before, after=review.after_text, note=note, retimed=retimed,
     )  # fmt: skip
     events.append(outcome_event.model_copy(update={"level": level}))
+    soft = word_budget_warnings(chosen, rules.params) if final is not None else []
+    if soft:
+        events.append(
+            decision(
+                ctx.run_id, Stage.DIRECTOR, "Word budget, within tolerance: " + "; ".join(soft),
+                over=soft,
+            ).model_copy(update={"level": "warn"})
+        )  # fmt: skip
     return NodeResult(deltas=deltas, events=events, llm_calls=calls)

@@ -86,6 +86,11 @@
      "rule_id": "no_holdup_opening",
      "passed": true,
      "note": "Shot 1 opens on a cup set down, not on the bottle held up to the lens."
+    },
+    {
+     "rule_id": "reunion_payoff",
+     "passed": true,
+     "note": "The last shot holds the host and the guest together with the bottle between them."
     }
    ],
    "changes": [],

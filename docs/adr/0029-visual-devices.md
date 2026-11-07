@@ -123,3 +123,28 @@ What the coffee video lost, each now caught before the spend gate:
 
 Deferred: the production pack's shot list follows the storyboard, which a prompt rewrite does not
 change (the coffee pack still lists the glass brewer); a storyboard sync after `rewrite-prompt`.
+
+## Addendum (part 5): fixes from the perfume video and the planning runs (2026-11-07)
+
+- **The device's length is set by the storyboard** (`32a57c7`): the writer must keep the
+  storyboard's timings, so a 2.5 s device minimum checked on the writer was unsatisfiable; on a
+  one-generation ad the reveal's minimum is now the device's (shot count, check, prompt line).
+- **An unheld product names its support** (`[support]` in `creative_rules.toml`,
+  `unsupported_shots`): a shot that shows the product with no hand on it names what it stands or
+  lies on, with a preposition ("on the bench", "in her open palm"; "between palm trunks" is not a
+  palm). Until it does, the shot is sent back and does not count toward the product-shots rule.
+  The perfume video's shot 2 ("from the open bottle", added only to keep the product in three
+  shots) rendered a bottle floating beside the mother. Lesson `try_8`.
+- **A reunion ends on both people** (judged rule `reunion_payoff`, 18 rules; `qa_ad_critic` v5):
+  the perfume payoff showed hands only and the critic said the reunion was never shown.
+- **Four repair rounds for the writer and the director** (`Settings.max_repairs`,
+  `ADSMITH_LLM_MAX_REPAIRS_HEAVY`, default 4; other nodes keep 2): the perfume writer converged
+  but ran out of rounds 3 words over one shot. A word-budget overage of 10 % or less
+  (`word_tolerance`) is a logged warning, not a failure; the identity-and-key-moment line stays
+  strict (it is an order, not a budget).
+- **The production pack follows the final prompt**: for a one-generation ad its shot list is the
+  prompt as sent (after the director, a rewrite or a human prompt), never the storyboard's first
+  plan; `final_shots` in the JSON; the pack is also written after ESTIMATE.
+- **Where the Kie key comes from** (`secret_source`): `kie-balance` and the spend gate say "shell
+  environment" or ".env" and warn when both are set and differ, never the value. The shell's key
+  (an account at 9.8 credits) silently won over the topped-up `.env` key (80 credits).

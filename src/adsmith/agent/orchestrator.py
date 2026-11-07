@@ -74,7 +74,7 @@ AD_STAGES: frozenset[Stage] = frozenset({Stage.PROPS, Stage.ESTIMATE, Stage.GENE
 
 # Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
 EXPORT_AFTER: frozenset[Stage] = frozenset(
-    {Stage.PROMPT, Stage.DIRECTOR, Stage.PROPS, Stage.COPY, Stage.ASSEMBLE}
+    {Stage.PROMPT, Stage.DIRECTOR, Stage.PROPS, Stage.COPY, Stage.ESTIMATE, Stage.ASSEMBLE}
 )
 
 

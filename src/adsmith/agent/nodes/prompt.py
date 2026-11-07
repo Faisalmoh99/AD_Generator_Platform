@@ -38,7 +38,7 @@ from adsmith.domain.ad import (
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
-from adsmith.domain.creative_rules import creative_rule_problems
+from adsmith.domain.creative_rules import creative_rule_problems, word_budget_warnings
 from adsmith.domain.culture_bank import object_problems, with_gulf_objects
 from adsmith.domain.enums import Stage
 from adsmith.domain.formats import AdFormat
@@ -179,9 +179,21 @@ async def _whole_ad_prompt(state: RunState, ctx: NodeContext) -> NodeResult:
     res = await write_ad_prompt(state, ctx)
     gen = res.value
     shots = " | ".join(f"{s.number} {s.start_s:g}-{s.end_s:g}s" for s in gen.prompt.shots)
+    soft = word_budget_warnings(gen.prompt.to_draft(), ctx.settings.creative_rules.params)
+    warn = (
+        [
+            decision(
+                ctx.run_id, Stage.PROMPT, "Word budget, within tolerance: " + "; ".join(soft),
+                over=soft,
+            ).model_copy(update={"level": "warn"})
+        ]
+        if soft
+        else []
+    )  # fmt: skip
     return NodeResult(
         deltas=[SetAdGeneration(generation=gen)],
         events=[
+            *warn,
             decision(
                 ctx.run_id,
                 Stage.PROMPT,
@@ -191,7 +203,7 @@ async def _whole_ad_prompt(state: RunState, ctx: NodeContext) -> NodeResult:
                 f"{len(gen.prompt.text)} characters",
                 shots=len(gen.prompt.shots),
                 chars=len(gen.prompt.text),
-            )
+            ),
         ],
         llm_calls=res.calls,
     )
@@ -259,6 +271,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
             d, durations, duration_s=duration, max_chars=ep.max_prompt_chars, image_names=names,
             identity=ident, glosses=bank.glosses([r.name for r in d.references]),
             max_words=rules.params.max_words, key_within_words=rules.params.key_within_words,
+            tolerance=rules.params.word_tolerance,
         )  # fmt: skip
         problems += creative_rule_problems(d, rules)
         problems += object_problems(d, bank)

@@ -17,6 +17,7 @@ from adsmith.domain.ad import word_count, word_problems, writer_words
 from adsmith.domain.creative_rules import (
     key_beat_problems,
     physics_problems,
+    unsupported_shots,
     word_budget_problems,
 )
 from adsmith.domain.culture_bank import object_problems, with_gulf_objects
@@ -50,6 +51,10 @@ def main() -> None:
         # ADR-0029: object fidelity (after code's own substitutions) and the key shot's beats
         problems += object_problems(with_gulf_objects(d, s.culture_bank), s.culture_bank)
         problems += key_beat_problems(d, p.key_max_beats)
+        problems += [
+            f"shot {n} shows the product with no hand and no surface (it floats)"
+            for n in unsupported_shots(d, rules.support)
+        ]
         problems += word_problems(
             d, duration_s=g.prompt.duration_s, max_words=p.max_words,
             key_within_words=p.key_within_words, identity=g.prompt.identity or None,

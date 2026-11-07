@@ -9,12 +9,14 @@ Two sources, with separate jobs:
 from __future__ import annotations
 
 import math
+import os
 import tomllib
 from enum import StrEnum
 from functools import cached_property
 from pathlib import Path
 from typing import Literal, Self
 
+from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -356,6 +358,26 @@ class ChaosConfig(_Frozen):
         return cls.model_validate({**raw, **probs})
 
 
+def secret_source(name: str, env_file: Path = Path(".env")) -> str:
+    """Where a secret is read from, in words, never its value (ADR-0029: two Kie accounts, one key
+    in the shell and another in .env; the shell one wins in pydantic-settings, so the balance
+    seen and the account topped up differed). Warns when both are set and differ."""
+    shell = os.environ.get(name)
+    file_value = dotenv_values(env_file).get(name) if env_file.is_file() else None
+    if shell and file_value:
+        if shell == file_value:
+            return "shell environment (the same key is also in .env)"
+        return (
+            "shell environment; WARNING: .env holds a DIFFERENT key, which is ignored while the "
+            f"shell variable is set (run with `env -u {name}` to use the .env one)"
+        )
+    if shell:
+        return "shell environment"
+    if file_value:
+        return ".env"
+    return "not set"
+
+
 class Settings(BaseSettings):
     """Runtime settings. Env vars use the ``ADSMITH_`` prefix; API keys use their usual names."""
 
@@ -468,6 +490,10 @@ class Settings(BaseSettings):
     llm_timeout_s: float = Field(default=300.0, gt=0)
     llm_max_tokens: int = Field(default=16000, ge=1024)
     llm_max_repairs: int = Field(default=2, ge=0, le=5)
+    # The whole-ad writer and the creative director carry the most code rules (word budgets,
+    # physics, objects, the device, the setup, the faces): two rounds were not enough on the
+    # perfume run (user, 2026-11-07). Every other node keeps llm_max_repairs.
+    llm_max_repairs_heavy: int = Field(default=4, ge=0, le=6)
     llm_prompt_cache: bool = True
     anthropic_server_fallback: bool = True  # only applied to models with server_fallback=true
 
@@ -536,6 +562,11 @@ class Settings(BaseSettings):
     @property
     def active_profile(self) -> ProfileName:
         return self.model_profile or self.catalog.default_profile
+
+    def max_repairs(self, node: LLMNode) -> int:
+        """Schema-repair rounds for a node: more for the two prompt-writing nodes."""
+        heavy = {LLMNode.PROMPT_WRITER, LLMNode.DIRECTOR}
+        return self.llm_max_repairs_heavy if node in heavy else self.llm_max_repairs
 
     def node_model(self, node: LLMNode) -> NodeModel:
         """Resolve model + effort for a node: env override > active profile."""

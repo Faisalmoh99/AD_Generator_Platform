@@ -104,6 +104,11 @@ def pack_json(state: RunState) -> dict[str, Any]:
             }
             for s in (sb.scenes if sb else [])
         ],
+        "final_shots": (
+            [x.model_dump(mode="json") for x in state.generation.prompt.shots]
+            if state.generation
+            else []
+        ),
         "whole_ad_generation": (
             state.generation.model_dump(mode="json", exclude={"attempts", "history"})
             if state.generation
@@ -169,6 +174,44 @@ def _copy_lines(state: RunState) -> list[str]:
             for i, b in enumerate(sel.brands)
         )]  # fmt: skip
     return [*out, ""]
+
+
+def _endcard_lines(state: RunState) -> list[str]:
+    e = state.endcard
+    if e is None:
+        return []
+    flag = (
+        " — **PLACEHOLDER** (invented by the agent; replace before publishing)"
+        if e.is_placeholder
+        else ""
+    )
+    return ["## End card", "", f"**{e.brand_name}**: {e.tagline}{flag}", ""]
+
+
+def _final_shot_lines(state: RunState, t: Mapping[str, str]) -> list[str]:
+    g = state.generation
+    if g is None:
+        return []
+    who = "a human" if g.human_prompt else g.prompt.template_version or "the writer"
+    purposes = (
+        {s.order: s.purpose.value for s in state.storyboard.scenes} if state.storyboard else {}
+    )
+    out = [f"## {t['scenes']}", "", f"_As sent to the model (prompt by {who})._", ""]
+    for s in g.prompt.shots:
+        size = s.product_in_frame if s.shows_product else "absent"
+        out += [
+            f"### {t['scene']} {s.number} · {purposes.get(s.number, '-')} · "
+            f"{s.start_s:g}-{s.end_s:g}s"
+            + (" · key shot" if s.number == g.prompt.key_shot else ""),
+            "",
+            f"- Action: {s.action}",
+            f"- Event: {s.event or '-'}",
+            f"- Camera: {s.camera}",
+            f"- Sound: {s.sound}",
+            f"- Product: {size}{', handled' if s.handled else ''}",
+            "",
+        ]
+    return out
 
 
 def _creative_lines(concept: Concept) -> list[str]:
@@ -239,14 +282,13 @@ def pack_markdown(state: RunState, scores: Mapping[int, Mapping[str, object]] | 
             "",
         ]
     if state.storyboard:
-        if state.endcard:
-            e = state.endcard
-            flag = (
-                " — **PLACEHOLDER** (invented by the agent; replace before publishing)"
-                if e.is_placeholder
-                else ""
-            )
-            out += ["## End card", "", f"**{e.brand_name}**: {e.tagline}{flag}", ""]
+        out += _endcard_lines(state)
+        if state.generation is not None:
+            # A one-generation ad: the shot list IS the final prompt (after the director and any
+            # rewrite or human prompt), never the storyboard's first plan (ADR-0029: the coffee
+            # pack still listed a glass brewer the prompt had replaced with a dallah).
+            out += _final_shot_lines(state, t)
+            return "\n".join(out).rstrip() + "\n"
         out += [f"## {t['scenes']}", ""]
         for s in state.storyboard.scenes:
             sh = s.shot
