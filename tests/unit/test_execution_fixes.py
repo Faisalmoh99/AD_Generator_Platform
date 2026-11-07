@@ -147,3 +147,36 @@ async def test_the_writer_and_the_director_get_the_devices_wording(tmp_path: Pat
         asked = str(next(r for r in llm.requests if r.template == template).messages)  # type: ignore[union-attr]
         assert "Wording that renders it in one shot:" in asked, template
         assert "invisible_made_visible (Make the invisible visible)" in asked
+
+
+async def test_the_storyboard_gives_the_reveal_the_devices_length(tmp_path: Path) -> None:
+    """The perfume planning run (run_01M6VFERKKCMPMYPX7T7774G5C) failed at the writer: the device
+    (a trail to follow) needs 2.5 s, the storyboard had planned the turn at 2 s, and the writer
+    must keep the storyboard's timings. The storyboard is where the length is decided."""
+    import copy  # noqa: PLC0415
+    import json  # noqa: PLC0415
+
+    from adsmith.providers.llm.scripted import FIXTURES_DIR, ScriptedLLMProvider  # noqa: PLC0415
+
+    rt = runtime(settings(tmp_path))
+    llm = rt._provider_override
+    assert isinstance(llm, ScriptedLLMProvider)
+    ideas = json.loads((FIXTURES_DIR / "multishot_en" / "ideate.json").read_text())
+    first = ideas[0]["output"]["concepts"][0]
+    first["device_id"], first["device_shot"] = "trail_to_follow", 3  # needs 2.5 s
+    ideas[0]["output"]["concepts"][4]["device_id"] = "match_on_shape"  # keep them distinct
+    llm.override("ideate", ideas)
+    planned = json.loads((FIXTURES_DIR / "multishot_en" / "storyboard.json").read_text())[0]
+    fixed = copy.deepcopy(planned)
+    for scene, s in zip(fixed["output"]["scenes"], (1.5, 2.0, 2.5, 2.0), strict=True):
+        scene["duration_s"] = s
+    llm.override("storyboard", [planned, fixed])
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.CONTINUITY)
+    assert state.storyboard is not None
+    assert [s.duration_s for s in state.storyboard.scenes] == [1.5, 2.0, 2.5, 2.0]
+    asked = str(llm.requests[-1].messages)
+    assert "a reveal shot needs at least 2.5 s" in asked
+    first_ask = str(next(r for r in llm.requests if r.template.startswith("storyboard")).messages)
+    assert "The concept's visual device (trail_to_follow) happens in the reveal shot" in first_ask

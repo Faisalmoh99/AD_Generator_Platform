@@ -38,6 +38,19 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: 
     brief = state.brief
     fmt = brief.format
     grammar = ctx.settings.formats.grammar(fmt)
+    # ADR-0029: the reveal (the turn) carries the concept's visual device, so on a one-generation
+    # ad its minimum length is the device's (the trail to follow needs 2.5 s, not the format's 2).
+    device = ctx.settings.visual_devices.get(concept.device_id or "")
+    device_note = ""
+    if grammar.generation == "whole" and device is not None:
+        reveal = max(grammar.purpose_min_s.get("reveal", 0.0), device.min_s)
+        grammar = grammar.model_copy(
+            update={"purpose_min_s": {**grammar.purpose_min_s, "reveal": reveal}}
+        )
+        device_note = (
+            f"\nThe concept's visual device ({device.id}) happens in the reveal shot (the turn): "
+            f"that shot lasts at least {reveal:g} s."
+        )
     min_s, max_s, single_max = scene_duration_bounds(ctx.settings, video_model, fmt)
     duration = brief.duration_s
     montage = fmt is AdFormat.MONTAGE
@@ -173,7 +186,7 @@ async def storyboard(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: 
         video_profile=profile_block_for(ctx.settings, state),
         max_scenes=str(max_scenes),
         format=fmt.value,
-        format_block=format_block(ctx.settings.formats, fmt),
+        format_block=format_block(ctx.settings.formats, fmt) + device_note,
         vocabulary=vocab.prompt_block() if montage else "(not used in this format)",
         aspect_ratio=state.brief.aspect_ratio,
         user_language=language_name(state.brief.language),

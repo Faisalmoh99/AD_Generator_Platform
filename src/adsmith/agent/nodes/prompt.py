@@ -38,7 +38,7 @@ from adsmith.domain.ad import (
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
-from adsmith.domain.creative_rules import creative_rule_problems, device_length_problems
+from adsmith.domain.creative_rules import creative_rule_problems
 from adsmith.domain.culture_bank import object_problems, with_gulf_objects
 from adsmith.domain.enums import Stage
 from adsmith.domain.formats import AdFormat
@@ -253,8 +253,6 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     model_key = ad_model_key(ctx.settings, cfg.ad_model, cfg.ad_provider)
     images = await product_photo_parts(state, ctx)
 
-    device = ctx.settings.visual_devices.get(concept.device_id or "")
-
     def convert(d: AdPromptDraft) -> AdGeneration:
         d = with_gulf_objects(d, bank)  # a named Gulf object gets its canonical description
         problems = ad_prompt_problems(
@@ -264,8 +262,6 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
         )  # fmt: skip
         problems += creative_rule_problems(d, rules)
         problems += object_problems(d, bank)
-        if device is not None:
-            problems += device_length_problems(d, device.id, device.min_s)
         if problems:
             raise ValueError("; ".join(problems))
         ad_prompt = AdPrompt.from_draft(
