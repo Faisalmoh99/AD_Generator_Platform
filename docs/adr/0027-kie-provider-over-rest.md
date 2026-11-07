@@ -76,3 +76,16 @@ Facts checked on docs.kie.ai and kie.ai on 2026-11-07 (no call was made):
   `unverified_price`: the gate refuses to quote it.
 - `adsmith set-ad-model <run> <key>` moves an unpaid generation (no request id, no video) to
   another endpoint: same prompt, a new version, estimated again, waiting at the gate.
+
+## Addendum (2026-11-07): a network error after the submit keeps the task
+
+- Observed on the first Fast generation: Kie accepted task `97b589d0e1df103ad60002cc5cec8b60`,
+  then every status poll failed (ConnectTimeout, ConnectError) until the recovery layer's tries
+  ran out, and the runner marked the generation failed although the task finished (success,
+  creditsConsumed 70.2). The wallet reservation was kept (fail-safe), nothing was resubmitted.
+- Now a transient or rate-limit error after the request id was persisted marks the attempt
+  "interrupted", releases only the run-budget reservation, keeps the approval and the wallet
+  reservation, and stops the run resumable: `adsmith resume` polls the same task, settles at
+  `creditsConsumed` and continues. A transient error before any submit still fails the attempt.
+- `resume` also reopens a generation that was failed this way before the fix (last attempt with
+  a request id, transient kind, no video), so the task is polled, never paid twice.

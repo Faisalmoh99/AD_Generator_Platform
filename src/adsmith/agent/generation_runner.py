@@ -27,7 +27,12 @@ from typing import Literal, Protocol
 
 from adsmith.agent.i18n import failure_message
 from adsmith.agent.recovery.backoff import Sleep, retry_transient
-from adsmith.agent.recovery.errors import AccountLockedError, AgentError
+from adsmith.agent.recovery.errors import (
+    AccountLockedError,
+    AgentError,
+    RateLimitedError,
+    TransientProviderError,
+)
 from adsmith.domain.ad import AdGeneration
 from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetRefusedError
@@ -373,6 +378,14 @@ class AdGenerationRunner:
         except AccountLockedError as exc:
             self._paused(run_id, gen.version, attempt.id, exc)
             raise
+        except (TransientProviderError, RateLimitedError) as exc:
+            if not self._submitted(run_id, gen.version, attempt.id):
+                self._attempt_failed(run_id, gen.version, attempt.id, exc)
+                return
+            # A paid task was accepted but could not be polled (network): it may finish and be
+            # charged. Keep it: the run stops resumable and `adsmith resume` polls the same task.
+            self._interrupted(run_id, gen.version, attempt.id, exc)
+            raise
         except AgentError as exc:
             self._attempt_failed(run_id, gen.version, attempt.id, exc)
             return
@@ -443,6 +456,35 @@ class AdGenerationRunner:
             ]  # fmt: skip
 
         self._update(run_id, mutate, "ad generation failed")
+
+    def _submitted(self, run_id: str, version: int, attempt_id: str) -> bool:
+        g = self.storage.runs.load(run_id).generation
+        if g is None or g.version != version:
+            return False
+        return any(a.id == attempt_id and a.remote_request is not None for a in g.attempts)
+
+    def _interrupted(self, run_id: str, version: int, attempt_id: str, exc: AgentError) -> None:
+        def mutate(s: RunState) -> list[AgentEvent]:
+            g = self._same(s, version)
+            att = next(a for a in g.attempts if a.id == attempt_id)
+            att.outcome, att.finished_at = "failed", utcnow()
+            att.failure_kind = exc.kind
+            att.error_message = f"interrupted ({exc.kind.value}: {exc.message[:300]})"
+            with contextlib.suppress(KeyError):
+                s.budget.release(attempt_id)
+            g.release()
+            return [
+                _ev(
+                    run_id, Stage.GENERATE, EventType.RECOVERY, level="warn",
+                    summary="Whole ad: the submitted task could not be polled "
+                    f"({exc.message[:200]}); it is kept and `adsmith resume` polls it again "
+                    "(never resubmitted)",
+                    strategy="resume_poll",
+                )
+            ]  # fmt: skip
+
+        with contextlib.suppress(StaleWriteError):
+            self.storage.runs.update(run_id, mutate, reason="ad generation interrupted")
 
     def _paused(self, run_id: str, version: int, attempt_id: str, exc: AccountLockedError) -> None:
         def mutate(s: RunState) -> list[AgentEvent]:

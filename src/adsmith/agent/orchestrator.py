@@ -283,6 +283,29 @@ class Orchestrator:
                     scene.release_lease()
                     released.append(scene.order)
             g = s.generation
+            last = g.attempts[-1] if g is not None and g.attempts else None
+            if (
+                g is not None
+                and g.status == "failed"
+                and last is not None
+                and last.scene_version == g.version
+                and last.remote_request is not None
+                and last.artifact is None
+                and last.failure_kind in {FailureKind.TRANSIENT, FailureKind.RATE_LIMITED}
+            ):
+                # A generation failed by a network error after its paid task was accepted (before
+                # the runner kept such tasks): reopen it, so GENERATE polls the same task.
+                g.reopen()
+                if not (last.error_message or "").startswith("interrupted"):
+                    last.error_message = f"interrupted ({last.error_message or 'transient'})"
+                s.final, s.error, s.stage = None, None, Stage.GENERATE
+                events.append(
+                    _event(
+                        s.id, Stage.GENERATE, EventType.DECISION,
+                        f"Reopened the whole-ad generation: its accepted task "
+                        f"{last.remote_request.request_id} is polled again, never paid twice",
+                    )
+                )  # fmt: skip
             if g is not None and g.status == "generating":
                 # The whole-ad job from a crashed process: close the attempt (its request id is
                 # kept, so the next GENERATE polls it instead of paying again), free the money.

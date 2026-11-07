@@ -967,6 +967,13 @@ class AdGeneration(DomainModel):
         self.status, self.accepted_by_human = "approved", reason
         self.check_invariants()
 
+    def reopen(self) -> None:
+        """failed → estimated, approval kept: a paid task was accepted but could not be polled
+        (a transient error after the submit); the next GENERATE polls it, never pays again."""
+        self._need("failed")
+        self.status, self.failure = "estimated", None
+        self.check_invariants()
+
     def fail(self, failure: SceneFailure) -> None:
         self._need("pending", "estimated", "generating", "qa_review")
         self.status, self.failure = "failed", failure

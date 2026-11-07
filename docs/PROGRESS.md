@@ -1318,3 +1318,12 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
 - **Built**: `kie_seedance_20_fast` (default), `unverified_price` on the standard entry (never
   quoted), `adsmith set-ad-model` (`commands.switch_ad_model`). ADR-0027 addendum.
 - **Tests**: +3; 930 passed, 2 skipped.
+
+## Network error after a paid submit: resumable, not failed (2026-11-07)
+
+- **Found**: the first Fast generation was accepted by Kie (task 97b589d0…), then polling lost
+  the network and the run marked the generation failed; the task had succeeded (70.2 credits).
+- **Built**: `_interrupted` in the generation runner (transient after submit → attempt
+  interrupted, run stops resumable), `AdGeneration.reopen`, `resume` reopens such a failed
+  generation. ADR-0027 addendum.
+- **Tests**: +2 (`tests/integration/test_kie_pipeline.py`); 932 passed, 2 skipped.
