@@ -10,7 +10,12 @@ from adsmith.agent.deltas import SelectConcept
 from adsmith.agent.nodes.base import NodeResult
 from adsmith.agent.nodes.common import brief_block, concept_block, decision, language_name
 from adsmith.config import LLMNode
-from adsmith.domain.concept import ConceptJudgementDraft
+from adsmith.domain.concept import (
+    REUSED_MOTIFS,
+    ConceptJudgementDraft,
+    ConceptScore,
+    recent_overlap,
+)
 from adsmith.domain.enums import Stage
 from adsmith.domain.run import RunState
 
@@ -28,16 +33,32 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
     )
     result = await ctx.llm.call(LLMNode.SELECT, prompt, ConceptJudgementDraft)
     judgement = result.value
-    best = judgement.winner(rubric)
+    # Novelty by code (ADR-0028): a concept that stands on the same people, place and object as
+    # a recent winner (the motif ledger) loses the rubric's novelty penalty.
+    penalties = {
+        i: rubric.novelty_penalty
+        for i, c in enumerate(concepts, start=1)
+        if rubric.novelty_penalty and recent_overlap(c.motifs, ctx.motif_ledger) >= REUSED_MOTIFS
+    }
+
+    def total(s: ConceptScore) -> float:
+        return round(s.weighted(rubric) - penalties.get(s.concept_number, 0.0), 4)
+
+    best = judgement.winner(rubric, penalties)
     chosen = concepts[best.concept_number - 1]
-    ranking = sorted(judgement.scores, key=lambda s: -s.weighted(rubric))
+    ranking = sorted(judgement.scores, key=lambda s: -total(s))
     verb = "Recommends" if state.config.interactive else "Selected"
     summary = (
         f"{verb} concept {best.concept_number} '{chosen.title}' "
-        f"(creative score {best.weighted(rubric):.2f}/10): "
+        f"(creative score {total(best):.2f}/10): "
         + ", ".join(
-            f"#{s.concept_number}={s.weighted(rubric):.2f}"
+            f"#{s.concept_number}={total(s):.2f}"
             + (f" (cliché −{rubric.cliche_penalty:g})" if s.uses_category_cliche else "")
+            + (
+                f" (recent motifs −{rubric.novelty_penalty:g})"
+                if s.concept_number in penalties
+                else ""
+            )
             for s in ranking
         )
     )
@@ -48,7 +69,7 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
             SelectConcept(
                 concept_id=chosen.id,
                 by="agent",
-                rationale=f"{best.rationale} (creative score {best.weighted(rubric):.2f}/10)",
+                rationale=f"{best.rationale} (creative score {total(best):.2f}/10)",
             )
         ]
     )
@@ -61,7 +82,9 @@ async def select(state: RunState, ctx: NodeContext) -> NodeResult:
                 summary,
                 weights=rubric.weights,
                 scores=[
-                    s.model_dump() | {"weighted": s.weighted(rubric)} for s in judgement.scores
+                    s.model_dump()
+                    | {"weighted": total(s), "novelty_penalty": penalties.get(s.concept_number, 0)}
+                    for s in judgement.scores
                 ],
                 recommended=best.concept_number,
             )

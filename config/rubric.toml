@@ -3,6 +3,9 @@
 # Ease of execution is NOT a criterion: production limits reach the storyboard through the video
 # model's profile and the format grammar, and the critic's hard gate catches what fails on screen.
 cliche_penalty = 1.5   # subtracted when the judge flags a category cliché (ADR-0014)
+# Subtracted by CODE when a concept shares 2+ motifs (who, where, what object) with one of the last
+# 10 winning concepts (the motif ledger, ADR-0028): 4 of 5 runs won with a host at the door.
+novelty_penalty = 1.0
 
 [criteria.insight]
 weight = 0.20

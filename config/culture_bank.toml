@@ -3,7 +3,10 @@
 # meaning, never as decoration). Each insight names the entry it stands on (culture_anchor) or
 # "none". Arabic is stored in logical order. TO BE REVIEWED BY THE USER before the first real run.
 #
-# Fields: id (snake_case) · kind · text_ar (as people say it) · meaning_en (what it means) ·
+# theme (ADR-0028): hospitality | family | self | occasion | travel | craft | season. The insight
+# stage gets a balanced sample (at most 3 entries per theme), and ideate spreads its candidates
+# over the themes, because 4 of 5 planning runs won with a host waiting for a guest.
+# Fields: id (snake_case) · theme · kind · text_ar (as people say it) · meaning_en (what it means) ·
 # use (how an ad can stand on it: a turn, a gesture, a payoff) · categories (product categories
 # it fits; "any" fits every product) · pitfalls (what an ad must not do with it).
 
@@ -78,6 +81,7 @@ not_like = ["a bathrobe", "a cape", "a Western overcoat"]
 # ------------------------------------------------------------------- scent: oud, bakhoor, perfume
 [[entries]]
 id = "bakhoor_before_guests"
+theme = "hospitality"
 objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير البيت قبل وصول الضيوف"
@@ -88,6 +92,7 @@ pitfalls = ["no open flame near curtains or children", "the scent is a welcome, 
 
 [[entries]]
 id = "bakhoor_farewell"
+theme = "hospitality"
 objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير الضيف قبل انصرافه"
@@ -98,6 +103,7 @@ pitfalls = ["the elder is dignified, never a caricature", "no rushing the guest 
 
 [[entries]]
 id = "after_oud_no_sitting"
+theme = "hospitality"
 objects = ["mabkhara"]
 kind = "proverb"
 text_ar = "بعد العود ما فيه قعود"
@@ -108,6 +114,7 @@ pitfalls = ["never shown as rudeness to the guest", "the proverb is spoken in th
 
 [[entries]]
 id = "thobe_censing"
+theme = "self"
 objects = ["mabkhara"]
 kind = "ritual"
 text_ar = "تبخير الثوب والشماغ قبل الخروج"
@@ -118,6 +125,7 @@ pitfalls = ["Saudi thobe with a stiff collar, shemagh or ghutra with agal (see c
 
 [[entries]]
 id = "scent_arrives_first"
+theme = "self"
 kind = "phrase"
 text_ar = "ريحتك سبقتك"
 meaning_en = "People are recognised by their scent before they appear: a familiar perfume announces someone loved."
@@ -127,6 +135,7 @@ pitfalls = ["no romantic contact between unrelated men and women"]
 
 [[entries]]
 id = "oud_on_the_bisht"
+theme = "family"
 objects = ["bisht"]
 kind = "object"
 text_ar = "ريحة العود في بشت الأب"
@@ -137,6 +146,7 @@ pitfalls = ["grief only if handled with restraint", "the bisht is worn at occasi
 
 [[entries]]
 id = "perfume_never_refused"
+theme = "occasion"
 kind = "proverb"
 text_ar = "الطيب ما يُرد"
 meaning_en = "A gift of perfume is never refused: offering scent is offering respect, and accepting it honours the giver."
@@ -146,6 +156,7 @@ pitfalls = ["no religious text on screen", "the gift is offered with the right h
 
 [[entries]]
 id = "grandmother_chest"
+theme = "family"
 objects = ["mandoos"]
 kind = "object"
 text_ar = "مندوس الجدة"
@@ -156,6 +167,7 @@ pitfalls = ["the grandmother is respected, not frail or comic", "women's hair co
 
 [[entries]]
 id = "henna_night"
+theme = "occasion"
 kind = "occasion"
 text_ar = "ليلة الحناء"
 meaning_en = "Before the wedding, the bride's women relatives gather for henna, songs and perfume: the bride's last night as a daughter of the house."
@@ -166,6 +178,7 @@ pitfalls = ["women only, modest framing, no men present", "no faces of real brid
 # --------------------------------------------------------------------- coffee and hospitality
 [[entries]]
 id = "coffee_right_hand"
+theme = "hospitality"
 objects = ["dallah", "finjan"]
 kind = "gesture"
 text_ar = "تقديم القهوة باليمين وبدء الصب بالكبير"
@@ -176,6 +189,7 @@ pitfalls = ["the pourer stands, the cup is filled only a little", "never the lef
 
 [[entries]]
 id = "shake_the_cup"
+theme = "hospitality"
 objects = ["finjan"]
 kind = "gesture"
 text_ar = "هزّ الفنجان"
@@ -186,6 +200,7 @@ pitfalls = ["the cup is a small handleless finjan, filled a third", "the host ne
 
 [[entries]]
 id = "four_cups"
+theme = "craft"
 objects = ["finjan"]
 kind = "proverb"
 text_ar = "الهيف والضيف والكيف والسيف"
@@ -196,6 +211,7 @@ pitfalls = ["no weapons shown with the 'sword' cup: it is a pledge, not a fight"
 
 [[entries]]
 id = "dates_with_coffee"
+theme = "hospitality"
 objects = ["finjan", "dallah"]
 kind = "ritual"
 text_ar = "التمر مع القهوة"
@@ -206,6 +222,7 @@ pitfalls = ["Saudi coffee is light gold with cardamom, not dark espresso"]
 
 [[entries]]
 id = "dallah_on_the_fire"
+theme = "hospitality"
 objects = ["dallah"]
 kind = "object"
 text_ar = "الدلة على النار"
@@ -216,6 +233,7 @@ pitfalls = ["a brass or steel dallah with its beak spout, not a European coffee 
 
 [[entries]]
 id = "mortar_call"
+theme = "craft"
 objects = ["najr"]
 kind = "ritual"
 text_ar = "صوت النجر"
@@ -226,6 +244,7 @@ pitfalls = ["the rhythm is a musical, joyful beat, not noise"]
 
 [[entries]]
 id = "morning_coffee"
+theme = "self"
 objects = ["finjan"]
 kind = "ritual"
 text_ar = "قهوة الصباح قبل الكلام"
@@ -236,6 +255,7 @@ pitfalls = []
 
 [[entries]]
 id = "guest_three_days"
+theme = "hospitality"
 kind = "proverb"
 text_ar = "الضيف ما يُسأل عن حاجته ثلاثة أيام"
 meaning_en = "By old custom a guest is hosted for three days before being asked why they came: hospitality is given before anything is asked."
@@ -245,6 +265,7 @@ pitfalls = ["not literal: a value, never a long scene of a stay", "the host neve
 
 [[entries]]
 id = "house_is_yours"
+theme = "hospitality"
 kind = "phrase"
 text_ar = "البيت بيتك"
 meaning_en = "'The house is yours': the host's sentence that hands the guest the freedom of the home."
@@ -254,6 +275,7 @@ pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "the_majlis"
+theme = "hospitality"
 kind = "object"
 text_ar = "المجلس"
 meaning_en = "The sitting room for guests: cushions along the walls, the host serving, the order of seats showing respect. Where a family meets the outside world."
@@ -263,6 +285,7 @@ pitfalls = ["the majlis as a place of meaning, not a museum set of trays and lan
 
 [[entries]]
 id = "kashta"
+theme = "season"
 objects = ["dallah"]
 kind = "occasion"
 text_ar = "الكشتة"
@@ -271,9 +294,33 @@ use = "a setting of togetherness for coffee or dates"
 categories = ["coffee", "dates"]
 pitfalls = ["the desert is a cliché for perfume ads: use it only for coffee or dates", "no driving stunts"]
 
+[[entries]]
+id = "road_thermos"
+theme = "travel"
+objects = ["finjan"]
+kind = "ritual"
+text_ar = "ترمس القهوة في الطريق"
+meaning_en = "On a long drive between cities or to the family's village, someone always brings a thermos of Saudi coffee and small cups; the first stop is for coffee and dates by the road."
+use = "a journey: the taste of home carried on the road, poured at the first stop"
+categories = ["coffee", "dates"]
+pitfalls = ["no pouring while driving", "the desert road is a setting, not a perfume cliché here"]
+# TO BE REVIEWED BY THE USER (added 2026-11-07, ADR-0028).
+
+[[entries]]
+id = "home_roast"
+theme = "craft"
+kind = "ritual"
+text_ar = "تحميص البن في البيت"
+meaning_en = "In many homes the beans are still roasted in a pan and ground with cardamom; the smell fills the house and everyone knows coffee is coming. Knowing the right roast is a quiet pride."
+use = "craft: the hand that knows when the bean is ready; the smell that calls the house"
+categories = ["coffee"]
+pitfalls = ["Saudi coffee is a light roast, golden, never black espresso"]
+# TO BE REVIEWED BY THE USER (added 2026-11-07, ADR-0028).
+
 # --------------------------------------------------------------------- dates and the seasons
 [[entries]]
 id = "ruttab_season"
+theme = "season"
 kind = "occasion"
 text_ar = "موسم الرطب والصرام"
 meaning_en = "At the end of summer the dates ripen and are harvested; families share the first rutab of the season with neighbours and relatives."
@@ -283,6 +330,7 @@ pitfalls = ["the farmer is proud and skilled, never poor or tired"]
 
 [[entries]]
 id = "iftar_date"
+theme = "season"
 kind = "ritual"
 text_ar = "الإفطار على تمرة"
 meaning_en = "In Ramadan the fast is broken at sunset with a date and water: the first taste after a long day, shared by the whole family at the same second."
@@ -292,6 +340,7 @@ pitfalls = ["no eating or drinking before sunset", "the call to prayer is heard,
 
 [[entries]]
 id = "dates_bowl_majlis"
+theme = "hospitality"
 kind = "object"
 text_ar = "صحن التمر في المجلس"
 meaning_en = "A plate of dates is always ready in the majlis for whoever drops by: the house is prepared for a guest it has not met yet."
@@ -301,6 +350,7 @@ pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "eid_morning"
+theme = "occasion"
 kind = "occasion"
 text_ar = "قهوة العيد وتمره"
 meaning_en = "On Eid morning families visit the elders first; coffee, dates and sweets wait for every visitor in new clothes."
@@ -310,6 +360,7 @@ pitfalls = ["Eid prayer shown with respect or not at all", "the host never ignor
 
 [[entries]]
 id = "eidiya"
+theme = "family"
 kind = "gesture"
 text_ar = "العيدية"
 meaning_en = "Elders give children money or small gifts on Eid; the child's joy is the elder's."
@@ -319,6 +370,7 @@ pitfalls = ["money is folded and given, never fanned out"]
 
 [[entries]]
 id = "ghabga"
+theme = "season"
 kind = "occasion"
 text_ar = "الغبقة"
 meaning_en = "A late-night Ramadan gathering of family and friends after the evening prayers, with food, coffee and long conversation."
@@ -329,6 +381,7 @@ pitfalls = ["no daytime eating in Ramadan scenes"]
 # --------------------------------------------------------------------- respect and family
 [[entries]]
 id = "kiss_the_head"
+theme = "family"
 kind = "gesture"
 text_ar = "تقبيل رأس الوالد"
 meaning_en = "Kissing a parent's or elder's head (or forehead) is the deepest everyday sign of respect and gratitude."
@@ -338,6 +391,7 @@ pitfalls = ["between family members only", "no mixed-gender contact outside the 
 
 [[entries]]
 id = "stand_for_the_elder"
+theme = "family"
 kind = "gesture"
 text_ar = "الوقوف للكبير"
 meaning_en = "When an elder enters, everyone in the majlis stands: respect is shown with the body before words."
@@ -347,6 +401,7 @@ pitfalls = ["the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "gift_unopened"
+theme = "occasion"
 kind = "gesture"
 text_ar = "الهدية ما تنفتح قدام صاحبها"
 meaning_en = "A gift is not opened in front of the giver: what matters is the gesture, and the surprise is kept for later."
@@ -356,6 +411,7 @@ pitfalls = []
 
 [[entries]]
 id = "return_from_travel"
+theme = "travel"
 kind = "ritual"
 text_ar = "السلام على الوالدين أول الرجوع من السفر"
 meaning_en = "Back from a trip, the first visit is to the parents, with a gift (perfume, dates, sweets) before anything else."
@@ -365,6 +421,7 @@ pitfalls = []
 
 [[entries]]
 id = "milka"
+theme = "occasion"
 objects = ["bisht"]
 kind = "occasion"
 text_ar = "الملكة"
@@ -375,6 +432,7 @@ pitfalls = ["no bride's face", "men and women in separate gatherings"]
 
 [[entries]]
 id = "national_day"
+theme = "occasion"
 kind = "occasion"
 text_ar = "اليوم الوطني"
 meaning_en = "On 23 September the country wears green; families celebrate together with the ardah and gatherings."

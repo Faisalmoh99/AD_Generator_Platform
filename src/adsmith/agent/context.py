@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from adsmith.agent.prompts import PromptLibrary
 from adsmith.agent.structured import StructuredCaller
 from adsmith.config import AdVideoEndpoint, FalImageEndpoint, FalVideoEndpoint, Settings
+from adsmith.domain.concept import MotifEntry
 from adsmith.domain.run import RunConfig, RunState
 from adsmith.providers.llm.base import LLMProvider
 from adsmith.providers.llm.scripted import ScriptedLLMProvider
@@ -43,6 +44,8 @@ class NodeContext:
     prompts: PromptLibrary
     llm: StructuredCaller
     artifacts: ArtifactStore  # file store for media I/O (not run state)
+    # Recent winning concepts' motifs (ADR-0028), read by code for ideate; nodes never write it.
+    motif_ledger: tuple[MotifEntry, ...] = ()
 
 
 @dataclass
@@ -493,6 +496,7 @@ class AgentRuntime:
             prompts=self.prompts,
             llm=self._callers[key],
             artifacts=self.storage.artifacts,
+            motif_ledger=tuple(self.storage.motifs.recent(10, exclude=run.id)),
         )
 
 

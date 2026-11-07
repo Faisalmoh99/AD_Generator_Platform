@@ -31,6 +31,7 @@ class RubricCriterion(DomainModel):
 
 class Rubric(DomainModel):
     cliche_penalty: float = Field(ge=0, le=5)
+    novelty_penalty: float = Field(default=0.0, ge=0, le=5)
     criteria: dict[str, RubricCriterion]
 
     @model_validator(mode="after")

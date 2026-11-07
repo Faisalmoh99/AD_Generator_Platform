@@ -36,7 +36,13 @@
             "low-key"
           ],
           "risk_notes": [],
-          "estimated_scene_count": 9
+          "estimated_scene_count": 9,
+          "axis": "self",
+          "motifs": [
+            "obsidian",
+            "black rock",
+            "bottle"
+          ]
         },
         {
           "insight_number": 2,
@@ -71,7 +77,13 @@
             "slow motion water"
           ],
           "risk_notes": [],
-          "estimated_scene_count": 9
+          "estimated_scene_count": 9,
+          "axis": "family",
+          "motifs": [
+            "rain",
+            "night window",
+            "bottle"
+          ]
         },
         {
           "insight_number": 3,
@@ -107,7 +119,13 @@
             "sandstone macro"
           ],
           "risk_notes": [],
-          "estimated_scene_count": 9
+          "estimated_scene_count": 9,
+          "axis": "craft",
+          "motifs": [
+            "desert",
+            "ember",
+            "bottle"
+          ]
         }
       ]
     }

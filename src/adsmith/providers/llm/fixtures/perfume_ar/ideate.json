@@ -44,7 +44,13 @@
             "يجب أن تبقى القارورة بلا نصوص أو شعارات مقروءة، ويفضّل شكل بسيط وزجاج نظيف.",
             "ثبّت ملامح الشاب وزيّه بين اللقطات بوصف دقيق للثوب والغترة."
           ],
-          "estimated_scene_count": 5
+          "estimated_scene_count": 5,
+          "axis": "self",
+          "motifs": [
+            "young man",
+            "mirror",
+            "front door"
+          ]
         },
         {
           "insight_number": 2,
@@ -87,7 +93,13 @@
             "القارورة في لقطات الماكرو يجب أن تبقى متسقة الشكل بين اللقطات، فاعتمد وصفًا ثابتًا لها.",
             "تجنّب أي كتابة على الزجاج أو المنصة."
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "family",
+          "motifs": [
+            "night sky",
+            "glass",
+            "bottle"
+          ]
         },
         {
           "insight_number": 3,
@@ -130,7 +142,13 @@
             "لقطة الشاب من الخلف يجب أن تكون قصيرة وبثوب أبيض محتشم وغترة واضحة بلا تفاصيل معقدة.",
             "لا تضع أي خط عربي أو زخرفة مقروءة على الجدران أو القارورة."
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "craft",
+          "motifs": [
+            "empty room",
+            "memory",
+            "bottle"
+          ]
         }
       ]
     }

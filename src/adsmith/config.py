@@ -426,6 +426,11 @@ class Settings(BaseSettings):
     music_max_usd: float = Field(default=0.15, ge=0)
     # Prop reference images of a whole-ad prompt (ADR-0026): the run's cap on their images.
     props_max_usd: float = Field(default=0.20, ge=0)
+    # Concepts ideate writes on a whole-ad run; code keeps the 3 that differ most (ADR-0028).
+    ideate_candidates: int = Field(default=6, ge=3, le=6)
+    # Record scripted (zero-key) winners in the motif ledger too; off so demo fixtures never
+    # count as recent ideas (tests turn it on).
+    motif_ledger_scripted: bool = False
     # Use the culture bank's verified Gulf-object photos for matching props (ADR-0026).
     props_library: bool = True
     # Whole-ad audio is normalised to this loudness at assembly (EBU R128, -1.5 dBTP); both

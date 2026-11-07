@@ -37,7 +37,13 @@
             "shallow depth of field"
           ],
           "risk_notes": [],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "hospitality",
+          "motifs": [
+            "host",
+            "last guest",
+            "doorway"
+          ]
         },
         {
           "insight_number": 2,
@@ -75,7 +81,13 @@
           "risk_notes": [
             "light-only motion may read as static"
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "self",
+          "motifs": [
+            "mashrabiya",
+            "golden light",
+            "wall"
+          ]
         },
         {
           "insight_number": 3,
@@ -114,7 +126,148 @@
           "risk_notes": [
             "several people in frame"
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "family",
+          "motifs": [
+            "groom",
+            "wedding night",
+            "street"
+          ]
+        },
+        {
+          "insight_number": 3,
+          "title": "The Blender's Nose",
+          "logline": "An old perfumer closes his eyes over three blotters and nods only at one: the bottle he trusts.",
+          "insight": "The people who know scent best say the least about it.",
+          "story": {
+            "setup": "three blotters fan out in a workshop",
+            "turn": "the master pauses at the third and nods",
+            "payoff": "he caps the amber bottle he trusts"
+          },
+          "hook": {
+            "image": "Three paper blotters fanned between weathered fingers",
+            "sound": "paper ticking against paper",
+            "question": "Which one will the master choose?"
+          },
+          "product_role": {
+            "role": "hero",
+            "line": "The bottle is the master's own choice."
+          },
+          "cultural_meaning": "Respect for the craftsman who judges oud by memory, not labels.",
+          "originality_claim": "A judgement made by a nose, not a seduction.",
+          "emotional_driver": "Quiet pride",
+          "differentiator": "A craftsman and his judgement, no guests or family.",
+          "shot_sketch": [
+            "blotters fan out",
+            "the nose hovers",
+            "the nod",
+            "the cap closes"
+          ],
+          "style_references": [
+            "workshop daylight",
+            "dust-free bench",
+            "macro paper texture"
+          ],
+          "risk_notes": [
+            "paper blotters must stay blank"
+          ],
+          "estimated_scene_count": 4,
+          "axis": "craft",
+          "motifs": [
+            "perfumer",
+            "workshop",
+            "blotters"
+          ]
+        },
+        {
+          "insight_number": 1,
+          "title": "Mile Zero",
+          "logline": "Before a long drive home, a son sprays once at the car door and the scent rides with him to his mother's house.",
+          "insight": "We carry home's scent on the road so we arrive already belonging.",
+          "story": {
+            "setup": "bags in a car boot at dawn",
+            "turn": "he turns back for one spray at the open car door",
+            "payoff": "the bottle rides in the cup holder as the road opens"
+          },
+          "hook": {
+            "image": "A car boot closing on luggage at blue dawn",
+            "sound": "the boot latch, an engine starting",
+            "question": "Where is he driving so early?"
+          },
+          "product_role": {
+            "role": "catalyst",
+            "line": "One spray turns a drive into a homecoming."
+          },
+          "cultural_meaning": "Going home to the parents first, smelling of the house you left.",
+          "originality_claim": "A road film for a perfume, with no seduction and no desert.",
+          "emotional_driver": "Longing",
+          "differentiator": "On the road at dawn, one traveller, no majlis.",
+          "shot_sketch": [
+            "the boot closes",
+            "he turns back",
+            "one spray at the door",
+            "the road opens"
+          ],
+          "style_references": [
+            "blue dawn",
+            "car interior",
+            "soft handheld"
+          ],
+          "risk_notes": [
+            "no driving action while spraying"
+          ],
+          "estimated_scene_count": 4,
+          "axis": "travel",
+          "motifs": [
+            "son",
+            "car",
+            "dawn road"
+          ]
+        },
+        {
+          "insight_number": 2,
+          "title": "First Rain",
+          "logline": "The first winter rain hits a courtyard and a grandfather opens his window to it, then to the bottle.",
+          "insight": "Some scents belong to a season and come back with it every year.",
+          "story": {
+            "setup": "dry courtyard tiles under grey sky",
+            "turn": "the first drops darken the tiles and he opens the window",
+            "payoff": "he lifts the bottle as the rain smell fills the room"
+          },
+          "hook": {
+            "image": "The first heavy drops darkening dry tiles",
+            "sound": "rain starting on stone",
+            "question": "Who has been waiting for this rain?"
+          },
+          "product_role": {
+            "role": "witness",
+            "line": "The bottle is the season he waits for all year."
+          },
+          "cultural_meaning": "The first rain of winter, welcomed as a blessing and a smell.",
+          "originality_claim": "A perfume tied to a weather event, not a person or an occasion.",
+          "emotional_driver": "Renewal",
+          "differentiator": "A season and a window, a grandfather alone.",
+          "shot_sketch": [
+            "drops on tiles",
+            "the window opens",
+            "rain smell in the room",
+            "the bottle lifted"
+          ],
+          "style_references": [
+            "overcast soft light",
+            "wet stone",
+            "window frame"
+          ],
+          "risk_notes": [
+            "rain must not touch the bottle"
+          ],
+          "estimated_scene_count": 4,
+          "axis": "season",
+          "motifs": [
+            "grandfather",
+            "courtyard",
+            "rain"
+          ]
         }
       ]
     }

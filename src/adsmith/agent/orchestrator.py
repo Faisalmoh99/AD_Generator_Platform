@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import sqlite3
 import time
 import traceback
 from collections.abc import Sequence
@@ -39,6 +40,7 @@ from adsmith.agent.transitions import next_stage, whole_ad
 from adsmith.config import Settings
 from adsmith.domain.base import utcnow
 from adsmith.domain.budget import BudgetLedger
+from adsmith.domain.concept import MotifEntry
 from adsmith.domain.enums import AWAITING_STAGES, TERMINAL_STAGES, FailureKind, SceneStatus, Stage
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.formats import AdFormat
@@ -400,7 +402,24 @@ class Orchestrator:
             )
         if stage in EXPORT_AFTER:
             self.export(committed)
+        if stage is Stage.STORYBOARD:
+            self._record_motifs(committed)
         return committed
+
+    def _record_motifs(self, state: RunState) -> None:
+        """The winning concept's motifs go into the cross-run ledger (ADR-0028) once the
+        storyboard is built on it (after the human's or the judge's choice)."""
+        c = state.concepts.selected if state.concepts else None
+        if c is None or not c.motifs:
+            return
+        if state.config.llm_provider == "scripted" and not self.rt.settings.motif_ledger_scripted:
+            return  # fixture ideas are not recent ideas
+        entry = MotifEntry(run_id=state.id, title=c.title[:120], axis=c.axis or "-",
+                           motifs=c.motifs)  # fmt: skip
+        try:
+            self.rt.storage.motifs.record(entry)
+        except sqlite3.Error as exc:  # a ledger write never fails a run
+            log.warning("motif ledger write failed", run_id=state.id, error=str(exc))
 
     def export(self, state: RunState, out_dir: Path | None = None) -> Path | None:
         """Write the Production Pack. Never fails the run: problems become a warn event."""

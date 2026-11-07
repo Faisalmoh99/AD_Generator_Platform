@@ -57,8 +57,12 @@ class GulfObject(DomainModel):
         return False
 
 
+Theme = Literal["hospitality", "family", "self", "occasion", "travel", "craft", "season"]
+
+
 class CultureEntry(DomainModel):
     id: str = Field(pattern=r"^[a-z][a-z0-9_]{2,39}$")
+    theme: Theme
     kind: Kind
     text_ar: Annotated[str, Field(min_length=1, max_length=120)]
     meaning_en: Text
@@ -140,12 +144,17 @@ class CultureBank(DomainModel):
                     break
         return found
 
-    def for_brief(self, brief: Brief, limit: int = 12) -> list[CultureEntry]:
-        """Entries that fit the brief: its own categories first, then the ones for any product."""
+    def for_brief(self, brief: Brief, limit: int = 12, per_theme: int = 3) -> list[CultureEntry]:
+        """Entries that fit the brief: its own categories first, then the ones for any product;
+        balanced across themes (ADR-0028): taken round-robin by theme, at most ``per_theme`` of
+        one theme while other themes still have entries."""
         cats = set(self.categories_for(brief))
         own = [e for e in self.entries if cats & set(e.categories)]
         general = [e for e in self.entries if "any" in e.categories and e not in own]
-        return (own + general)[:limit]
+        out = _round_robin(own, limit, per_theme)
+        if len(out) < limit:
+            out += _round_robin(general, limit - len(out), per_theme)
+        return out
 
     def prompt_block(self, entries: list[CultureEntry]) -> str:
         general = (
@@ -165,6 +174,23 @@ class CultureBank(DomainModel):
                 f"{e.use}.{pit}"
             )
         return "\n".join(lines)
+
+
+def _round_robin(entries: list[CultureEntry], limit: int, per_theme: int) -> list[CultureEntry]:
+    """Up to ``limit`` entries, one theme at a time in order of first appearance; a theme beyond
+    ``per_theme`` entries only once every other theme is exhausted."""
+    by_theme: dict[str, list[CultureEntry]] = {}
+    for e in entries:
+        by_theme.setdefault(e.theme, []).append(e)
+    out: list[CultureEntry] = []
+    for cap in (per_theme, len(entries)):
+        rnd = 0
+        while len(out) < limit and any(len(v) > rnd for v in by_theme.values()) and rnd < cap:
+            for v in by_theme.values():
+                if rnd < len(v) and v[rnd] not in out and len(out) < limit:
+                    out.append(v[rnd])
+            rnd += 1
+    return out
 
 
 def with_gulf_objects(d: AdPromptDraft, bank: CultureBank) -> AdPromptDraft:

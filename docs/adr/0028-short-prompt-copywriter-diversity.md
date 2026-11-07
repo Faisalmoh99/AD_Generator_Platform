@@ -71,3 +71,26 @@ with no idea stage. Diversity research says planned spread beats more samples.
   set with `--endcard-brand` / `--endcard-tagline`, always wins; with both given the stage makes no
   call. At assembly the system's copy fills only what the human did not give.
 - Shown in the pack ("End-card copy" table), the decisions report and the studio's whole-ad panel.
+
+## Addendum (part 3, P4): planned concept diversity and the motif ledger
+
+- **Axes by code** (`assign_axes`): hospitality, family, self, occasion, travel, craft, season,
+  no_anchor. The themes the insights stand on come first (hospitality only when an insight is
+  anchored there), then a fixed fill order, one axis per candidate.
+- **Six candidates on a whole-ad run** (`ADSMITH_IDEATE_CANDIDATES`, default 6; other formats
+  keep three): ideate v8 writes one concept per axis with 2-4 English motifs (who, where, what
+  object) and sees the recent winners as "recently used, avoid". Code checks the count and that
+  each axis is used once (→ repair).
+- **Code keeps three** (`pick_distinct`): concepts that share 2+ motifs with one of the last 10
+  winners go last; then greedy max-min dissimilarity on the concept text. The select judge sees
+  three, as before; a concept that still reuses recent motifs loses `novelty_penalty = 1.0`
+  (rubric.toml), applied by code.
+- **The ledger** (`motifs` table, migration 2; `storage/motifs.py`): one row per run, written by
+  the orchestrator after the storyboard is committed on the winner (real-LLM runs only, so demo
+  fixtures never count). Seeded with the five planning runs (`scripts/seed_motifs.py`): four
+  hospitality winners at a door or a cup, one grandmother with a gift box.
+- **Culture bank themes**: every entry has a `theme`; the insight stage gets a sample taken
+  round-robin by theme (at most 3 per theme while others remain). Two entries added for coffee
+  outside hospitality (`road_thermos`, travel; `home_roast`, craft), marked for the user's review.
+- Research basis: planned spread over semantic directions beats more samples of one prompt;
+  structures that pull ideas toward consensus collapse diversity (ACL 2026 Findings).

@@ -2,16 +2,24 @@
 
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping, Sequence
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
 from adsmith.domain.base import DomainModel, new_id
 from adsmith.domain.rubric import RUBRIC_KEYS, Rubric
-from adsmith.domain.similarity import DISTINCTNESS_THRESHOLD, join_fields, too_similar_pairs
+from adsmith.domain.similarity import (
+    DISTINCTNESS_THRESHOLD,
+    join_fields,
+    similarity,
+    too_similar_pairs,
+)
 
 UserText = Annotated[str, Field(min_length=1, max_length=240)]
 CONCEPT_COUNT = 3
+MAX_CANDIDATES = 6  # ideate's candidates on a whole-ad run (ADR-0028 part 3)
 
 
 class ConceptDraft(DomainModel):
@@ -183,6 +191,15 @@ class CreativeConceptDraft(DomainModel):
     )
     risk_notes: list[UserText] = Field(default_factory=list, max_length=5)
     estimated_scene_count: int = Field(ge=1, le=12)
+    axis: Annotated[str, Field(min_length=1, max_length=30)] = Field(
+        description="The creative axis code assigned to this concept (one of the listed axes)."
+    )
+    motifs: list[Annotated[str, Field(min_length=1, max_length=30)]] = Field(
+        min_length=2,
+        max_length=4,
+        description="2-4 short English nouns the idea stands on: who, where, what object "
+        "(e.g. 'host', 'doorway', 'finjan').",
+    )
 
     def to_concept(self) -> Concept:
         return Concept(
@@ -203,13 +220,18 @@ class CreativeConceptDraft(DomainModel):
             cultural_meaning=self.cultural_meaning,
             originality_claim=self.originality_claim,
             shot_sketch=list(self.shot_sketch),
+            axis=self.axis,
+            motifs=list(self.motifs),
         )
 
 
 class CreativeConceptSetDraft(DomainModel):
-    """``ideate`` v6 output: exactly three concepts, distinct (checked here → schema repair)."""
+    """``ideate`` output: three concepts, or six on a whole-ad run (ADR-0028: code keeps the three
+    that differ most), distinct (checked here → schema repair)."""
 
-    concepts: list[CreativeConceptDraft] = Field(min_length=CONCEPT_COUNT, max_length=CONCEPT_COUNT)
+    concepts: list[CreativeConceptDraft] = Field(
+        min_length=CONCEPT_COUNT, max_length=MAX_CANDIDATES
+    )
 
     @model_validator(mode="after")
     def _distinct(self) -> Self:
@@ -227,6 +249,8 @@ class Concept(ConceptDraft):
     cultural_meaning: str | None = Field(default=None, max_length=400)
     originality_claim: str | None = Field(default=None, max_length=400)
     shot_sketch: list[str] = Field(default_factory=list, max_length=6)
+    axis: str | None = Field(default=None, max_length=30)  # ADR-0028; None before it
+    motifs: list[str] = Field(default_factory=list, max_length=4)
 
 
 class ConceptSet(DomainModel):
@@ -244,8 +268,15 @@ class ConceptSet(DomainModel):
         )
 
     @classmethod
-    def from_creative(cls, draft: CreativeConceptSetDraft, cliches: list[str]) -> ConceptSet:
-        return cls(concepts=[c.to_concept() for c in draft.concepts], category_cliches=cliches)
+    def from_creative(
+        cls,
+        draft: CreativeConceptSetDraft,
+        cliches: list[str],
+        keep: Sequence[int] | None = None,
+    ) -> ConceptSet:
+        """``keep``: indices of the concepts to keep (``pick_distinct``), in order."""
+        idx = list(keep) if keep is not None else list(range(len(draft.concepts)))
+        return cls(concepts=[draft.concepts[i].to_concept() for i in idx], category_cliches=cliches)
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -308,9 +339,98 @@ class ConceptJudgementDraft(DomainModel):
             raise ValueError(f"need exactly one score for each concept 1..3, got {numbers}")
         return self
 
-    def winner(self, rubric: Rubric) -> ConceptScore:
-        """Highest weighted score; ties: insight, then hook, then the lowest number."""
+    def winner(self, rubric: Rubric, penalties: Mapping[int, float] | None = None) -> ConceptScore:
+        """Highest weighted score minus any code penalty (novelty, ADR-0028); ties: insight,
+        then hook, then the lowest number."""
+        pen = penalties or {}
         return max(
             self.scores,
-            key=lambda s: (s.weighted(rubric), s.insight, s.hook, -s.concept_number),
+            key=lambda s: (
+                s.weighted(rubric) - pen.get(s.concept_number, 0.0),
+                s.insight,
+                s.hook,
+                -s.concept_number,
+            ),
         )
+
+
+# ------------------------------------------------------------------------------ diversity
+# ADR-0028 part 3: four of five planning runs (2026-11-07) won with "a host waiting for a guest at
+# the door". Research on LLM ideation: planned spread over semantic directions beats more samples
+# of one prompt; interaction that pulls ideas together collapses diversity. So code assigns each
+# candidate an axis, ideate writes six, and code keeps the three that differ most, away from the
+# motifs of recent winners.
+AXES: dict[str, str] = {
+    "hospitality": "a guest, a host, a welcome",
+    "family": "parents, children, elders, the home",
+    "self": "a private minute of one person, for themselves",
+    "occasion": "Eid, a wedding, a gift, a milestone",
+    "travel": "the road: leaving, coming back, far from home",
+    "craft": "how it is made, chosen, tasted or judged by someone who knows",
+    "season": "a time of year: winter outings, Ramadan nights, the harvest",
+    "no_anchor": "a human truth with no ritual or tradition at all",
+}
+_FILL_ORDER = ("self", "family", "craft", "travel", "season", "occasion", "no_anchor")
+_STOP = frozenset({"the", "a", "an", "of", "and", "with", "his", "her", "their", "on", "in"})
+
+
+class MotifEntry(DomainModel):
+    """One recent winner in the cross-run motif ledger."""
+
+    run_id: str = Field(min_length=1, max_length=40)
+    title: str = Field(min_length=1, max_length=120)
+    axis: str = Field(min_length=1, max_length=30)
+    motifs: list[str] = Field(min_length=1, max_length=6)
+
+
+def assign_axes(anchor_themes: Sequence[str], n: int) -> list[str]:
+    """``n`` distinct axes: the themes the insights stand on (in order), then the fill order;
+    hospitality at most once and only when an insight stands on it."""
+    out: list[str] = []
+    for t in [*anchor_themes, *_FILL_ORDER]:
+        if t in AXES and t not in out:
+            out.append(t)
+        if len(out) == n:
+            break
+    return out
+
+
+def _words(motif: str) -> set[str]:
+    return {w for w in re.findall(r"[a-z]+", motif.lower()) if len(w) > 2 and w not in _STOP}
+
+
+def motif_overlap(a: Sequence[str], b: Sequence[str]) -> int:
+    """How many of ``a``'s motifs share a content word with one of ``b``'s ('front door' and
+    'door' match; 'host' and 'hostess' do not, on purpose: whole words only)."""
+    bw = [_words(m) for m in b]
+    return sum(1 for m in a if any(_words(m) & w for w in bw))
+
+
+def recent_overlap(motifs: Sequence[str], ledger: Sequence[MotifEntry]) -> int:
+    return max((motif_overlap(motifs, e.motifs) for e in ledger), default=0)
+
+
+REUSED_MOTIFS = 2  # a concept sharing this many motifs with a recent winner counts as reused
+
+
+def pick_distinct(
+    concepts: Sequence[ConceptDraft], motifs: Sequence[Sequence[str]],
+    ledger: Sequence[MotifEntry], k: int = CONCEPT_COUNT,
+) -> list[int]:  # fmt: skip
+    """The indices of the ``k`` concepts to keep, in their written order: concepts that reuse a
+    recent winner's motifs go last; then greedily the concept least similar to those already
+    kept (max-min on ``signature_text``), starting from the first fresh one."""
+    n = len(concepts)
+    if n <= k:
+        return list(range(n))
+    reused = [recent_overlap(m, ledger) >= REUSED_MOTIFS for m in motifs]
+    pool = [i for i in range(n) if not reused[i]]
+    pool += [i for i in range(n) if reused[i]][: max(0, k - len(pool))]
+    texts = [c.signature_text() for c in concepts]
+    kept = [pool[0]]
+    while len(kept) < k:
+        rest = [i for i in pool if i not in kept]
+        kept.append(
+            max(rest, key=lambda i: (min(1 - similarity(texts[i], texts[j]) for j in kept), -i))
+        )
+    return sorted(kept)

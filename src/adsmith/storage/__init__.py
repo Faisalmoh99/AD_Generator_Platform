@@ -9,6 +9,7 @@ from adsmith.storage.artifacts import ArtifactStore
 from adsmith.storage.cache import CacheStore
 from adsmith.storage.db import Database
 from adsmith.storage.events import EventStore
+from adsmith.storage.motifs import MotifLedger
 from adsmith.storage.repo import (
     ConcurrencyConflictError,
     RunNotFoundError,
@@ -23,6 +24,7 @@ __all__ = [
     "ConcurrencyConflictError",
     "Database",
     "EventStore",
+    "MotifLedger",
     "RunNotFoundError",
     "RunRepository",
     "StaleWriteError",
@@ -40,6 +42,7 @@ class Storage:
     events: EventStore
     artifacts: ArtifactStore
     cache: CacheStore
+    motifs: MotifLedger
 
     @classmethod
     def open(cls, data_dir: Path) -> Storage:
@@ -51,4 +54,5 @@ class Storage:
             events=EventStore(db),
             artifacts=artifacts,
             cache=CacheStore(db, artifacts),
+            motifs=MotifLedger(db),
         )

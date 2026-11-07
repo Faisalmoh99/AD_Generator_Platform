@@ -39,7 +39,13 @@
           "risk_notes": [
             "Driving shots must stay stable to avoid generation artifacts."
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "self",
+          "motifs": [
+            "driver",
+            "night road",
+            "bottle"
+          ]
         },
         {
           "insight_number": 2,
@@ -76,7 +82,13 @@
             "chiaroscuro"
           ],
           "risk_notes": [],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "family",
+          "motifs": [
+            "stone",
+            "water",
+            "bottle"
+          ]
         },
         {
           "insight_number": 3,
@@ -114,7 +126,13 @@
           "risk_notes": [
             "Two characters increase continuity risk across scenes."
           ],
-          "estimated_scene_count": 4
+          "estimated_scene_count": 4,
+          "axis": "craft",
+          "motifs": [
+            "tailor",
+            "workshop",
+            "thobe"
+          ]
         }
       ]
     }

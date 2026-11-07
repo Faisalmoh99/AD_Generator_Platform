@@ -61,6 +61,17 @@ MIGRATIONS: tuple[str, ...] = (
         hits        INTEGER NOT NULL DEFAULT 0
     );
     """,
+    # 2: the cross-run motif ledger (ADR-0028 part 3): what recent winning concepts stood on.
+    """
+    CREATE TABLE motifs (
+        run_id      TEXT PRIMARY KEY,
+        created_at  TEXT NOT NULL,
+        title       TEXT NOT NULL,
+        axis        TEXT NOT NULL,
+        motifs      TEXT NOT NULL,             -- JSON list of short English nouns
+        source      TEXT NOT NULL              -- run | seed
+    );
+    """,
 )
 
 

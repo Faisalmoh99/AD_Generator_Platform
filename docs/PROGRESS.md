@@ -1275,3 +1275,20 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
   6-word luxury line, a given brand kept, both given = no call, a human tagline at the gate wins,
   never written twice, dialect, Arabic line checks, the generic penalty); stage-order pins moved.
   908 passed, 2 skipped.
+
+## P4: concept diversity and the motif ledger (2026-11-07)
+
+- **Built (ADR-0028 part 3)**: `assign_axes`, `motif_overlap`, `pick_distinct`, `MotifEntry` in
+  `domain/concept.py`; concepts carry `axis` and `motifs`; ideate v8 (six on a whole-ad run, one
+  per axis, the recent winners to avoid); code keeps three; `novelty_penalty` by code in select;
+  the `motifs` table + `MotifLedger` (written after the storyboard, real-LLM runs only;
+  `ADSMITH_MOTIF_LEDGER_SCRIPTED` for tests); `NodeContext.motif_ledger`; culture-bank `theme`
+  on every entry and a round-robin sample; two coffee entries outside hospitality (to review);
+  `scripts/seed_motifs.py`, run: the ledger now holds the five planning runs' winners.
+- **Decision (user)**: seed the ledger with the five stored runs.
+- **Deviation**: six candidates only on whole-ad runs (other formats keep three, so their
+  fixtures only gained axis and motifs); the novelty penalty is computed by code from the
+  ledger rather than flagged by the judge (deterministic, no schema change to select).
+- **Tests**: 11 new (`tests/unit/test_diversity.py`); the multishot fixture has six concepts
+  (kept: The Last Guest, Amber Hour, First Rain; with the seeded host motifs, The Last Guest is
+  dropped). 919 passed, 2 skipped.
