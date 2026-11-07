@@ -1327,3 +1327,29 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
   interrupted, run stops resumable), `AdGeneration.reopen`, `resume` reopens such a failed
   generation. ADR-0027 addendum.
 - **Tests**: +2 (`tests/integration/test_kie_pipeline.py`); 932 passed, 2 skipped.
+
+## P5: the first ad from the system alone (2026-11-07)
+
+- **Run** `run_01M6TBP6H8VTXWGXFJR6XPVQ7M` («اعلان لقهوة سعودية مختصة», `assets/coffee.jpeg`, 6 s,
+  480p, Kie). Six concepts on six themes, code kept craft / family / travel; the judge picked
+  «عيناه على وجه أبيه» (8.15): the father, who judges his son's coffee, pours for him. Copy by the
+  system: brand «أول رشفة», tagline «كنت أسقيه… فسقاني» (8.70). Props: dallah and finjan from the
+  library ($0). Director: all 14 rules pass in round 2 after the serving rule rewrite.
+- **Generation**: Kie refused the standard model (402 at 70.2 credits, not charged); moved to
+  Seedance 2.0 Fast (`set-ad-model`); the task was accepted, polling lost the network, the
+  resume fix (`7fe2b96`) polled the same task: creditsConsumed 70.2 = computed 70.2. Kie balance
+  80 → 9.8 credits. The Fast 480p price is now marked verified in `models.toml`.
+- **Critic**: hard gate passed (0.72, every hard check true); 3 minor issues (pouch emblem shifts
+  in shot 1; a second dallah-like object in shot 2's corner; shot 3's finjans have handles).
+  Creative 5.8 / 10, a warning (insight 6, hook 5, story 6, originality 5, culture 7, product 6):
+  "the son's offering of the pouch is a generic hold-up-the-product opening... the turn lands
+  softly". Execution: handled, 3.2 s of product, hook in 2 s, key moment visible, one location.
+  All three shots delivered; shot 2: the pour from the dallah into the finjan, then the offer.
+- **Final**: `docs/media/coffee_system_alone.mp4` (8.0 s with the end card, 496x864, −16 LUFS);
+  `docs/media/coffee_vs_halai.png` (`scripts/side_by_side.py`, 8 frames each).
+- **Spend**: Anthropic $1.78 (planning $1.27, the prompt rewrite $0.41, critic $0.05),
+  Kie $0.351, fal $0 (the two "brewer" images were mock: the command lacked
+  `ADSMITH_MEDIA_PROVIDER=fal`).
+- **What the video shows that the prompt did not get**: the father's face never appears (only
+  his hands; the son smiles), the shot-3 cups are teacups with handles, the son's shot 1 holds
+  the pouch to camera.

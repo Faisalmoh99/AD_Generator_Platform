@@ -113,6 +113,12 @@ competitor's product-review ad and a Seedance reference showed why: their produc
 their anchors, the three concepts with six scores, the director's verdicts, the images in order and
 the final prompt with its price.
 
+**First ad made by the system alone (2026-11-07):** Saudi specialty coffee, concept, Seedance
+prompt, brand «أول رشفة» and tagline «كنت أسقيه… فسقاني» all written by the pipeline, one
+Seedance 2.0 Fast generation on Kie (6 s, 480p, 70.2 credits = $0.351):
+[video](docs/media/coffee_system_alone.mp4), [side by side with a competitor's ad](docs/media/coffee_vs_halai.png).
+The critic passed the hard gate (0.72) and warned on the creative score (5.8 / 10).
+
 Status: built and tested on zero keys and a fake Higgsfield server. The two human-directed
 generations above are the only real ones so far; the new planning stages have not yet run on real
 models.

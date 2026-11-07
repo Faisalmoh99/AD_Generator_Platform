@@ -438,7 +438,9 @@ weaknesses = [
 # 720p" (kie.ai/seedance-2-0). PRICE INFERRED from the pricing page (2026-11-07): kie.ai/pricing
 # lists "bytedance/seedance-2 fast — from 6.8 per second", the with-video 480p figure of the card
 # whose header reads "seedance-2-fast"; that card's no-video rates are 11.7 (480p) and 24.8 (720p);
-# the standard model is priced higher. Verify with the first task's creditsConsumed.
+# the standard model is priced higher. VERIFIED 2026-11-07 at 480p: task
+# 97b589d0e1df103ad60002cc5cec8b60 (6 s, 3 reference images, audio on) reported creditsConsumed
+# 70.2 = 6 × 11.7 (run_01M6TBP6H8VTXWGXFJR6XPVQ7M). The 720p rate is still the page's figure.
 endpoint = "bytedance/seedance-2-fast"
 min_duration_s = 4
 max_duration_s = 15
