@@ -26,6 +26,7 @@ from adsmith.agent.i18n import failure_message, stage_label
 from adsmith.agent.nodes.assemble import assemble
 from adsmith.agent.nodes.base import Node, NodeResult
 from adsmith.agent.nodes.continuity import continuity
+from adsmith.agent.nodes.copywriter import copywriter
 from adsmith.agent.nodes.director import director
 from adsmith.agent.nodes.ideate import ideate
 from adsmith.agent.nodes.insight import insight
@@ -61,6 +62,7 @@ NODES: dict[Stage, Node] = {
     Stage.CONTINUITY: continuity,
     Stage.PROMPT: prompt,
     Stage.DIRECTOR: director,
+    Stage.COPY: copywriter,
     Stage.ASSEMBLE: assemble,
 }
 # Per-scene stages: run by the SceneStageRunner, which commits each scene's progress itself.
@@ -70,7 +72,7 @@ AD_STAGES: frozenset[Stage] = frozenset({Stage.PROPS, Stage.ESTIMATE, Stage.GENE
 
 # Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
 EXPORT_AFTER: frozenset[Stage] = frozenset(
-    {Stage.PROMPT, Stage.DIRECTOR, Stage.PROPS, Stage.ASSEMBLE}
+    {Stage.PROMPT, Stage.DIRECTOR, Stage.PROPS, Stage.COPY, Stage.ASSEMBLE}
 )
 
 

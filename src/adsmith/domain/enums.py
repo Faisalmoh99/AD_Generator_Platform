@@ -17,6 +17,7 @@ class Stage(StrEnum):
     PROMPT = "prompt"
     DIRECTOR = "director"  # whole-ad: the creative director reviews the prompt (ADR-0026)
     PROPS = "props"  # whole-ad: one reference image per prop the prompt names (ADR-0026)
+    COPY = "copy"  # whole-ad: brand name and tagline for the end card (ADR-0028)
     ESTIMATE = "estimate"  # whole-ad generation: the provider's price for the one generation
     AWAITING_GENERATION_APPROVAL = "awaiting_generation_approval"  # human gate before real money
     KEYFRAME = "keyframe"

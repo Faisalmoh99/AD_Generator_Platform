@@ -13,6 +13,7 @@ from adsmith.domain.concept import (
     InsightSetDraft,
 )
 from adsmith.domain.continuity import ContinuityBibleDraft
+from adsmith.domain.copy import CopyJudgementDraft, CopySetDraft
 from adsmith.domain.director import DirectorReviewDraft
 from adsmith.domain.edit import ConflictReport, ScenePatchDraft
 from adsmith.domain.endcard import EndCardCopyDraft
@@ -41,4 +42,6 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "ad_prompt_writer": AdPromptDraft,
     "director": DirectorReviewDraft,
     "qa_prop_ref": QAVerdictDraft,
+    "copywriter": CopySetDraft,
+    "copy_judge": CopyJudgementDraft,
 }

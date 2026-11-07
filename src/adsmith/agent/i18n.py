@@ -14,6 +14,7 @@ _STAGE: dict[Stage, tuple[str, str]] = {
     Stage.PROMPT: ("writing generation prompts", "كتابة أوامر التوليد"),
     Stage.DIRECTOR: ("creative director review", "مراجعة المخرج الإبداعي"),
     Stage.PROPS: ("generating prop references", "توليد صور الأدوات المرجعية"),
+    Stage.COPY: ("writing the brand and the tagline", "كتابة اسم العلامة والشعار"),
     Stage.ESTIMATE: ("estimating the generation cost", "تقدير تكلفة التوليد"),
     Stage.AWAITING_GENERATION_APPROVAL: (
         "waiting for spend approval",

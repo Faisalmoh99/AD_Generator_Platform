@@ -95,10 +95,21 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
             if r.outcome == "rewritten":
                 out.append("  WRITER'S PROMPT (before the director):")
                 out += [f"    {line}" for line in r.before_text.splitlines()]
+        sel = st.copy_selection
+        if sel is not None:
+            out.append(f"  COPY ({sel.dialect}):")
+            for i, t in enumerate(sel.taglines):
+                mark = "*" if i == sel.tagline_index else " "
+                w = f"{t.weighted:.2f}" if t.weighted is not None else "-"
+                out.append(f"   {mark} «{t.text}» {w} {t.device} · {t.gloss_en} · {t.note}")
+            for i, b in enumerate(sel.brands):
+                out.append(
+                    f"   {'*' if i == sel.brand_index else ' '} brand «{b.text}» {b.weighted}"
+                )
         out.append("  FINAL PROMPT (sent to the model):")
         out += [f"    {line}" for line in g.prompt_text.splitlines()]
         for e in events:
-            stages = {Stage.DIRECTOR, Stage.PROPS, Stage.ESTIMATE, Stage.QA}
+            stages = {Stage.DIRECTOR, Stage.PROPS, Stage.COPY, Stage.ESTIMATE, Stage.QA}
             if e.stage in stages and e.type is EventType.DECISION:
                 out.append(f"  {e.summary[:400]}")
         if g.qa is not None:

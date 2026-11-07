@@ -1256,3 +1256,22 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
 - **Tests**: 23 new (`tests/unit/test_prompt_v5.py`, incl. a 6-second run that gets 3 shots after
   one repair); layout pins moved in 6 test files; the multishot fixtures compressed to 108 writer
   words. 895 passed, 2 skipped.
+
+## P3: the Arabic copywriter stage (2026-11-07)
+
+- **Built (ADR-0028 part 2)**: `Stage.COPY` (PROPS → COPY → ESTIMATE), `agent/nodes/copywriter.py`,
+  `domain/copy.py` (drafts, line checks, `pick`, `copy_dialect`), `config/copy_rubric.toml`,
+  templates `copywriter` v1 and `copy_judge` v1, `LLMNode.COPYWRITER` / `COPY_JUDGE` in all three
+  profiles, `RunState.copy_selection` + `SetCopySelection`, the end card from the pick (human copy
+  wins; assembly fills only the gaps), the pack's "End-card copy" table, the decisions report's
+  COPY block, the studio's end-card section and Copy lane. Fixtures `multishot_en/copywriter.json`
+  and `copy_judge.json` (English; the real run writes Arabic).
+- **Decisions (user)**: white Saudi (Najdi-leaning) by default, Hijazi when the request names
+  Jeddah, Makkah, Madinah or the Hijaz; the judge on Sonnet.
+- **Deviation**: fixtures only in `multishot_en` (the only scenario that reaches COPY; the plan
+  said four). "الأول" was removed from the banned words (the four-cups ritual starts with the
+  first cup).
+- **Tests**: 11 new (`tests/integration/test_copywriter.py`: pick by weights, repair on a
+  6-word luxury line, a given brand kept, both given = no call, a human tagline at the gate wins,
+  never written twice, dialect, Arabic line checks, the generic penalty); stage-order pins moved.
+  908 passed, 2 skipped.

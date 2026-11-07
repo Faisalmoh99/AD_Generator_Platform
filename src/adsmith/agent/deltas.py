@@ -16,6 +16,7 @@ from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.copy import CopySelection
 from adsmith.domain.director import DirectorReview
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.generation import Artifact
@@ -88,6 +89,13 @@ class SetDirectorReview(DomainModel):
     review: DirectorReview
 
 
+class SetCopySelection(DomainModel):
+    """The end-card copy the system wrote and picked (ADR-0028)."""
+
+    kind: Literal["set_copy_selection"] = "set_copy_selection"
+    selection: CopySelection
+
+
 class SyncStoryboardDurations(DomainModel):
     """The director re-timed the shots within the grammar: the storyboard follows."""
 
@@ -123,6 +131,7 @@ Delta = Annotated[
     | SetEndCard
     | SetAdGeneration
     | SetDirectorReview
+    | SetCopySelection
     | SyncStoryboardDurations,
     Field(discriminator="kind"),
 ]
@@ -218,5 +227,7 @@ def apply_delta(state: RunState, delta: Delta) -> None:  # noqa: PLR0912 - one b
             state.generation = delta.generation
         case SetDirectorReview():
             state.director_review = delta.review
+        case SetCopySelection():
+            state.copy_selection = delta.selection
         case SyncStoryboardDurations():
             _sync_durations(state, delta)

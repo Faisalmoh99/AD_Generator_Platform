@@ -23,6 +23,7 @@ PIPELINE: list[tuple[str, str, str]] = [
     ("prompt", "Prompts", "الأوامر"),
     ("director", "Director", "المخرج"),
     ("props", "Props", "الأدوات"),
+    ("copy", "Copy", "الشعار"),
     ("estimate", "Estimate", "التقدير"),
     ("keyframe", "Keyframes", "الإطارات"),
     ("generate", "Clips", "اللقطات"),
@@ -41,6 +42,10 @@ STAGE_KIND: dict[str, tuple[str, str]] = {
     "prompt": ("llm", "LLM writes prompts · code lints them"),
     "director": ("mixed", "LLM creative director judges the rules · code decides what is kept"),
     "props": ("mixed", "image model draws each prop · LLM vision checks it is not the product"),
+    "copy": (
+        "mixed",
+        "LLM writes 5 taglines (+3 brands) · LLM judge scores · code checks and picks",
+    ),
     "estimate": ("code", "provider prices the one generation · a human approves the spend"),
     "keyframe": ("mixed", "image model · LLM vision gate · code decides pass"),
     "generate": ("code", "video model · code picks takes and windows"),
@@ -379,6 +384,7 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "failure": g.failure.reason_user if g.failure else None,
         "director": _director(state),
         "images": _images(state),
+        "copy": _copy(state),
     }
 
 
@@ -399,6 +405,27 @@ def _images(state: RunState) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _copy(state: RunState) -> dict[str, Any] | None:
+    sel, card = state.copy_selection, state.endcard
+    if sel is None:
+        return None
+    return {
+        "dialect": sel.dialect,
+        "brand": card.brand_name if card else sel.brand,
+        "tagline": card.tagline if card else sel.tagline,
+        "taglines": [
+            {
+                "text": t.text,
+                "weighted": t.weighted,
+                "gloss": t.gloss_en,
+                "note": t.note,
+                "picked": i == sel.tagline_index,
+            }
+            for i, t in enumerate(sel.taglines)
+        ],
+    }
 
 
 def _director(state: RunState) -> dict[str, Any] | None:

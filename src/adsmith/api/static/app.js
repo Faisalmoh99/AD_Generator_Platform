@@ -497,6 +497,7 @@ function renderGeneration(v) {
     ${g.failure ? `<div class="fail" dir="auto">${esc(g.failure)}</div>` : ""}
     ${renderImages(g.images)}
     ${renderDirector(g.director)}
+    ${renderCopy(g.copy)}
     <details><summary>Prompt sent to the model</summary><pre>${esc(g.prompt)}</pre></details>`;
 }
 
@@ -504,6 +505,12 @@ function renderImages(images) {
   if (!images || !images.length) return "";
   const cards = images.map((im) => `<figure class="ref-image"><img src="${im.url}" alt="${esc(im.label)}" loading="lazy"><figcaption>${esc(im.label)}${im.source === "generated" ? ` · generated $${Number(im.cost).toFixed(3)}${im.check ? ` · ${esc(im.check)}` : ""}` : ""}</figcaption></figure>`).join("");
   return `<div class="gen-wide"><div class="section-label">Images the model receives</div><div class="ref-images">${cards}</div></div>`;
+}
+
+function renderCopy(c) {
+  if (!c) return "";
+  const rows = c.taglines.map((t) => `<div class="gen-row"><span dir="auto">${t.picked ? "<b>" : ""}${esc(t.text)}${t.picked ? "</b>" : ""}</span><b>${t.weighted == null ? "-" : Number(t.weighted).toFixed(2)}</b></div><div class="desc">${esc(t.gloss)} · <span dir="auto">${esc(t.note)}</span></div>`).join("");
+  return `<div class="gen-wide"><div class="section-label">End card · <span dir="auto">${esc(c.brand || "")} — ${esc(c.tagline)}</span> · ${esc(c.dialect)}</div>${rows}</div>`;
 }
 
 function renderDirector(d) {

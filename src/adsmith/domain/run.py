@@ -23,6 +23,7 @@ from adsmith.domain.brief import AspectRatio, Brief
 from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.copy import CopySelection
 from adsmith.domain.director import DirectorReview
 from adsmith.domain.edit import ScenePatch
 from adsmith.domain.endcard import EndCardCopy
@@ -156,6 +157,8 @@ class RunState(DomainModel):
     generation: AdGeneration | None = None
     # The creative director's review of the whole-ad prompt (ADR-0026; None before it ran).
     director_review: DirectorReview | None = None
+    # The end-card copy the system wrote (ADR-0028); None for runs made before it.
+    copy_selection: CopySelection | None = None
     budget: BudgetLedger
     error: RunError | None = None
 

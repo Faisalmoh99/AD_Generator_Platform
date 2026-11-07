@@ -112,6 +112,9 @@ def pack_json(state: RunState) -> dict[str, Any]:
         "director_review": (
             state.director_review.model_dump(mode="json") if state.director_review else None
         ),
+        "copy_selection": (
+            state.copy_selection.model_dump(mode="json") if state.copy_selection else None
+        ),
     }
 
 
@@ -144,6 +147,28 @@ def _director_lines(state: RunState) -> list[str]:
     if r.outcome == "rewritten":
         out += ["Writer's prompt (before the director):", "", "```text", r.before_text, "```", ""]
     return out
+
+
+def _copy_lines(state: RunState) -> list[str]:
+    """The end-card copy the system wrote (ADR-0028): every line with its score; the pick."""
+    sel = state.copy_selection
+    if sel is None:
+        return []
+    out = [f"## End-card copy ({sel.dialect})", ""]
+    if state.endcard is not None:
+        out += [f"Picked by code: **{state.endcard.brand_name}** — **{state.endcard.tagline}**", ""]
+    out += ["| # | tagline | device | gloss | weighted | note |", "|---|---|---|---|---|---|"]
+    for i, t in enumerate(sel.taglines, 1):
+        mark = " (chosen)" if i - 1 == sel.tagline_index else ""
+        w = f"{t.weighted:.2f}" if t.weighted is not None else "-"
+        g = " (generic)" if t.generic else ""
+        out.append(f"| {i} | {t.text}{mark} | {t.device} | {t.gloss_en} | {w}{g} | {t.note} |")
+    if sel.brands:
+        out += ["", "Brand names: " + "; ".join(
+            f"{b.text}{' (chosen)' if i == sel.brand_index else ''} ({b.weighted or '-'})"
+            for i, b in enumerate(sel.brands)
+        )]  # fmt: skip
+    return [*out, ""]
 
 
 def _creative_lines(concept: Concept) -> list[str]:
@@ -203,6 +228,7 @@ def pack_markdown(state: RunState, scores: Mapping[int, Mapping[str, object]] | 
         ]
         out += _reference_lines(state)
         out += _director_lines(state)
+        out += _copy_lines(state)
     if state.bible:
         out += [
             f"## {t['bible']} (v{state.bible.version})",

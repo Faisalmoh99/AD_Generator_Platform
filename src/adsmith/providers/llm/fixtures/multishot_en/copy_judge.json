@@ -1,0 +1,75 @@
+[
+  {
+    "output": {
+      "taglines": [
+        {
+          "number": 1,
+          "insight_tie": 9,
+          "memorability": 8,
+          "dialect_fit": 8,
+          "sayability": 8,
+          "brand_fit": 8,
+          "generic": false,
+          "note": "Says the turn in five words; slightly long."
+        },
+        {
+          "number": 2,
+          "insight_tie": 7,
+          "memorability": 7,
+          "dialect_fit": 8,
+          "sayability": 9,
+          "brand_fit": 7,
+          "generic": false,
+          "note": "Clear and warm; less surprising."
+        },
+        {
+          "number": 3,
+          "insight_tie": 2,
+          "memorability": 2,
+          "dialect_fit": 6,
+          "sayability": 9,
+          "brand_fit": 5,
+          "generic": true,
+          "note": "Any perfume could sign it."
+        },
+        {
+          "number": 4,
+          "insight_tie": 7,
+          "memorability": 7,
+          "dialect_fit": 7,
+          "sayability": 7,
+          "brand_fit": 7,
+          "generic": false,
+          "note": "Rhythm works; the idea is softer."
+        },
+        {
+          "number": 5,
+          "insight_tie": 8,
+          "memorability": 7,
+          "dialect_fit": 7,
+          "sayability": 8,
+          "brand_fit": 8,
+          "generic": false,
+          "note": "Good double meaning; close to the first line."
+        }
+      ],
+      "brands": [
+        {
+          "number": 1,
+          "score": 8,
+          "note": "Ties to the film's turn."
+        },
+        {
+          "number": 2,
+          "score": 6,
+          "note": "Descriptive."
+        },
+        {
+          "number": 3,
+          "score": 7,
+          "note": "Good, but common."
+        }
+      ]
+    }
+  }
+]

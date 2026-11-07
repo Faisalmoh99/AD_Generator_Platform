@@ -51,6 +51,14 @@ async def endcard_copy(
     lang = b.tagline_language or b.language
     if b.brand_name and b.tagline:
         return EndCardCopy(brand_name=b.brand_name, tagline=b.tagline, language=lang), []
+    sel = state.copy_selection
+    if sel is not None and (b.brand_name or sel.brand):
+        # The system's copy (ADR-0028) fills what the client did not give: a human brand or
+        # tagline set at the gate still wins.
+        return EndCardCopy(
+            brand_name=b.brand_name or sel.brand or "", tagline=b.tagline or sel.tagline,
+            language=lang, brand_placeholder=not b.brand_name, tagline_placeholder=False,
+        ), []  # fmt: skip
     concept = state.concepts.selected if state.concepts else None
     prompt = ctx.prompts.get("endcard_copy").render(
         brief=brief_block(b),

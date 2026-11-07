@@ -344,7 +344,8 @@ async def test_the_studio_view_shows_the_new_stages_and_the_whole_ad(tmp_path: P
     assert stages.index("insight") == stages.index("understand") + 1
     assert stages.index("director") == stages.index("prompt") + 1
     assert stages.index("props") == stages.index("director") + 1
-    assert stages.index("estimate") == stages.index("props") + 1
+    assert stages.index("copy") == stages.index("props") + 1
+    assert stages.index("estimate") == stages.index("copy") + 1
     active = [p["stage"] for p in v["pipeline"] if p["state"] == "active"]
     assert active == ["estimate"]  # the spend gate sits on the estimate
     g = v["generation"]

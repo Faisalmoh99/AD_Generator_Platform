@@ -18,6 +18,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from adsmith.domain.copy import CopyRubric
 from adsmith.domain.creative_rules import CreativeRules
 from adsmith.domain.culture import CultureLexicon
 from adsmith.domain.culture_bank import CultureBank
@@ -48,6 +49,8 @@ class LLMNode(StrEnum):
     POLICY_REWRITE = "policy_rewrite"
     QA_CRITIC = "qa_critic"
     ENDCARD_COPY = "endcard_copy"
+    COPYWRITER = "copywriter"  # five taglines and three brand names (ADR-0028)
+    COPY_JUDGE = "copy_judge"  # scores them on config/copy_rubric.toml; code picks
 
 
 class _Frozen(BaseModel):
@@ -489,6 +492,12 @@ class Settings(BaseSettings):
         (config/creative_rules.toml, ADR-0026)."""
         with (self.config_dir / "creative_rules.toml").open("rb") as fh:
             return CreativeRules.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def copy_rubric(self) -> CopyRubric:
+        """The end-card copy rubric (config/copy_rubric.toml, ADR-0028)."""
+        with (self.config_dir / "copy_rubric.toml").open("rb") as fh:
+            return CopyRubric.model_validate(tomllib.load(fh))
 
     @cached_property
     def culture_bank(self) -> CultureBank:

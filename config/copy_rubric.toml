@@ -1,0 +1,41 @@
+# The end-card copy rubric (ADR-0028 part 2). DATA: the copywriter writes five taglines (and
+# three brand names when the brief has none); the copy judge scores each tagline on these
+# criteria; CODE weights the scores and picks. Sources: Rani Amayri (Impact BBDO) on dialect
+# before anything else; Asharq Al-Awsat on Hijazi vs Najdi in Saudi ads; rhythm, rhyme and
+# alliteration as Arabic's memory devices; try 2's human line «بعد العود… يمشي معك», a proverb
+# echo («بعد العود ما فيه قعود») with a turn on its second half.
+generic_penalty = 1.5   # subtracted when the judge flags a line any brand could sign
+max_words = 5           # a tagline is at most five words (code-checked)
+brand_max_words = 2
+
+[criteria.insight_tie]
+weight = 0.30
+label = "Tied to the insight"
+question = "Does the line say the film's own human truth (or its turn) in other words, so it could only close THIS film?"
+
+[criteria.memorability]
+weight = 0.25
+label = "Memorable"
+question = "Will a viewer repeat it tomorrow: a proverb echo with a twist, a contrast (مقابلة), a pun (جناس), rhyme or rhythm (سجع)?"
+
+[criteria.dialect_fit]
+weight = 0.15
+label = "Dialect fit"
+question = "Is it in the register asked for (white Saudi, Hijazi, or classical when the device needs it), natural to a Saudi ear, never translated English?"
+
+[criteria.sayability]
+weight = 0.15
+label = "Sayable"
+question = "Can it be said aloud in one breath with no stumble, and read in two seconds on an end card?"
+
+[criteria.brand_fit]
+weight = 0.15
+label = "Fits the brand"
+question = "Does it suit the product, the audience and the tone, with respect for the culture it uses?"
+
+# Words that make a line empty (luxury filler) or unsafe. Checked by CODE on every tagline and
+# brand name (Arabic matched on the normalised text, English case-insensitively).
+[banned]
+empty = ["فخامة", "فخم", "الفخامة", "تميز", "التميز", "تميّز", "رقي", "الرقي", "رقيّ", "أناقة", "الأناقة", "استثنائي", "استثنائية", "لا مثيل", "الأفضل", "رقم واحد", "luxury", "luxurious", "exclusive", "the best", "number one", "unique", "premium"]
+claims = ["صحي", "يشفي", "علاج", "مضمون", "أرخص", "خصم", "healthy", "cure", "guaranteed", "cheapest", "discount"]
+religious = ["الله", "إن شاء الله", "ما شاء الله", "بسم", "سبحان", "الحمد", "god", "allah"]

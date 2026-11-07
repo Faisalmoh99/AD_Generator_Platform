@@ -1,0 +1,57 @@
+[
+  {
+    "output": {
+      "brands": [
+        {
+          "name": "Last Guest",
+          "rationale": "Names the film's turn: the host who honours the last guest."
+        },
+        {
+          "name": "Majlis Amber",
+          "rationale": "The room and the colour of the bottle."
+        },
+        {
+          "name": "Threshold",
+          "rationale": "The door the guest leaves by, and the moment of the gift."
+        }
+      ],
+      "taglines": [
+        {
+          "text": "The last guest leaves first.",
+          "device": "contrast",
+          "echoes": "",
+          "gloss_en": "The last guest leaves first.",
+          "ties_to": "The turn: the host honours the one who stayed last."
+        },
+        {
+          "text": "Leave with the house.",
+          "device": "plain",
+          "echoes": "",
+          "gloss_en": "Leave with the house.",
+          "ties_to": "The guest carries the host's scent out."
+        },
+        {
+          "text": "A fine perfume.",
+          "device": "plain",
+          "echoes": "",
+          "gloss_en": "A fine perfume.",
+          "ties_to": "The product."
+        },
+        {
+          "text": "Stay, then go with us.",
+          "device": "rhyme",
+          "echoes": "",
+          "gloss_en": "Stay, then go with us.",
+          "ties_to": "The farewell becomes a gift."
+        },
+        {
+          "text": "Honour walks you out.",
+          "device": "pun",
+          "echoes": "",
+          "gloss_en": "Honour walks you out.",
+          "ties_to": "The host's honour is the scent."
+        }
+      ]
+    }
+  }
+]

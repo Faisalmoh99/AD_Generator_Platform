@@ -46,3 +46,28 @@ with no idea stage. Diversity research says planned spread beats more samples.
 + `scripts/prompt_audit.py` shows every stored prompt failing the new budget and 4 of 5 tripping
   a physics rule (the floating hold, the invisible spray), so the checks target real failures.
 − More repair rounds are possible on a real writer; the director has the exact counts.
+
+## Addendum (part 2, P3): the Arabic copywriter stage
+
+- `Stage.COPY` between PROPS and ESTIMATE on whole-ad runs (`agent/nodes/copywriter.py`), so the
+  end card is shown at the spend gate. Two LLM calls, code decides: `copywriter` v1 (Sonnet high
+  on balanced, Opus on quality) writes five taglines (≤ 5 words; device: proverb echo, contrast,
+  pun, rhyme or plain; the saying it echoes; an English gloss; what part of the truth it says) and
+  three fictional brand names when the brief has none. It is given the chosen concept's insight,
+  its culture anchor (Arabic text, meaning, pitfalls) and the bank's proverbs and phrases for the
+  category, with try 2's human line as the device to study, never to copy.
+- **Code checks every line** (`domain/copy.py`, → repair): word count, Arabic script only for
+  Arabic, no digits, quotes, hashtags or emoji, no empty luxury words, claims or religious words
+  (`config/copy_rubric.toml`, matched on normalised Arabic with clitics), no real brand
+  (`real_brand_in`), five different lines, brands only when the brief has none.
+- `copy_judge` v1 (Sonnet, the user's choice) scores insight_tie .30, memorability .25,
+  dialect_fit .15, sayability .15, brand_fit .15 and flags generic lines (−1.5); **code weights
+  and picks** (ties: insight_tie, then the shorter line). Brands: the highest score.
+- **Dialect by code** (`copy_dialect`, the user's rule): white Saudi, Najdi-leaning, by default;
+  Hijazi when the request names Jeddah, Makkah, Madinah or the Hijaz; English for English.
+- Stored as `RunState.copy_selection` (every line, its scores and the pick; a hash so the same
+  concept is never written twice) and written to the end card (`SetEndCard`; the invented brand is
+  marked a placeholder, the tagline is the system's proposal). A brand or tagline in the brief, or
+  set with `--endcard-brand` / `--endcard-tagline`, always wins; with both given the stage makes no
+  call. At assembly the system's copy fills only what the human did not give.
+- Shown in the pack ("End-card copy" table), the decisions report and the studio's whole-ad panel.
