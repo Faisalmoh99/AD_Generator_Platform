@@ -3,11 +3,15 @@ HTML/CSS/JS in ``api/static`` and talks to these endpoints:
 
     GET  /api/config                  mode (scripted/mock …), budget, chaos default, examples
     GET  /api/runs                    recent runs
-    POST /api/runs                    {request, auto, chaos} → starts the run in the background
+    POST /api/runs                    {request, auto, chaos, photo?} → starts the run (a product
+                                      photo, base64, makes it a one-generation multishot ad)
     GET  /api/runs/{id}               the run's view model (api/view.py)
     GET  /api/runs/{id}/events        Server-Sent Events: the live agent trace (tails the store)
     POST /api/runs/{id}/choose        {concept}        (concept gate)
-    POST /api/runs/{id}/approve                        (storyboard gate)
+    POST /api/runs/{id}/approve                        (storyboard or spend gate)
+    POST /api/runs/{id}/decline       {reason}         (spend gate: nothing is spent)
+    POST /api/runs/{id}/copy          {tagline, brand} (pick a copywriter line by number)
+    GET  /api/runs/{id}/download      the final ad as a file
     POST /api/runs/{id}/edit          {text}           natural-language edit → blast radius
     POST /api/runs/{id}/retry         {scene}
     GET  /api/runs/{id}/pack.zip      Production Pack
@@ -23,7 +27,9 @@ commands and repository as the CLI.
 from __future__ import annotations
 
 import asyncio
+import base64
 import hashlib
+import io
 import json
 from collections.abc import AsyncIterator, Coroutine
 from pathlib import Path
@@ -32,6 +38,7 @@ from typing import Any
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from adsmith.agent import commands
@@ -60,6 +67,40 @@ class NewRun(BaseModel):
     request: str = Field(min_length=3, max_length=2000)
     auto: bool = False
     chaos: bool = False
+    # A product photo (base64 of a PNG, JPEG or WebP, at most ~10 MB): the run becomes a
+    # one-generation multishot ad, exactly like `adsmith run --product-photo`.
+    photo: str | None = Field(default=None, max_length=14_000_000)
+
+
+class DeclineIn(BaseModel):
+    reason: str = Field(default="declined in the studio", min_length=1, max_length=400)
+
+
+class CopyIn(BaseModel):
+    tagline: int | None = Field(default=None, ge=1)
+    brand: int | None = Field(default=None, ge=1)
+
+
+PHOTO_FORMATS = {"PNG": ".png", "JPEG": ".jpg", "WEBP": ".webp"}
+
+
+def save_photo(data_dir: Path, b64: str) -> Path:
+    """Decode, check it is a real image of an allowed format, store it by content hash."""
+    try:
+        raw = base64.b64decode(b64.split(",", 1)[-1], validate=True)
+        with Image.open(io.BytesIO(raw)) as im:
+            fmt = im.format or ""
+            im.verify()
+    except (ValueError, OSError) as exc:
+        raise HTTPException(422, "the photo is not a readable PNG, JPEG or WebP image") from exc
+    if fmt not in PHOTO_FORMATS:
+        raise HTTPException(422, f"the photo must be PNG, JPEG or WebP, not {fmt or 'unknown'}")
+    folder = data_dir / "uploads"
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder / f"{hashlib.sha256(raw).hexdigest()[:24]}{PHOTO_FORMATS[fmt]}"
+    if not path.exists():
+        path.write_bytes(raw)
+    return path
 
 
 class Choice(BaseModel):
@@ -155,7 +196,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
 
     @app.post("/api/runs")
     async def create(body: NewRun) -> dict[str, Any]:
-        state = orch.create_run(body.request, interactive=not body.auto, chaos=body.chaos)
+        photo = save_photo(s.data_dir, body.photo) if body.photo else None
+        state = orch.create_run(
+            body.request, interactive=not body.auto, chaos=body.chaos, product_photo=photo
+        )
         background(state.id, orch.run_until_blocked(state.id))
         return {"id": state.id}
 
@@ -186,6 +230,30 @@ def create_app(settings: Settings | None = None) -> FastAPI:  # noqa: PLR0915 - 
             raise HTTPException(409, str(exc)) from exc
         background(run_id, orch.run_until_blocked(run_id))
         return {"ok": "approved"}
+
+    @app.post("/api/runs/{run_id}/decline")
+    async def decline(run_id: str, body: DeclineIn) -> dict[str, str]:
+        try:
+            commands.decline_generation(rt.storage, run_id, reason=body.reason)
+        except commands.CommandRejectedError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"ok": "declined"}
+
+    @app.post("/api/runs/{run_id}/copy")
+    async def copy(run_id: str, body: CopyIn) -> dict[str, str]:
+        try:
+            commands.choose_copy(rt.storage, run_id, tagline=body.tagline, brand=body.brand)
+        except commands.CommandRejectedError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        return {"ok": "chosen"}
+
+    @app.get("/api/runs/{run_id}/download")
+    async def download(run_id: str) -> FileResponse:
+        state = load(run_id)
+        if state.final is None:
+            raise HTTPException(404, "the ad is not assembled yet")
+        path = rt.storage.artifacts.resolve(state.final)
+        return FileResponse(path, media_type="video/mp4", filename=f"adsmith_{run_id}.mp4")
 
     @app.post("/api/runs/{run_id}/edit")
     async def edit(run_id: str, body: EditIn) -> dict[str, Any]:

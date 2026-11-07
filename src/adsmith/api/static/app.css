@@ -333,3 +333,8 @@ textarea:focus, #edit:focus { border-color: var(--accent); }
 .gen-panel .ref-image img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid var(--line, rgba(127,127,127,.25)); }
 .gen-panel .ref-image figcaption { font: 10.5px var(--mono); color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
 .gen-panel .desc.warn { color: var(--warn, #b7791f); }
+
+/* studio minimum slice (ADR-0029): product photo, copy choice */
+.photo-pick { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px dashed var(--line-2); border-radius: var(--r); color: var(--muted); cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-pick.has { border-style: solid; color: var(--text); }
+.use-line { margin-left: 8px; height: 22px; padding: 0 8px; font-size: 12px; }

@@ -32,6 +32,7 @@
         <div class="composer-row">
           <label class="check"><input type="checkbox" id="auto" checked><span class="box"></span>Agent picks the concept</label>
           <label class="check"><input type="checkbox" id="chaos"><span class="box"></span>Chaos mode <em>inject faults</em></label>
+          <label class="photo-pick" title="A product photo makes it a one-generation ad (multishot)"><input type="file" id="photo" accept="image/png,image/jpeg,image/webp" hidden><span id="photo-label">Product photo…</span></label>
           <button id="go" class="btn primary">Generate ad</button>
         </div>
       </section>
@@ -88,6 +89,7 @@
           <div class="board" id="board"></div>
           <div class="gate hidden" id="approve-wrap">
             <span id="approve-text">Keyframes are ready. Approve to start paid video generation.</span>
+            <button id="decline" class="btn hidden">Decline</button>
             <button id="approve" class="btn primary">Approve storyboard</button>
           </div>
         </div>
@@ -99,6 +101,7 @@
             <div class="final-side">
               <div class="final-stats" id="final-stats"></div>
               <div class="endcard-note" id="endcard-note" dir="auto"></div>
+              <a id="download" class="btn primary">Download the ad</a>
               <a id="pack" class="btn">Download Production Pack</a>
             </div>
           </div>

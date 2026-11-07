@@ -314,7 +314,7 @@ def concept_scores(events: Sequence[AgentEvent]) -> dict[int, dict[str, object]]
 
 
 def _concept_lines(state: RunState, scores: Mapping[int, Mapping[str, object]]) -> list[str]:
-    """All three concepts with the six rubric scores and the weighted total (ADR-0024)."""
+    """All three concepts with the rubric scores and the weighted total (ADR-0024, ADR-0029)."""
     if state.concepts is None or not scores:
         return []
     out = ["## Concepts and rubric", ""]

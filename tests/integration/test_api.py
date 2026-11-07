@@ -145,3 +145,55 @@ def test_page_and_assets_change_together(tmp_path: Path) -> None:
         assert src is not None
         asset = c.get(src.group(1))
         assert asset.status_code == 200 and asset.headers["cache-control"] == "no-cache"
+
+
+# ------------------------------------------------- studio minimum slice (ADR-0029)
+def _photo_b64(tmp_path: Path) -> str:
+    import base64  # noqa: PLC0415
+
+    from PIL import Image  # noqa: PLC0415
+
+    path = tmp_path / "p.png"
+    Image.new("RGB", (360, 640), (170, 100, 30)).save(path)
+    return base64.b64encode(path.read_bytes()).decode()
+
+
+def test_a_photo_run_reaches_the_spend_gate_and_the_copy_can_be_chosen(tmp_path: Path) -> None:
+    with client(tmp_path) as c:
+        body = {"request": "Make an 8-second ad for my perfume.", "photo": _photo_b64(tmp_path)}
+        run_id = c.post("/api/runs", json=body).json()["id"]
+        wait(c, run_id, lambda v: v["stage"] == "awaiting_concept_choice" and not v["busy"])
+        assert c.post(f"/api/runs/{run_id}/choose", json={"concept": "2"}).status_code == 200
+        v = wait(
+            c, run_id, lambda v: v["stage"] == "awaiting_generation_approval" and not v["busy"]
+        )
+        copy = v["generation"]["copy"]
+        assert copy["choosable"] and len(copy["brands"]) == 3 and copy["taglines"][0]["picked"]
+        assert c.post(f"/api/runs/{run_id}/copy", json={"tagline": 2}).status_code == 200
+        v = c.get(f"/api/runs/{run_id}").json()
+        tags = v["generation"]["copy"]["taglines"]
+        assert tags[1]["picked"] and tags[0]["code_pick"]
+        assert c.post(f"/api/runs/{run_id}/copy", json={"tagline": 9}).status_code == 409
+        assert c.post(f"/api/runs/{run_id}/decline", json={}).status_code == 200
+        assert c.get(f"/api/runs/{run_id}").json()["stage"] == "done_partial"
+        assert c.get(f"/api/runs/{run_id}/download").status_code == 404
+
+
+def test_an_auto_photo_run_can_be_downloaded(tmp_path: Path) -> None:
+    with client(tmp_path) as c:
+        body = {"request": "Make an 8-second ad for my perfume.", "auto": True,
+                "photo": _photo_b64(tmp_path)}  # fmt: skip
+        run_id = c.post("/api/runs", json=body).json()["id"]
+        wait(c, run_id, lambda v: v["stage"] in {"done", "done_partial"} and not v["busy"])
+        r = c.get(f"/api/runs/{run_id}/download")
+        assert r.status_code == 200 and r.headers["content-type"] == "video/mp4"
+        assert f"adsmith_{run_id}.mp4" in r.headers["content-disposition"]
+
+
+def test_a_photo_that_is_not_an_image_is_refused(tmp_path: Path) -> None:
+    import base64  # noqa: PLC0415
+
+    with client(tmp_path) as c:
+        bad = base64.b64encode(b"not an image").decode()
+        r = c.post("/api/runs", json={"request": "an ad", "photo": bad})
+        assert r.status_code == 422 and "PNG, JPEG or WebP" in r.json()["detail"]

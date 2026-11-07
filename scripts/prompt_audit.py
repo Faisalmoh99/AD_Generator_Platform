@@ -1,4 +1,4 @@
-"""Audit stored whole-ad prompts against the ADR-0028 rules (local, $0, no API call).
+"""Audit stored whole-ad prompts against the ADR-0028 and ADR-0029 rules (local, $0, no API call).
 
 For each run: the words of the prompt that was stored (what Seedance would have received), the
 writer's own words, and every word-budget and physics-library problem the new checks raise.
@@ -14,9 +14,15 @@ import argparse
 from adsmith.agent.context import AgentRuntime
 from adsmith.config import Settings
 from adsmith.domain.ad import word_count, word_problems, writer_words
-from adsmith.domain.creative_rules import physics_problems, word_budget_problems
+from adsmith.domain.creative_rules import (
+    key_beat_problems,
+    physics_problems,
+    word_budget_problems,
+)
+from adsmith.domain.culture_bank import object_problems, with_gulf_objects
 
 RUNS = [
+    "run_01M6TBP6H8VTXWGXFJR6XPVQ7M",  # coffee, the first video by the system alone
     "run_01M6SSVMPBEAY1WW1FWF4DGWRZ",  # women's perfume, first planning run
     "run_01M6SV0XZVPCFS6XA9HD7EE71M",  # women's perfume, re-run
     "run_01M6SVSK8GD53SYGZ8SF7AA9TT",  # coffee
@@ -41,6 +47,9 @@ def main() -> None:
             continue
         d = g.prompt.to_draft()
         problems = word_budget_problems(d, p) + physics_problems(d, rules.physics)
+        # ADR-0029: object fidelity (after code's own substitutions) and the key shot's beats
+        problems += object_problems(with_gulf_objects(d, s.culture_bank), s.culture_bank)
+        problems += key_beat_problems(d, p.key_max_beats)
         problems += word_problems(
             d, duration_s=g.prompt.duration_s, max_words=p.max_words,
             key_within_words=p.key_within_words, identity=g.prompt.identity or None,

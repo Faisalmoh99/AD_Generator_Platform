@@ -44,6 +44,16 @@ async function boot() {
   $("#edit-go").onclick = () => applyEdit($("#edit").value);
   $("#edit").onkeydown = (ev) => { if (ev.key === "Enter") applyEdit($("#edit").value); };
   $("#approve").onclick = () => act("approve");
+  $("#decline").onclick = () => act("decline", { reason: "declined in the studio" });
+  $("#photo").onchange = () => {
+    const f = $("#photo").files[0];
+    $("#photo-label").textContent = f ? f.name : "Product photo…";
+    $("#photo").parentElement.classList.toggle("has", !!f);
+  };
+  $("#generation").onclick = (ev) => {
+    const b = ev.target.closest("[data-copy]");
+    if (b) act("copy", { [b.dataset.copy]: Number(b.dataset.n) });
+  };
   $("#filters").onclick = (ev) => {
     const f = ev.target.dataset.f; if (!f) return;
     state.filter = f; document.querySelectorAll(".filter").forEach((b) => b.classList.toggle("active", b.dataset.f === f));
@@ -79,11 +89,22 @@ async function startRun() {
   if (!request) return;
   $("#go").disabled = true;
   try {
-    const { id } = await api("/api/runs", { method: "POST", body: JSON.stringify({ request, auto: $("#auto").checked, chaos: $("#chaos").checked }) });
+    const file = $("#photo").files[0];
+    const photo = file ? await readAsBase64(file) : null;
+    const { id } = await api("/api/runs", { method: "POST", body: JSON.stringify({ request, auto: $("#auto").checked, chaos: $("#chaos").checked, photo }) });
     openRun(id);
     loadRecent();
   } catch (e) { alertError(e); }
   finally { $("#go").disabled = false; }
+}
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).split(",", 2)[1]);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
 }
 
 async function act(kind, body) {
@@ -430,6 +451,7 @@ function renderBoard(v) {
     ? `One generation of the whole ad is priced at ${money(v.generation.computed_usd ?? v.generation.est_usd ?? 0)}${v.generation.computed_usd != null && v.generation.computed_usd !== v.generation.est_usd ? `; ${money(v.generation.est_usd || 0)} is reserved with the safety margin` : ""} (${v.generation.model}, ${v.generation.duration_s}s ${v.generation.resolution}). Nothing is spent until you approve.`
     : "Keyframes are ready. Approve to start paid video generation.";
   $("#approve").textContent = atSpend ? `Approve ${money(v.generation?.est_usd || 0)}` : "Approve storyboard";
+  $("#decline").classList.toggle("hidden", !atSpend);
   renderGeneration(v);
   if (showBlast) {
     const parts = Object.entries(blast.affected).map(([o, d]) => `S${o} <b>${d}</b>`).join(" · ");
@@ -509,8 +531,11 @@ function renderImages(images) {
 
 function renderCopy(c) {
   if (!c) return "";
-  const rows = c.taglines.map((t) => `<div class="gen-row"><span dir="auto">${t.picked ? "<b>" : ""}${esc(t.text)}${t.picked ? "</b>" : ""}</span><b>${t.weighted == null ? "-" : Number(t.weighted).toFixed(2)}</b></div><div class="desc">${esc(t.gloss)} · <span dir="auto">${esc(t.note)}</span></div>`).join("");
-  return `<div class="gen-wide"><div class="section-label">End card · <span dir="auto">${esc(c.brand || "")} — ${esc(c.tagline)}</span> · ${esc(c.dialect)}</div>${rows}</div>`;
+  const use = (kind, i, picked) => c.choosable && !picked ? `<button class="btn use-line" data-copy="${kind}" data-n="${i + 1}">Use</button>` : "";
+  const tag = (x) => (x.picked ? " · chosen" : "") + (x.code_pick && !x.picked ? " · system's pick" : "");
+  const rows = c.taglines.map((t, i) => `<div class="gen-row"><span dir="auto">${t.picked ? "<b>" : ""}${esc(t.text)}${t.picked ? "</b>" : ""}<span class="desc">${tag(t)}</span>${use("tagline", i, t.picked)}</span><b>${t.weighted == null ? "-" : Number(t.weighted).toFixed(2)}</b></div><div class="desc">${esc(t.gloss)} · <span dir="auto">${esc(t.note)}</span></div>`).join("");
+  const brands = (c.brands || []).map((b, i) => `<div class="gen-row"><span dir="auto">${b.picked ? "<b>" : ""}${esc(b.text)}${b.picked ? "</b>" : ""}<span class="desc">${tag(b)}</span>${use("brand", i, b.picked)}</span></div>`).join("");
+  return `<div class="gen-wide"><div class="section-label">End card · <span dir="auto">${esc(c.brand || "")} — ${esc(c.tagline)}</span> · ${esc(c.dialect)}</div>${rows}${brands ? `<div class="section-label" style="margin-top:8px">Brand names</div>${brands}` : ""}</div>`;
 }
 
 function renderDirector(d) {
@@ -541,6 +566,7 @@ function renderFinal(v) {
   const e = v.endcard;
   $("#endcard-note").innerHTML = e ? `<div class="section-label">End card</div><div style="margin-top:6px"><b dir="auto">${esc(e.brand_name)}</b> · <span dir="auto">${esc(e.tagline)}</span></div>${e.brand_placeholder || e.tagline_placeholder ? `<div class="ph">Placeholder brand invented by the agent: replace before publishing.</div>` : ""}` : "";
   $("#pack").href = `/api/runs/${v.id}/pack.zip`;
+  $("#download").href = `/api/runs/${v.id}/download`;
 }
 
 function renderBudget(b) {

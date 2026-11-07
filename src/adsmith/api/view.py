@@ -128,7 +128,7 @@ def decision_line(e: AgentEvent) -> tuple[str | None, str | None]:  # noqa: PLR0
         verb = "picked" if summary.startswith("Selected") else "recommends"
         return "code", (
             f"Code {verb} concept {rec}: highest weighted score {score} "
-            "(the LLM scored six criteria, code weighted them)"
+            "(the LLM scored seven criteria, code weighted them)"
         )
     if e.type is EventType.DECISION and "format" in p:
         return "code", f"Code chose the {p['format']} format: {p.get('format_why', '')}"
@@ -422,9 +422,15 @@ def _copy(state: RunState) -> dict[str, Any] | None:
                 "gloss": t.gloss_en,
                 "note": t.note,
                 "picked": i == sel.tagline_index,
+                "code_pick": i == sel.code_tagline_index,
             }
             for i, t in enumerate(sel.taglines)
         ],
+        "brands": [
+            {"text": b.text, "picked": i == sel.brand_index, "code_pick": i == sel.code_brand_index}
+            for i, b in enumerate(sel.brands)
+        ],
+        "choosable": state.stage is Stage.AWAITING_GENERATION_APPROVAL,
     }
 
 

@@ -292,7 +292,7 @@ class LLMCritic:
         hook_times: Sequence[float] = (),
     ) -> tuple[AdVerdict, list[LLMCallRecord]]:
         """Review any finished ad: the hard checks (code decides ``passed``), a note per shot and
-        the six rubric scores (code computes the creative total). Also used to calibrate the
+        the rubric scores (code computes the creative total). Also used to calibrate the
         rubric on ads made by the old pipeline (scripts/calibrate_ad_critic.py)."""
         assert state.bible is not None and state.storyboard is not None
         parts: list[ImagePart | TextPart] = []
