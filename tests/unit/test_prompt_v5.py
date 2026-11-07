@@ -55,6 +55,11 @@ async def test_a_six_second_ad_gets_three_shots_hook_turn_hero(tmp_path: Path) -
     understand = json.loads((FIXTURES_DIR / "multishot_en" / "understand.json").read_text())
     understand[0]["output"]["duration_s"] = 6.0
     llm.override("understand", understand)
+    ideas = json.loads((FIXTURES_DIR / "multishot_en" / "ideate.json").read_text())
+    for c in ideas[0]["output"]["concepts"]:  # a 6 s film has 3 shots (ADR-0029: ideate knows)
+        c["shot_sketch"] = c["shot_sketch"][:3]
+        c["device_shot"] = min(c["device_shot"], 3)
+    llm.override("ideate", ideas)
     four = json.loads((FIXTURES_DIR / "multishot_en" / "storyboard.json").read_text())[0]
     three = copy.deepcopy(four)
     scenes = three["output"]["scenes"]

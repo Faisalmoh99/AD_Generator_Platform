@@ -172,6 +172,13 @@ class CreativeConceptDraft(DomainModel):
     title: Annotated[str, Field(min_length=1, max_length=80)]
     logline: UserText
     insight: UserText = Field(description="That insight, said in this concept's own terms.")
+    device_id: Annotated[str, Field(min_length=1, max_length=40)] = Field(
+        description="The visual device (an id from the listed devices) the idea is shown with."
+    )
+    device_image: UserText = Field(
+        description="The one image only video can show, in one sentence: what the viewer sees "
+        "when the device happens."
+    )
     story: Story
     hook: Hook
     product_role: ProductRole
@@ -185,6 +192,9 @@ class CreativeConceptDraft(DomainModel):
     differentiator: UserText = Field(description="Why this concept differs from the other two.")
     shot_sketch: list[Annotated[str, Field(min_length=1, max_length=240)]] = Field(
         min_length=3, max_length=6, description="3-6 one-line shots, in order."
+    )
+    device_shot: int = Field(
+        ge=1, le=6, description="The shot_sketch line (1-based) where the device happens."
     )
     style_references: list[Annotated[str, Field(max_length=80)]] = Field(
         default_factory=list, max_length=6
@@ -222,6 +232,9 @@ class CreativeConceptDraft(DomainModel):
             shot_sketch=list(self.shot_sketch),
             axis=self.axis,
             motifs=list(self.motifs),
+            device_id=self.device_id,
+            device_image=self.device_image,
+            device_shot=self.device_shot,
         )
 
 
@@ -229,6 +242,12 @@ class CreativeConceptSetDraft(DomainModel):
     """``ideate`` output: three concepts, or six on a whole-ad run (ADR-0028: code keeps the three
     that differ most), distinct (checked here → schema repair)."""
 
+    device_sketches: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
+        min_length=3,
+        max_length=10,
+        description="Raw one-line ideas written BEFORE the concepts, ignoring every constraint: "
+        "a device id and the invisible thing or impossible change it shows for this product.",
+    )
     concepts: list[CreativeConceptDraft] = Field(
         min_length=CONCEPT_COUNT, max_length=MAX_CANDIDATES
     )
@@ -251,6 +270,10 @@ class Concept(ConceptDraft):
     shot_sketch: list[str] = Field(default_factory=list, max_length=6)
     axis: str | None = Field(default=None, max_length=30)  # ADR-0028; None before it
     motifs: list[str] = Field(default_factory=list, max_length=4)
+    # The visual device (ADR-0029); None before it.
+    device_id: str | None = Field(default=None, max_length=40)
+    device_image: str | None = Field(default=None, max_length=400)
+    device_shot: int | None = Field(default=None, ge=1, le=6)
 
 
 class ConceptSet(DomainModel):
@@ -388,6 +411,7 @@ class MotifEntry(DomainModel):
     title: str = Field(min_length=1, max_length=120)
     axis: str = Field(min_length=1, max_length=30)
     motifs: list[str] = Field(min_length=1, max_length=6)
+    device: str | None = Field(default=None, max_length=40)  # ADR-0029; None before it
 
 
 def assign_axes(anchor_themes: Sequence[str], n: int) -> list[str]:
@@ -418,19 +442,31 @@ def recent_overlap(motifs: Sequence[str], ledger: Sequence[MotifEntry]) -> int:
 
 
 REUSED_MOTIFS = 2  # a concept sharing this many motifs with a recent winner counts as reused
+RECENT_DEVICES = 3  # a device one of the last three winners used counts as reused (ADR-0029)
+
+
+def recent_device(device: str | None, ledger: Sequence[MotifEntry]) -> bool:
+    return device is not None and device in {e.device for e in ledger[:RECENT_DEVICES]}
+
+
+def is_reused(motifs: Sequence[str], device: str | None, ledger: Sequence[MotifEntry]) -> bool:
+    """A recent winner's people, place and object, or the device one of the last three used."""
+    return recent_overlap(motifs, ledger) >= REUSED_MOTIFS or recent_device(device, ledger)
 
 
 def pick_distinct(
     concepts: Sequence[ConceptDraft], motifs: Sequence[Sequence[str]],
     ledger: Sequence[MotifEntry], k: int = CONCEPT_COUNT,
+    devices: Sequence[str | None] | None = None,
 ) -> list[int]:  # fmt: skip
     """The indices of the ``k`` concepts to keep, in their written order: concepts that reuse a
-    recent winner's motifs go last; then greedily the concept least similar to those already
-    kept (max-min on ``signature_text``), starting from the first fresh one."""
+    recent winner's motifs or device go last; then greedily the concept least similar to those
+    already kept (max-min on ``signature_text``), starting from the first fresh one."""
     n = len(concepts)
     if n <= k:
         return list(range(n))
-    reused = [recent_overlap(m, ledger) >= REUSED_MOTIFS for m in motifs]
+    devs = list(devices) if devices is not None else [None] * n
+    reused = [is_reused(m, devs[i], ledger) for i, m in enumerate(motifs)]
     pool = [i for i in range(n) if not reused[i]]
     pool += [i for i in range(n) if reused[i]][: max(0, k - len(pool))]
     texts = [c.signature_text() for c in concepts]

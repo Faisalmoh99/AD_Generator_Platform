@@ -1,12 +1,22 @@
 [
   {
     "output": {
+      "device_sketches": [
+        "invisible_made_visible: the host's scent as a gold thread that follows the last guest out",
+        "room_responds: the lattice light crawls toward the bottle",
+        "one_take_reveal: the corridor doors open on the whole family waiting",
+        "product_pov: from the blotter, the nose comes close and nods",
+        "trail_to_follow: the son follows his father's scent down the stairs to the car",
+        "rewind: the rain drops climb back up from the tiles as the window opens"
+      ],
       "concepts": [
         {
           "insight_number": 1,
           "title": "The Last Guest",
           "logline": "The majlis empties; the host keeps one gesture for the last guest: the bottle, offered with both hands.",
           "insight": "In the Gulf, the scent you leave a guest with is the last word of your hospitality.",
+          "device_id": "invisible_made_visible",
+          "device_image": "A thin gold ribbon of the host's scent follows the last guest out through the doorway.",
           "story": {
             "setup": "the gathering ends",
             "turn": "the host offers the scent",
@@ -31,6 +41,7 @@
             "the host offers the scent",
             "the bottle as the memory of the night"
           ],
+          "device_shot": 3,
           "style_references": [
             "warm practical light",
             "slow dolly",
@@ -50,6 +61,8 @@
           "title": "Amber Hour",
           "logline": "Late sun pours through a mashrabiya and turns the bottle's facets into a lattice of gold on the wall.",
           "insight": "A scent is worn like a time of day: some people carry the golden hour with them.",
+          "device_id": "room_responds",
+          "device_image": "The lattice light slowly crawls across the room until it settles on the bottle.",
           "story": {
             "setup": "light finds the lattice",
             "turn": "the pattern crawls across the room",
@@ -71,8 +84,10 @@
           "shot_sketch": [
             "light finds the lattice",
             "the pattern crawls across the room",
-            "the bottle holds the light"
+            "the bottle holds the light",
+            "the bottle in the warm lattice light"
           ],
+          "device_shot": 2,
           "style_references": [
             "hard sunlight",
             "long shadows",
@@ -94,6 +109,8 @@
           "title": "Wedding Night Walk",
           "logline": "A groom's friends adjust his bisht in a corridor; the final touch before he walks out is the scent.",
           "insight": "The last thing you put on before the biggest night is the one you remember.",
+          "device_id": "one_take_reveal",
+          "device_image": "One continuous push through the corridor ends as the doors open on the waiting hall.",
           "story": {
             "setup": "the corridor before the hall",
             "turn": "the spray",
@@ -118,6 +135,7 @@
             "the spray",
             "the doors open"
           ],
+          "device_shot": 4,
           "style_references": [
             "tungsten corridor light",
             "handheld-feel gimbal",
@@ -139,6 +157,8 @@
           "title": "The Blender's Nose",
           "logline": "An old perfumer closes his eyes over three blotters and nods only at one: the bottle he trusts.",
           "insight": "The people who know scent best say the least about it.",
+          "device_id": "product_pov",
+          "device_image": "From the blotter, the master's face comes close, breathes in, and nods.",
           "story": {
             "setup": "three blotters fan out in a workshop",
             "turn": "the master pauses at the third and nods",
@@ -163,6 +183,7 @@
             "the nod",
             "the cap closes"
           ],
+          "device_shot": 3,
           "style_references": [
             "workshop daylight",
             "dust-free bench",
@@ -184,6 +205,8 @@
           "title": "Mile Zero",
           "logline": "Before a long drive home, a son sprays once at the car door and the scent rides with him to his mother's house.",
           "insight": "We carry home's scent on the road so we arrive already belonging.",
+          "device_id": "trail_to_follow",
+          "device_image": "The son follows a gold thread of scent from the front door to the open road.",
           "story": {
             "setup": "bags in a car boot at dawn",
             "turn": "he turns back for one spray at the open car door",
@@ -208,6 +231,7 @@
             "one spray at the door",
             "the road opens"
           ],
+          "device_shot": 4,
           "style_references": [
             "blue dawn",
             "car interior",
@@ -229,6 +253,8 @@
           "title": "First Rain",
           "logline": "The first winter rain hits a courtyard and a grandfather opens his window to it, then to the bottle.",
           "insight": "Some scents belong to a season and come back with it every year.",
+          "device_id": "rewind",
+          "device_image": "The drops on the tiles climb slowly back up into the sky as the window opens.",
           "story": {
             "setup": "dry courtyard tiles under grey sky",
             "turn": "the first drops darken the tiles and he opens the window",
@@ -253,6 +279,7 @@
             "rain smell in the room",
             "the bottle lifted"
           ],
+          "device_shot": 3,
           "style_references": [
             "overcast soft light",
             "wet stone",

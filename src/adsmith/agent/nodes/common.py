@@ -59,6 +59,9 @@ def concept_block(c: Concept, number: int | None = None) -> str:
         )
     else:
         lines.append(f"Visual hook: {c.visual_hook}")
+    if c.device_id:
+        at = f", shot {c.device_shot}" if c.device_shot else ""
+        lines.append(f"Visual device ({c.device_id}{at}): {c.device_image or '-'}")
     if c.product_role is not None:
         lines.append(f"Product role: {c.product_role.role}: {c.product_role.line}")
     if c.cultural_meaning:

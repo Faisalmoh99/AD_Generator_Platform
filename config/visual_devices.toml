@@ -1,0 +1,154 @@
+# Visual devices (ADR-0029): the cinematic image an idea is shown with. DATA: the code only reads it
+# (domain/visual_devices.py). The culture bank gives an ad its MEANING; a device gives it the ONE
+# image only a moving picture can show. Our planning runs found true insights and filmed them as
+# ordinary domestic scenes (a man pours coffee); try 2's human prompt had a device (the incense
+# smoke condenses into the bottle) and read as an ad.
+#
+# Why devices: Goldenberg, Mazursky & Solomon, "The Fundamental Templates of Quality Ads"
+# (Marketing Science 18(3), 1999): about 89 % of 200 award-winning ads fit a small set of
+# templates, 50 % of winners vs 2.5 % of non-winners; novices trained on templates made ads judged
+# more creative than brainstorming groups. A device is a template, made concrete for video.
+#
+# Fields: id · name · how_it_works (what the viewer sees, in order) · why_video_only (why a still
+# cannot show it) · categories (culture-bank categories, or "any") · seedance (wording that renders
+# it in one shot, built from our physics library; never a banned word) · renderability (proven:
+# seen in our own generation; likely: physical motion Seedance renders; unproven: untested, risky)
+# · proven_by (the run that proved it) · min_s (the shortest key shot that shows it).
+
+[[devices]]
+id = "invisible_made_visible"
+name = "Make the invisible visible"
+how_it_works = "Something that cannot be seen (a scent, warmth, a memory, a sound) gets a body on screen: a thin ribbon of golden mist, a shimmer of warm air, a thread of light-catching specks that moves through the room."
+why_video_only = "The thing moves, spreads and reaches someone in time; a still shows only a decoration."
+categories = ["perfume", "incense", "coffee", "food", "any"]
+seedance = "a thin, clearly visible ribbon of golden mist, a hand's width wide, drifts slowly from the open bottle across the room toward the doorway"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "trail_to_follow"
+name = "A trail to follow"
+how_it_works = "A visible trail (scent, steam, a line of something) leads through space; a person follows it room to room and finds who or what is at its end."
+why_video_only = "Following is a journey in time: the meaning is in the walking and the arrival."
+categories = ["perfume", "incense", "coffee", "food", "any"]
+seedance = "the boy follows the thin golden ribbon of mist along the hallway, one slow step at a time, until it ends at his father's collar"
+renderability = "likely"
+min_s = 2.5
+
+[[devices]]
+id = "transformation"
+name = "Transformation"
+how_it_works = "One object turns into the product in visible steps inside one shot: incense smoke spirals tighter and condenses into the bottle; steam gathers into the shape of the pouch."
+why_video_only = "The change itself is the image; a still can show only before or after."
+categories = ["perfume", "incense", "coffee", "dates", "food", "any"]
+seedance = "the smoke spirals tighter, thickens, then condenses step by step into the bottle resting in his open palm"
+renderability = "proven"
+proven_by = "run_01M6RYP42HB0GBFFYBAY09SGCW (try 2): rendered, but compressed to 0.5 s; give it at least 2.5 s and visible steps"
+min_s = 2.5
+
+[[devices]]
+id = "match_on_shape"
+name = "Match on shape"
+how_it_works = "A hard cut joins two objects with the same shape at the same place in the frame (the burner's brass dome and the bottle's dome cap; the round finjan and the full moon), so the second inherits the first one's meaning."
+why_video_only = "The rhyme happens across a cut, in time; it needs two images in sequence."
+categories = ["any"]
+seedance = "hard cut from the brass dome of the incense burner to the gold dome cap of the bottle, the same size and place in the frame"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "time_freeze"
+name = "Time freeze"
+how_it_works = "Everything in the room stops mid-motion except one thing, which keeps moving: the pour keeps flowing while the guests stand still mid-laugh."
+why_video_only = "The contrast between stopped and moving only exists in motion."
+categories = ["coffee", "perfume", "food", "any"]
+seedance = "the room stops mid-motion, the guests still as statues, while only the thin ribbon of golden coffee keeps pouring slowly into the finjan"
+renderability = "unproven"
+min_s = 2.0
+
+[[devices]]
+id = "room_responds"
+name = "The room responds"
+how_it_works = "The space reacts physically to the product: as her fingers lift the cap, the sheer curtains slowly lean toward it and the lantern flames bend the same way."
+why_video_only = "The response is motion caused by the product; a still cannot show cause."
+categories = ["perfume", "incense", "coffee", "any"]
+seedance = "as her fingers lift the cap, the sheer curtains slowly lean toward the bottle and the lantern flames bend the same way"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "reveal_by_reflection"
+name = "Reveal by reflection"
+how_it_works = "A person or the product first appears in a reflection (the surface of the coffee in a finjan, a mirror, the glass of the bottle) before it is shown directly."
+why_video_only = "The reflection forms, ripples and resolves; the reveal is a change over time."
+categories = ["any"]
+seedance = "in the still golden surface of the coffee in the finjan, his father's smiling face slowly appears as the ripples settle"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "one_take_reveal"
+name = "One-take reveal"
+how_it_works = "One continuous camera move changes the meaning when it turns: what we took for X is Y (the 'guest' the host prepared for is his own mother)."
+why_video_only = "The meaning changes during the move, without a cut."
+categories = ["any"]
+seedance = "one slow continuous orbit around the host, ending on who sits in the guest's place"
+renderability = "likely"
+min_s = 2.5
+
+[[devices]]
+id = "extreme_consequence"
+name = "Extreme consequence"
+how_it_works = "The product's effect is shown at an impossible scale: after one spray every man in the majlis slowly turns toward the door; one opened pouch draws the neighbours out of their houses."
+why_video_only = "The consequence spreads through space and people in a chain."
+categories = ["any"]
+seedance = "after one clearly visible spray, every man in the majlis slowly turns his head toward the doorway at once"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "product_pov"
+name = "Product point of view"
+how_it_works = "The camera is the product: from inside the opened pouch looking up at the face that judges it; from the bottle's place on the shelf as the hand reaches for it."
+why_video_only = "A moving point of view puts the viewer inside the object as the person acts."
+categories = ["coffee", "dates", "food", "any"]
+seedance = "camera from inside the open pouch looking up: his fingers slowly reach in and lift a scoop of golden beans toward the lens"
+renderability = "likely"
+min_s = 2.0
+
+[[devices]]
+id = "scale_shift"
+name = "Scale shift"
+how_it_works = "A slow move reveals that the product is enormous or tiny in its world: the amber bottle stands as tall as the majlis doorway; a family sits around a single date the size of a table."
+why_video_only = "The scale is revealed by the camera moving, so the surprise happens on screen."
+categories = ["any"]
+seedance = "a slow pull-back reveals the amber bottle standing as tall as the majlis doorway, the men in thobes small beside it"
+renderability = "unproven"
+min_s = 2.5
+
+[[devices]]
+id = "rewind"
+name = "Rewind"
+how_it_works = "One action plays backward: the scattered mist gathers back into the nozzle; the spilled coffee climbs back into the finjan; the meaning is 'this moment, again'."
+why_video_only = "Reverse motion only exists in time."
+categories = ["any"]
+seedance = "the clearly visible drifting mist slowly gathers back, in reverse, into the nozzle of the bottle in her hand"
+renderability = "unproven"
+min_s = 2.0
+
+# Two worked examples shown to ideate as the quality bar (never to copy: code refuses a concept
+# that shares 2+ motifs with one of them). The first is the user's; the second is try 2's human
+# idea (run_01M6RYP42HB0GBFFYBAY09SGCW).
+[[exemplars]]
+id = "scent_trail_boy"
+devices = ["invisible_made_visible", "trail_to_follow"]
+idea = "A small boy smells his father's perfume in the hallway; the scent shows as a thin trail of golden specks; he follows it room to room until he finds his father."
+why = "The truth (a child knows his father by his scent) gets one image only film can show: the invisible scent gets a body, the body a direction, the direction a story. The product causes the trail, so it is necessary, and the turn (he finds his father) needs no words."
+motifs = ["boy", "father", "hallway", "trail"]
+
+[[exemplars]]
+id = "burner_to_bottle"
+devices = ["transformation"]
+idea = "In a majlis at night an elder passes the incense burner to a young man leaving; he draws the smoke into his shemagh; the smoke spirals tighter and condenses into the perfume bottle in the elder's palm, which he gives the young man at the door."
+why = "The ritual (perfuming a guest before he leaves) turns into the product in one continuous image: the culture is the meaning and the device is the hinge. The product continues the gesture outside the house, so the turn is the product itself."
+motifs = ["elder", "majlis", "incense burner", "smoke"]

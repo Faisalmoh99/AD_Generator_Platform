@@ -1,12 +1,22 @@
 [
   {
     "output": {
+      "device_sketches": [
+        "match_on_shape: the round of a water drop cuts to the round of the cap",
+        "time_freeze: the rain stops in mid-air around the bottle",
+        "transformation: heat shimmer gathers into the bottle",
+        "rewind: the splash climbs back into a still surface",
+        "room_responds: the night window fogs toward the bottle",
+        "invisible_made_visible: the scent as a ribbon of gold over black rock"
+      ],
       "concepts": [
         {
           "insight_number": 1,
           "title": "Obsidian",
           "logline": "Darkness, metal and water: the bottle is discovered one hard edge of light at a time until it stands whole on wet rock.",
           "insight": "Real confidence is quiet; it shows in details, not noise.",
+          "device_id": "match_on_shape",
+          "device_image": "The round of a falling water drop cuts to the round of the cap, the same size in frame.",
           "story": {
             "setup": "darkness and brushed metal",
             "turn": "cold water",
@@ -30,6 +40,7 @@
             "cold water",
             "the reveal on wet rock"
           ],
+          "device_shot": 3,
           "style_references": [
             "hard rim light",
             "macro lens",
@@ -49,6 +60,8 @@
           "title": "Night Rain",
           "logline": "Rain on a midnight terrace beads on cold glass while the city hum fades; one drop at a time builds to the scent.",
           "insight": "The best nights start in the quiet minutes before you leave.",
+          "device_id": "time_freeze",
+          "device_image": "The rain stops in mid-air around the bottle while one drop keeps running down the glass.",
           "story": {
             "setup": "rain begins",
             "turn": "glass beads with water",
@@ -72,6 +85,7 @@
             "glass beads with water",
             "the city goes silent"
           ],
+          "device_shot": 3,
           "style_references": [
             "blue night palette",
             "slow motion water"
@@ -90,6 +104,8 @@
           "title": "Desert Ember",
           "logline": "Wind-carved sandstone and the last ember of a majlis fire glow behind the bottle as heat shimmers past it.",
           "insight": "Heritage is warm; it is carried, not displayed.",
+          "device_id": "transformation",
+          "device_image": "The heat shimmer over the sandstone tightens, thickens, then condenses into the bottle.",
           "story": {
             "setup": "sandstone texture",
             "turn": "heat shimmer",
@@ -114,6 +130,7 @@
             "heat shimmer",
             "the bottle in firelight"
           ],
+          "device_shot": 4,
           "style_references": [
             "warm firelight",
             "sandstone macro"

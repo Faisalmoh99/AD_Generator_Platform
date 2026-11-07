@@ -72,6 +72,10 @@ MIGRATIONS: tuple[str, ...] = (
         source      TEXT NOT NULL              -- run | seed
     );
     """,
+    # 3: the winner's visual device (ADR-0029), so recent devices count as reuse.
+    """
+    ALTER TABLE motifs ADD COLUMN device TEXT;
+    """,
 )
 
 

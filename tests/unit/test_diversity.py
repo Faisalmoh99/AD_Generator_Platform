@@ -75,7 +75,7 @@ async def test_a_recent_winners_motifs_are_avoided_and_the_winner_is_recorded(
     titles = [c.title for c in state.concepts.concepts]
     assert "The Last Guest" not in titles  # host + last guest + doorway = a recent winner
     llm = rt._provider_override
-    asked = next(r for r in llm.requests if r.template == "ideate@v8")  # type: ignore[union-attr]
+    asked = next(r for r in llm.requests if r.template == "ideate@v9")  # type: ignore[union-attr]
     assert "Before the knock [hospitality]: host, last guest, doorway" in str(asked.messages)
     ledger = rt.storage.motifs.recent(10)
     winner = state.concepts.selected

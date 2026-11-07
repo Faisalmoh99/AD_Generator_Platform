@@ -1,12 +1,22 @@
 [
   {
     "output": {
+      "device_sketches": [
+        "reveal_by_reflection: his face and the city lights meet in the bottle's glass",
+        "transformation: smoke, gold liquid and stone condense into the bottle",
+        "one_take_reveal: the tailor's mirror turns and the boy is a man",
+        "room_responds: the party's curtains lean toward him as he enters",
+        "extreme_consequence: one spray and the whole street turns",
+        "scale_shift: the bottle stands as tall as the city tower"
+      ],
       "concepts": [
         {
           "insight_number": 1,
           "title": "The Night Drive",
           "logline": "A young man drives alone through the empty city at night, neon reflections sliding over his face, until he stops, sprays the perfume and steps into the party.",
           "insight": "Young men feel most themselves in the quiet minutes before they walk into the room.",
+          "device_id": "reveal_by_reflection",
+          "device_image": "His face appears in the bottle's glass among the passing city lights.",
           "story": {
             "setup": "He drives through the city at night",
             "turn": "He sprays the perfume",
@@ -31,6 +41,7 @@
             "He sprays the perfume",
             "He enters the party"
           ],
+          "device_shot": 2,
           "style_references": [
             "anamorphic night photography",
             "neon practicals",
@@ -52,6 +63,8 @@
           "title": "Elemental",
           "logline": "An abstract sensory journey: black smoke, liquid gold and cracked desert stone swirl and form the bottle, translating the scent notes into texture.",
           "insight": "A scent is felt before it is understood; people remember its texture, not its notes.",
+          "device_id": "transformation",
+          "device_image": "Smoke, gold liquid and cracked stone draw together and condense into the bottle.",
           "story": {
             "setup": "Smoke rises in darkness",
             "turn": "Desert stone cracks",
@@ -76,6 +89,7 @@
             "Desert stone cracks",
             "The bottle forms from the elements"
           ],
+          "device_shot": 4,
           "style_references": [
             "macro photography",
             "high-speed liquid simulation look",
@@ -95,6 +109,8 @@
           "title": "The Tailor",
           "logline": "In a heritage tailoring atelier, an older master fits a young man for his first bespoke suit; the final touch is the perfume, passed on like a legacy.",
           "insight": "The things that make a man are handed down, not bought.",
+          "device_id": "one_take_reveal",
+          "device_image": "One slow orbit around the mirror ends on the young man, now the master's equal.",
           "story": {
             "setup": "Measuring tape and fabric",
             "turn": "He hands him the bottle",
@@ -119,6 +135,7 @@
             "He hands him the bottle",
             "The young man walks out transformed"
           ],
+          "device_shot": 4,
           "style_references": [
             "warm window light",
             "period craftsmanship details"

@@ -24,6 +24,7 @@ from adsmith.domain.culture import CultureLexicon
 from adsmith.domain.culture_bank import CultureBank
 from adsmith.domain.formats import FormatLibrary
 from adsmith.domain.rubric import Rubric
+from adsmith.domain.visual_devices import DeviceLibrary
 from adsmith.domain.vocabulary import VocabLibrary
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -512,6 +513,12 @@ class Settings(BaseSettings):
         (config/culture_bank.toml, ADR-0026)."""
         with (self.config_dir / "culture_bank.toml").open("rb") as fh:
             return CultureBank.model_validate(tomllib.load(fh))
+
+    @cached_property
+    def visual_devices(self) -> DeviceLibrary:
+        """Cinematic devices a concept is shown with (config/visual_devices.toml, ADR-0029)."""
+        with (self.config_dir / "visual_devices.toml").open("rb") as fh:
+            return DeviceLibrary.model_validate(tomllib.load(fh))
 
     @cached_property
     def culture(self) -> CultureLexicon:

@@ -438,7 +438,7 @@ class Orchestrator:
         if state.config.llm_provider == "scripted" and not self.rt.settings.motif_ledger_scripted:
             return  # fixture ideas are not recent ideas
         entry = MotifEntry(run_id=state.id, title=c.title[:120], axis=c.axis or "-",
-                           motifs=c.motifs)  # fmt: skip
+                           motifs=c.motifs, device=c.device_id)  # fmt: skip
         try:
             self.rt.storage.motifs.record(entry)
         except sqlite3.Error as exc:  # a ledger write never fails a run

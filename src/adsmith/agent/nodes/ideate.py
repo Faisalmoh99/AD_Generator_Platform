@@ -1,6 +1,9 @@
 """ideate: concepts on the insights. On a whole-ad run it writes six candidates on six axes code
 assigns, and code keeps the three that differ most, away from recent winners' motifs (ADR-0028
-part 3); other formats write three. The LLM never chooses which survive."""
+part 3); other formats write three. The LLM never chooses which survive. Each concept is shown
+with one visual device from the library (ADR-0029): code checks the id, that the candidates use
+different devices, that no concept copies a worked exemplar, and on a whole-ad run that the shot
+sketch has as many lines as the film has shots."""
 
 from __future__ import annotations
 
@@ -18,24 +21,66 @@ from adsmith.config import LLMNode
 from adsmith.domain.concept import (
     AXES,
     CONCEPT_COUNT,
-    REUSED_MOTIFS,
     ConceptSet,
     CreativeConceptSetDraft,
     MotifEntry,
     assign_axes,
+    is_reused,
     pick_distinct,
-    recent_overlap,
 )
 from adsmith.domain.enums import Stage
-from adsmith.domain.formats import AdFormat, format_block
+from adsmith.domain.formats import AdFormat, format_block, whole_ad_shot_count
 from adsmith.domain.run import RunState
 from adsmith.domain.similarity import pairwise_similarities
+from adsmith.domain.visual_devices import DeviceLibrary
 
 
 def ledger_block(ledger: tuple[MotifEntry, ...]) -> str:
     if not ledger:
         return "(no recent winners recorded)"
-    return "\n".join(f"- {e.title} [{e.axis}]: {', '.join(e.motifs)}" for e in ledger)
+    return "\n".join(
+        f"- {e.title} [{e.axis}]: {', '.join(e.motifs)}"
+        + (f" (device: {e.device})" if e.device else "")
+        for e in ledger
+    )
+
+
+def device_problems(
+    d: CreativeConceptSetDraft, allowed: list[str], shots: int | None, library: DeviceLibrary
+) -> list[str]:
+    """Code checks on the visual devices (ADR-0029), sent back through schema repair."""
+    out: list[str] = []
+    for i, c in enumerate(d.concepts, 1):
+        if c.device_id not in allowed:
+            out.append(
+                f"concept {i}: device_id {c.device_id!r} is not one of the listed devices "
+                f"for this product ({', '.join(allowed)})"
+            )
+        if c.device_shot > len(c.shot_sketch):
+            out.append(
+                f"concept {i}: device_shot {c.device_shot} is past its {len(c.shot_sketch)} "
+                "shot_sketch lines"
+            )
+        if shots is not None and len(c.shot_sketch) != shots:
+            out.append(
+                f"concept {i}: the film has exactly {shots} shots, so write exactly {shots} "
+                f"shot_sketch lines, not {len(c.shot_sketch)} (let the device carry a beat "
+                "the shots cannot)"
+            )
+        copied = library.copied_exemplar(c.motifs)
+        if copied is not None:
+            out.append(
+                f"concept {i} copies the worked example {copied.id!r} (motifs "
+                f"{', '.join(c.motifs)}): examples show the quality bar, never the content; "
+                "change who, where and what object"
+            )
+    used = [c.device_id for c in d.concepts]
+    if len(allowed) >= len(used) and len(set(used)) != len(used):
+        out.append(
+            f"each concept uses a different device (got {', '.join(used)}): spread the "
+            "ideas over the devices, not only the axes"
+        )
+    return out
 
 
 async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
@@ -51,6 +96,16 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         if (e := bank.get(x.culture_anchor)) is not None
     ]
     axes = assign_axes(themes, n)
+    library = ctx.settings.visual_devices
+    devices = library.for_categories(bank.categories_for(state.brief))
+    allowed = [d.id for d in devices]
+    shots = (
+        whole_ad_shot_count(
+            ctx.settings.formats.grammar(state.brief.format), state.brief.duration_s
+        )
+        if whole
+        else None
+    )
     prompt = ctx.prompts.get("ideate").render(
         brief=brief_block(state.brief),
         insights=insights_block(found, bank),
@@ -62,6 +117,9 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         count=str(n),
         axes="\n".join(f"{i}. {a}: {AXES[a]}" for i, a in enumerate(axes, 1)),
         recent=ledger_block(ctx.motif_ledger),
+        devices=library.prompt_block(devices),
+        exemplars=library.exemplars_block(),
+        shots=str(shots) if shots else "",
     )
     count = len(found.insights) if found else 5
     kept: list[int] = []
@@ -78,10 +136,14 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
         got = sorted(c.axis for c in d.concepts)
         if got != sorted(axes):
             problems.append(f"use each axis exactly once: {', '.join(axes)} (got {', '.join(got)})")
+        problems += device_problems(d, allowed, shots, library)
         if problems:
             raise ValueError("; ".join(problems))
         kept[:] = pick_distinct(
-            [c.to_concept() for c in d.concepts], [c.motifs for c in d.concepts], ctx.motif_ledger
+            [c.to_concept() for c in d.concepts],
+            [c.motifs for c in d.concepts],
+            ctx.motif_ledger,
+            devices=[c.device_id for c in d.concepts],
         )
         return ConceptSet.from_creative(d, cliches, keep=kept)
 
@@ -91,8 +153,8 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
     concepts = result.value
     sims = pairwise_similarities([c.signature_text() for c in concepts.concepts])
     roles = ", ".join(
-        f"{c.title} ({c.axis or '-'}, {c.product_role.role if c.product_role else '-'}, insight "
-        f"{c.insight_number or '-'})"
+        f"{c.title} ({c.axis or '-'}, {c.device_id or '-'}, "
+        f"{c.product_role.role if c.product_role else '-'}, insight {c.insight_number or '-'})"
         for c in concepts.concepts
     )
     events = [
@@ -115,10 +177,11 @@ async def ideate(state: RunState, ctx: NodeContext) -> NodeResult:
                 axes=axes,
                 kept=[i + 1 for i in kept],
                 ledger=[e.model_dump() for e in ctx.motif_ledger],
+                devices=[c.device_id for c in concepts.concepts],
                 reused_motifs=[
                     c.title
                     for c in concepts.concepts
-                    if recent_overlap(c.motifs, ctx.motif_ledger) >= REUSED_MOTIFS
+                    if is_reused(c.motifs, c.device_id, ctx.motif_ledger)
                 ],
             )
         )

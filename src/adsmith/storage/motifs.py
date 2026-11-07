@@ -19,21 +19,21 @@ class MotifLedger:
         """One row per run (its winning concept); a later winner of the same run replaces it."""
         with self._db.write() as conn:
             conn.execute(
-                "INSERT OR REPLACE INTO motifs (run_id, created_at, title, axis, motifs, source) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT OR REPLACE INTO motifs (run_id, created_at, title, axis, motifs, source, "
+                "device) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (entry.run_id, utcnow().isoformat(), entry.title, entry.axis,
-                 json.dumps(entry.motifs, ensure_ascii=False), source),
+                 json.dumps(entry.motifs, ensure_ascii=False), source, entry.device),
             )  # fmt: skip
 
     def recent(self, limit: int = 10, *, exclude: str | None = None) -> list[MotifEntry]:
         with self._db.read() as conn:
             rows = conn.execute(
-                "SELECT run_id, title, axis, motifs FROM motifs WHERE run_id != ? "
+                "SELECT run_id, title, axis, motifs, device FROM motifs WHERE run_id != ? "
                 "ORDER BY created_at DESC LIMIT ?",
                 (exclude or "", limit),
             ).fetchall()
         return [
             MotifEntry(run_id=r["run_id"], title=r["title"], axis=r["axis"],
-                       motifs=json.loads(r["motifs"]))
+                       motifs=json.loads(r["motifs"]), device=r["device"])
             for r in rows
         ]  # fmt: skip
