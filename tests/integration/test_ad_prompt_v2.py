@@ -33,3 +33,16 @@ async def test_the_writer_sees_the_photo_and_the_prompt_has_references(tmp_path:
     assert lines[2].startswith("Look: An empty traditional majlis")
     assert "Framing: the product fills about half the frame." in lines[5]
     assert [s.handled for s in p.shots] == [False, False, True, False]
+
+
+async def test_the_pack_shows_every_concept_with_its_six_scores(tmp_path: Path) -> None:
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
+    pack = rt.storage.artifacts.run_dir(state.id) / "production_pack" / "storyboard.md"
+    text = pack.read_text()
+    assert "## Concepts and rubric" in text
+    assert "| # | concept | insight | hook | story_turn |" in text
+    assert text.count("(picked)") == 1
+    assert "## Director review: kept" in text and "References sent with the prompt:" in text

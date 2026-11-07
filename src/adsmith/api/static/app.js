@@ -502,8 +502,8 @@ function renderGeneration(v) {
 
 function renderImages(images) {
   if (!images || !images.length) return "";
-  const cards = images.map((im) => `<figure class="ref-image"><img src="${im.url}" alt="${esc(im.label)}" loading="lazy"><figcaption>${esc(im.label)}${im.source === "generated" ? ` · generated ${money(im.cost)}${im.check ? ` · ${esc(im.check)}` : ""}` : ""}</figcaption></figure>`).join("");
-  return `<div class="section-label">Images the model receives</div><div class="ref-images">${cards}</div>`;
+  const cards = images.map((im) => `<figure class="ref-image"><img src="${im.url}" alt="${esc(im.label)}" loading="lazy"><figcaption>${esc(im.label)}${im.source === "generated" ? ` · generated $${Number(im.cost).toFixed(3)}${im.check ? ` · ${esc(im.check)}` : ""}` : ""}</figcaption></figure>`).join("");
+  return `<div class="gen-wide"><div class="section-label">Images the model receives</div><div class="ref-images">${cards}</div></div>`;
 }
 
 function renderDirector(d) {
@@ -515,7 +515,7 @@ function renderDirector(d) {
     return `<div class="gen-row"><span>round ${r.round}</span><b>${r.failed.length ? `${r.failed.length} rule(s) failed` : "all rules pass"}</b></div><div class="flags">${flags}</div><div class="desc" dir="auto">${esc(r.summary)}</div>${changes}`;
   }).join("");
   const diff = d.outcome === "rewritten" ? `<details><summary>Writer's prompt (before the director)</summary><pre>${esc(d.before)}</pre></details>` : "";
-  return `<div class="section-label">Creative director · ${esc(label)}${d.retimed ? " · re-timed" : ""}</div>${rounds}${d.note ? `<div class="desc warn">${esc(d.note)}</div>` : ""}${diff}`;
+  return `<div class="gen-wide"><div class="section-label">Creative director · ${esc(label)}${d.retimed ? " · re-timed" : ""}</div>${rounds}${d.note ? `<div class="desc warn">${esc(d.note)}</div>` : ""}${diff}</div>`;
 }
 
 function renderFinal(v) {

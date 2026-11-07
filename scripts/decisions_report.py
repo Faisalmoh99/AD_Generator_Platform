@@ -17,6 +17,7 @@ from adsmith.agent.context import AgentRuntime
 from adsmith.config import Settings
 from adsmith.domain.enums import FailureKind, ScenePhase, Stage
 from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.rubric import RUBRIC_KEYS
 from adsmith.domain.run import RunState
 
 
@@ -39,20 +40,31 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
     # 1b. insights (creative layer, ADR-0024)
     if st.insights is not None:
         out.append("\n1b. INSIGHTS")
-        out += [f"  {i}. {x.statement}" for i, x in enumerate(st.insights.insights, 1)]
+        out += [
+            f"  {i}. {x.statement}"
+            + (f"  [culture anchor: {x.culture_anchor}]" if x.culture_anchor != "none" else "")
+            for i, x in enumerate(st.insights.insights, 1)
+        ]
 
     # 2. concepts
     if st.concepts is not None:
         sel = next((e for e in events if e.stage is Stage.SELECT and "scores" in e.payload), None)
         scores: dict[int, float] = {}
+        rubric: dict[int, str] = {}
         if sel is not None and isinstance(sel.payload["scores"], list):
             for s in sel.payload["scores"]:
                 if isinstance(s, dict):
-                    scores[int(str(s["concept_number"]))] = float(str(s["weighted"]))
+                    n = int(str(s["concept_number"]))
+                    scores[n] = float(str(s["weighted"]))
+                    rubric[n] = ", ".join(f"{k} {s[k]}" for k in RUBRIC_KEYS if k in s) + (
+                        " · CLICHÉ −penalty" if s.get("uses_category_cliche") else ""
+                    )
         out.append(f"\n2. CONCEPTS (judge weighted score; * = picked by {st.concepts.selected_by})")
         for n, c in enumerate(st.concepts.concepts, 1):
             mark = "*" if c.id == st.concepts.selected_id else " "
             out.append(f"  {mark} {n}. {c.title} · {scores.get(n, float('nan')):.2f} · {c.logline}")
+            if rubric.get(n):
+                out.append(f"      rubric: {rubric[n]}")
             if c.story is not None and c.hook is not None and c.product_role is not None:
                 out.append(f"      insight {c.insight_number}: {c.insight}")
                 out.append(f"      turn: {c.story.turn} · hook opens: {c.hook.question}")
@@ -69,8 +81,24 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
             + (f" (price ${g.computed_usd:.3f})" if g.computed_usd not in (None, g.est_usd) else "")
             + f" · approved by {g.approved_by or '-'}"
         )
+        for i, line in enumerate(_images(st), start=1):
+            out.append(f"  Image {i}: {line}")
+        r = st.director_review
+        if r is not None:
+            out.append(f"  DIRECTOR: {r.outcome}{' (re-timed)' if r.retimed else ''}")
+            for rnd in r.rounds:
+                out += [
+                    f"    round {rnd.round} {'PASS' if v.passed else 'FAIL'} {v.rule_id}: {v.note}"
+                    for v in rnd.verdicts
+                ]
+                out += [f"    change: {c}" for c in rnd.changes]
+            if r.outcome == "rewritten":
+                out.append("  WRITER'S PROMPT (before the director):")
+                out += [f"    {line}" for line in r.before_text.splitlines()]
+        out.append("  FINAL PROMPT (sent to the model):")
+        out += [f"    {line}" for line in g.prompt_text.splitlines()]
         for e in events:
-            stages = {Stage.DIRECTOR, Stage.ESTIMATE, Stage.QA}
+            stages = {Stage.DIRECTOR, Stage.PROPS, Stage.ESTIMATE, Stage.QA}
             if e.stage in stages and e.type is EventType.DECISION:
                 out.append(f"  {e.summary[:400]}")
         if g.qa is not None:
@@ -191,6 +219,15 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
         f"run cap ${st.budget.limit_usd:.2f}"
     )
     return "\n".join(out)
+
+
+def _images(st: RunState) -> list[str]:
+    """The images the video model receives, in order."""
+    out = [f"product photo ({st.product_photo.path})"] if st.product_photo else []
+    for r in st.reference_images:
+        extra = f", ${r.cost_usd:.3f}, {r.check}" if r.source == "generated" else ""
+        out.append(f"{r.name} ({r.source}{extra}) {r.artifact.path}")
+    return out
 
 
 def main() -> None:

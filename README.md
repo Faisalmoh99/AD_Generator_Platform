@@ -84,9 +84,31 @@ never pays twice. The whole-ad critic sees the photo and three frames per shot: 
 rubric scores give a creative score that only **warns** below 6.5. Nothing is regenerated
 automatically: `adsmith accept-ad` or `adsmith regenerate-ad` (back through the spend gate).
 
-Status: built and tested on zero keys and a fake Higgsfield server. No real Higgsfield generation
-has been made yet, and the critic's rubric has not yet been calibrated on a real ad
-(`scripts/calibrate_ad_critic.py` is ready for montage v2).
+### The system writes its own Seedance prompt (ADR-0026)
+
+Two real generations needed a human to rewrite the prompt. A frame-by-frame comparison with a
+competitor's product-review ad and a Seedance reference showed why: their product is on screen
+93–100 % of the time, ours was 13–19 %. The pipeline now does what the human did:
+
+- **Rules as data** (`config/creative_rules.toml`): product screen time, a person handling the
+  product, a 2-second key moment and hero, one location, banned words with their replacements.
+  Code checks every prompt against them; the repair loop fixes what breaks a rule.
+- **A structured prompt**: the writer sees the product photo and names props with a physical
+  description, the product's size per shot and the key shot; code renders a References block.
+- **A creative director** (Opus) reviews the prompt rule by rule before the spend gate and
+  rewrites it when a rule fails; code decides what is kept.
+- **Prop images**: one per prop the prompt names, checked by vision against the product photo.
+- **A Saudi culture bank** (`config/culture_bank.toml`) anchors each insight to a real ritual.
+- **Critic v3**: windows from the video's own cuts, dense frames on the key moment and the first
+  two seconds, execution warnings. **Audio** is normalised to −16 LUFS.
+
+`uv run python scripts/decisions_report.py <run>` prints what to judge at the gate: insights with
+their anchors, the three concepts with six scores, the director's verdicts, the images in order and
+the final prompt with its price.
+
+Status: built and tested on zero keys and a fake Higgsfield server. The two human-directed
+generations above are the only real ones so far; the new planning stages have not yet run on real
+models.
 
 ## The brain
 
@@ -302,5 +324,5 @@ config/                 models.toml (models, prices, profiles), chaos.toml, real
 docs/                   PLAN · PROGRESS · ADRs · MORE_TIME · DEMO_SCRIPT · screenshots · media
 ```
 
-`make check` = ruff + ruff format + **mypy --strict** + pytest: **686 tests** (plus 2 live tests
+`make check` = ruff + ruff format + **mypy --strict** + pytest: **792 tests** (plus 2 live tests
 that run with `--live`). Recovery paths, edits, the wallet, crash/resume and the API all have tests.

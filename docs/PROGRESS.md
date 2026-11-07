@@ -1113,3 +1113,19 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
   `final_v2.mp4` was not overwritten).
 - **Deferred**: auto-retime (user decision).
 - **Tests**: 791 passed, 2 skipped (+3: `tests/integration/test_loudness.py`).
+
+## Phase 7: reports, studio, and the test loop (2026-11-07)
+
+- **Built**: the pack's "Concepts and rubric" table (six scores per concept from the select
+  event, the pick, the cliché flag); `scripts/decisions_report.py` prints insights with anchors,
+  the six scores per concept, the images in order, the director's verdicts and changes, the
+  writer's prompt when replaced, the final prompt and the props/estimate events; the studio's
+  whole-ad panel shows the images and the director's review full width (checked in Chrome on a
+  zero-key run: Director and Props lanes, three thumbnails served, no console errors). README
+  section on ADR-0026.
+- **Zero-key end to end**: «اعلان لعطر نسائي» with `assets/perfume_women.jpeg` reaches DONE
+  through DIRECTOR (kept) and PROPS (2 mock props), final at −16 LUFS.
+- **Not run (paid, waiting for approval)**: the three planning runs to the spend gate
+  (women's perfume, Saudi specialty coffee, premium dates: Anthropic + fal props, about $0.50–0.65
+  each) and the critic re-run on try 2. The real generation is out of scope (no top-up).
+- **Tests**: 792 passed, 2 skipped (+1: the pack test).

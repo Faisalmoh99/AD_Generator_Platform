@@ -12,11 +12,14 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 from adsmith.domain.concept import Concept
-from adsmith.domain.enums import Language
+from adsmith.domain.enums import Language, Stage
+from adsmith.domain.events import AgentEvent, EventType
+from adsmith.domain.rubric import RUBRIC_KEYS
 from adsmith.domain.run import RunState
 
 PACK_SCHEMA_VERSION = 1
@@ -160,7 +163,7 @@ def _creative_lines(concept: Concept) -> list[str]:
     return [*lines, ""] if lines else []
 
 
-def pack_markdown(state: RunState) -> str:
+def pack_markdown(state: RunState, scores: Mapping[int, Mapping[str, object]] | None = None) -> str:
     lang = "ar" if state.language == Language.AR.value else "en"
     t = _LABELS[lang]
     out = [f"# {t['title']}: {state.id}", ""]
@@ -184,6 +187,7 @@ def pack_markdown(state: RunState) -> str:
         out.append("")
     concept = state.concepts.selected if state.concepts else None
     if concept:
+        out += _concept_lines(state, scores or {})
         out += [f"## {t['concept']}: {concept.title}", "", concept.logline, ""]
         out += _creative_lines(concept)
     if state.generation is not None:
@@ -269,7 +273,39 @@ def pack_markdown(state: RunState) -> str:
     return "\n".join(out).rstrip() + "\n"
 
 
-def write_production_pack(state: RunState, out_dir: Path) -> Path:
+def concept_scores(events: Sequence[AgentEvent]) -> dict[int, dict[str, object]]:
+    """The judge's scores per concept number, from the select decision event."""
+    for e in reversed(events):
+        if e.stage is Stage.SELECT and e.type is EventType.DECISION and "scores" in e.payload:
+            raw = e.payload["scores"]
+            if isinstance(raw, list):
+                return {
+                    int(str(s["concept_number"])): dict(s.items())
+                    for s in raw
+                    if isinstance(s, dict)
+                }
+    return {}
+
+
+def _concept_lines(state: RunState, scores: Mapping[int, Mapping[str, object]]) -> list[str]:
+    """All three concepts with the six rubric scores and the weighted total (ADR-0024)."""
+    if state.concepts is None or not scores:
+        return []
+    out = ["## Concepts and rubric", ""]
+    head = " | ".join(RUBRIC_KEYS)
+    out += [f"| # | concept | {head} | total |", "|" + "---|" * (len(RUBRIC_KEYS) + 3)]
+    for n, c in enumerate(state.concepts.concepts, 1):
+        s = scores.get(n, {})
+        mark = " (picked)" if c.id == state.concepts.selected_id else ""
+        cells = " | ".join(str(s.get(k, "-")) for k in RUBRIC_KEYS)
+        cliche = " (cliché)" if s.get("uses_category_cliche") else ""
+        out.append(f"| {n} | {c.title}{mark} | {cells} | {s.get('weighted', '-')}{cliche} |")
+    return [*out, ""]
+
+
+def write_production_pack(
+    state: RunState, out_dir: Path, scores: Mapping[int, Mapping[str, object]] | None = None
+) -> Path:
     """Atomically (re)write the pack: build in a temp dir, then swap it into place."""
     out_dir.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(dir=out_dir.parent, prefix=".pack-"))
@@ -277,7 +313,7 @@ def write_production_pack(state: RunState, out_dir: Path) -> Path:
         (tmp / "storyboard.json").write_text(
             json.dumps(pack_json(state), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
-        (tmp / "storyboard.md").write_text(pack_markdown(state), encoding="utf-8")
+        (tmp / "storyboard.md").write_text(pack_markdown(state, scores or {}), encoding="utf-8")
         if out_dir.exists():
             shutil.rmtree(out_dir)
         tmp.replace(out_dir)

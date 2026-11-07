@@ -21,7 +21,7 @@ from pathlib import Path
 
 from adsmith.agent.context import AgentRuntime, ad_endpoint
 from adsmith.agent.deltas import apply_delta
-from adsmith.agent.export import write_production_pack
+from adsmith.agent.export import concept_scores, write_production_pack
 from adsmith.agent.i18n import failure_message, stage_label
 from adsmith.agent.nodes.assemble import assemble
 from adsmith.agent.nodes.base import Node, NodeResult
@@ -399,7 +399,8 @@ class Orchestrator:
         """Write the Production Pack. Never fails the run: problems become a warn event."""
         target = out_dir or self.rt.storage.artifacts.run_dir(state.id) / "production_pack"
         try:
-            path = write_production_pack(state, target)
+            events = self.rt.storage.events.tail(state.id, limit=100_000)
+            path = write_production_pack(state, target, concept_scores(events))
         except OSError as exc:
             self.rt.storage.events.append(
                 state.id,
