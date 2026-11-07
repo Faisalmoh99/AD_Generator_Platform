@@ -315,7 +315,7 @@ def test_multishot_needs_the_product_in_three_shots_and_two_second_turns(
 def test_emotion_on_turn_is_a_judged_rule_with_this_runs_lesson(rules: CreativeRules) -> None:
     assert "emotion_on_turn" in rules.judge_ids
     rule = next(r for r in rules.judge if r.id == "emotion_on_turn")
-    assert "the face shows the feeling" in rule.text and "hands and a wrist alone" in rule.text
+    assert "shows the feeling" in rule.text and "hands and a wrist alone" in rule.text
     assert "hand and a wrist" in rules.lessons["try_3"]
     assert "emotion_on_turn" in rules.prompt_block()
 
@@ -392,9 +392,11 @@ def test_a_text_only_prop_has_no_references_line() -> None:
 
 def test_emotion_on_turn_needs_the_face_and_names_the_real_cliche(rules: CreativeRules) -> None:
     rule = next(r for r in rules.judge if r.id == "emotion_on_turn")
-    assert "face, at least partly (profile or three-quarter is fine)" in rule.text
-    assert "'Face turned away', 'seen from behind'" in rule.text
-    assert "eyes closed, sniffing the wrist" in rule.text
+    assert "at least partly visible (profile or three-quarter is fine)" in rule.text
+    assert "Face turned away, seen from behind" in rule.text
+    assert "eyes closed sniffing the wrist" in rule.text
+    # ADR-0029, the coffee video: the face is the one whose gesture the insight is about
+    assert "the father who honours his son, not only the son" in rule.text
 
 
 def test_a_host_never_neglects_a_guest(rules: CreativeRules) -> None:

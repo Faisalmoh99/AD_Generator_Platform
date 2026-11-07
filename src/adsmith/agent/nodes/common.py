@@ -82,6 +82,20 @@ def concept_block(c: Concept, number: int | None = None, *, image_first: bool = 
     return "\n".join(lines)
 
 
+def device_block(settings: Settings, c: Concept | None) -> str:
+    """The concept's visual device for the writer and the director (ADR-0029): what it is, the
+    one image, its shot, the wording that renders it and its minimum length."""
+    d = settings.visual_devices.get(c.device_id or "") if c else None
+    if c is None or d is None:
+        return "(no visual device)"
+    return (
+        f"{d.id} ({d.name}): {d.how_it_works}\nThe image: {c.device_image or '-'}\n"
+        f"Concept shot: {c.device_shot or '-'} (the turn); it needs at least {d.min_s:g} s.\n"
+        f"Wording that renders it in one shot: {d.seedance}\nRenders: {d.renderability}"
+        + (f" ({d.proven_by})" if d.proven_by else "")
+    )
+
+
 def insights_block(insights: InsightSet | None, bank: CultureBank | None = None) -> str:
     if insights is None or not insights.insights:
         return "(none were given: find the human truth yourself and state it in insight)"

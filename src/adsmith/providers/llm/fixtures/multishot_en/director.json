@@ -71,6 +71,21 @@
      "rule_id": "serving_correct",
      "passed": true,
      "note": "No coffee is poured into a finjan; the cup is only set down on the tray."
+    },
+    {
+     "rule_id": "device_lands",
+     "passed": true,
+     "note": "The host's scent drifts after the guest in the key shot, at half the frame, and the turn is that gift."
+    },
+    {
+     "rule_id": "setup_filmed",
+     "passed": true,
+     "note": "Shot 1 shows the gathering ending, the setup the gift at the door answers."
+    },
+    {
+     "rule_id": "no_holdup_opening",
+     "passed": true,
+     "note": "Shot 1 opens on a cup set down, not on the bottle held up to the lens."
     }
    ],
    "changes": [],
@@ -111,8 +126,8 @@
       "number": 1,
       "start_s": 0,
       "end_s": 2,
-      "action": "A hand sets the coffee cup on the brass tray beside the bottle.",
-      "event": "the cup is set down",
+      "action": "A hand sets the finjan on the brass tray beside the bottle.",
+      "event": "the finjan is set down",
       "camera": "close-up, slow push-in",
       "sound": "a cup clink",
       "shows_product": true,

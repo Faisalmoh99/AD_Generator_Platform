@@ -44,6 +44,22 @@ class GulfObject(DomainModel):
     # A verified reference photo of the Gulf version (path relative to the project root): used
     # at $0 instead of a generated prop image (user, 2026-11-07).
     ref_image: str | None = Field(default=None, pattern=r"\.(png|jpe?g|webp)$")
+    # Object fidelity (ADR-0029, the coffee video: "handleless" said once, the shots said "cups",
+    # the finjans got handles; the dallah image came back as set dressing too).
+    # always_say: the defining word code glues to every mention in the shots ("handleless").
+    always_say: Annotated[str, Field(min_length=2, max_length=30)] | None = None
+    # wrong_words: regexes for the generic word a model would draw instead ("cups?", "mugs?"),
+    # refused in the shots when this object is in the prompt (its own names are not).
+    wrong_words: list[Annotated[str, Field(min_length=2, max_length=60)]] = Field(
+        default_factory=list, max_length=8
+    )
+    # max_count 1: exactly one in the film, said in the References line.
+    max_count: int | None = Field(default=None, ge=1, le=6)
+
+    def name_regex(self) -> str:
+        """The object's English names (longest first, plural allowed) as one regex."""
+        names = sorted((n for n in self.names if n.isascii()), key=len, reverse=True)
+        return r"\b(" + "|".join(re.escape(n) for n in names) + r")(s|es)?\b"
 
     def matches(self, prop_name: str) -> bool:
         """A prop named 'brass dallah' or 'the coffee pot' is this object (whole-word match)."""
@@ -111,7 +127,7 @@ class CultureBank(DomainModel):
         for n in names:
             obj = self.object_for(n)
             if obj is not None and obj.gloss:
-                out[ref_key(n)] = obj.gloss
+                out[ref_key(n)] = obj.gloss + (", only one" if obj.max_count == 1 else "")
         return out
 
     def objects_block(self) -> str:
@@ -193,12 +209,73 @@ def _round_robin(entries: list[CultureEntry], limit: int, per_theme: int) -> lis
     return out
 
 
+_ONLY_ONE = "; exactly one in the whole film"
+
+
+def _glue(text: str, obj: GulfObject) -> str:
+    """Put the object's defining word before every mention that lacks it nearby
+    ("two finjans" → "two handleless finjans")."""
+    word = obj.always_say
+    if not word:
+        return text
+
+    def add(m: re.Match[str]) -> str:
+        before = text[max(0, m.start() - 30) : m.start()].lower()
+        return m.group(0) if word.lower() in before else f"{word} {m.group(0)}"
+
+    return re.sub(obj.name_regex(), add, text, flags=re.IGNORECASE)
+
+
+def objects_in(d: AdPromptDraft, bank: CultureBank) -> list[GulfObject]:
+    """The Gulf objects the prompt names, as a reference or in any shot."""
+    text = " ".join(f"{s.action} {s.event}" for s in d.shots)
+    named = {o.id for r in d.references if (o := bank.object_for(r.name)) is not None}
+    return [
+        o
+        for o in bank.objects
+        if o.id in named or re.search(o.name_regex(), text, re.IGNORECASE) is not None
+    ]
+
+
 def with_gulf_objects(d: AdPromptDraft, bank: CultureBank) -> AdPromptDraft:
     """A prop that names a Gulf object (a dallah, a finjan) gets the bank's canonical description,
     so the prompt, the prop image and its check all describe the Gulf version, never a generic
-    one. Code, not the writer, makes this substitution."""
+    one; an object that must be one of a kind says so; its defining word is glued to every
+    mention in the shots. Code, not the writer, makes these substitutions."""
     refs = []
     for r in d.references:
         obj = bank.object_for(r.name) if r.role == "prop" else None
-        refs.append(r.model_copy(update={"description": obj.description}) if obj else r)
-    return d.model_copy(update={"references": refs})
+        if obj is None:
+            refs.append(r)
+            continue
+        desc = obj.description
+        if obj.max_count == 1 and len(desc) + len(_ONLY_ONE) <= 200:
+            desc += _ONLY_ONE
+        refs.append(r.model_copy(update={"description": desc}))
+    present = objects_in(d, bank)
+    shots = []
+    for s in d.shots:
+        action, event = s.action, s.event
+        for o in present:
+            action, event = _glue(action, o), _glue(event, o)
+        shots.append(s.model_copy(update={"action": action, "event": event}))
+    return d.model_copy(update={"references": refs, "shots": shots})
+
+
+def object_problems(d: AdPromptDraft, bank: CultureBank) -> list[str]:
+    """A shot that calls a Gulf object by a generic word ("cups" for finjans) is sent back: the
+    video model draws the generic word (the coffee video's teacups with handles)."""
+    problems: list[str] = []
+    for o in objects_in(d, bank):
+        for s in d.shots:
+            for field in ("action", "event"):
+                text = re.sub(o.name_regex(), " ", getattr(s, field), flags=re.IGNORECASE)
+                for w in o.wrong_words:
+                    m = re.search(rf"\b(?:{w})\b", text, re.IGNORECASE)
+                    if m:
+                        problems.append(
+                            f'shot {s.number} {field} says "{m.group(0)}" while the prompt has '
+                            f"the {o.id}: call it the {o.always_say + ' ' if o.always_say else ''}"
+                            f"{o.id} every time (the model draws the generic word)"
+                        )
+    return problems

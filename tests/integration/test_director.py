@@ -85,11 +85,11 @@ async def test_all_rules_pass_keeps_the_writers_prompt_in_one_call(tmp_path: Pat
     r, g = state.director_review, state.generation
     assert r is not None and g is not None and llm.calls_for("director") == 1
     assert r.outcome == "kept" and r.failed == [] and r.after_text == r.before_text
-    assert g.prompt.template_version == "ad_prompt_writer@v5"
+    assert g.prompt.template_version == "ad_prompt_writer@v6"
     evs = summaries(orch, state.id)
-    assert evs[0].summary == "Creative director (round 1): all 14 rules pass"
+    assert evs[0].summary == "Creative director (round 1): all 17 rules pass"
     assert evs[-1].summary.startswith("Creative director: writer's prompt kept")
-    req = next(x for x in llm.requests if x.template == "director@v4")
+    req = next(x for x in llm.requests if x.template == "director@v5")
     assert any(type(p).__name__ == "ImagePart" for p in getattr(req.messages[0], "parts", ()))
 
 
@@ -114,7 +114,7 @@ async def test_a_failed_rule_rewrites_retimes_and_syncs_the_storyboard(tmp_path:
     assert r is not None and g is not None and sb is not None
     assert llm.calls_for("director") == 2 and [x.round for x in r.rounds] == [1, 2]
     assert r.outcome == "rewritten" and r.retimed and r.failed == ["turn_withheld"]
-    assert g.prompt.template_version == "director@v4"
+    assert g.prompt.template_version == "director@v5"
     assert [(s.start_s, s.end_s) for s in g.prompt.shots] == [(0, 2), (2, 3.5), (3.5, 6), (6, 8)]
     assert "Shot 3 (3.5-6 s): The host lifts the bottle with both hands, holds it" in g.prompt.text
     assert [s.duration_s for s in sb.scenes] == [2, 1.5, 2.5, 2]
@@ -125,10 +125,10 @@ async def test_a_failed_rule_rewrites_retimes_and_syncs_the_storyboard(tmp_path:
 
     assert r.before_text != r.after_text and no_refs(r.after_text) == no_refs(g.prompt.text)
     evs = summaries(orch, state.id)
-    assert "1 of 14 rules failed (turn_withheld)" in evs[0].summary
+    assert "1 of 17 rules failed (turn_withheld)" in evs[0].summary
     assert evs[-1].summary.startswith("Creative director: director's rewrite used (re-timed")
     # The round-2 request carries the round-1 verdicts.
-    second = [x for x in llm.requests if x.template == "director@v4"][-1]
+    second = [x for x in llm.requests if x.template == "director@v5"][-1]
     parts: tuple[Any, ...] = getattr(second.messages[0], "parts", ())
     assert "turn_withheld: FAIL" in parts[-1].text
 
@@ -143,7 +143,7 @@ async def test_a_rewrite_that_never_passes_the_checks_falls_back_with_a_warning(
     r, g = state.director_review, state.generation
     assert r is not None and g is not None and state.stage is Stage.AWAITING_GENERATION_APPROVAL
     assert r.outcome == "fallback" and r.rounds == [] and "ember" in r.note
-    assert g.prompt.template_version == "ad_prompt_writer@v5"
+    assert g.prompt.template_version == "ad_prompt_writer@v6"
     assert llm.calls_for("director") == 3  # the first answer + 2 repairs, then fallback
     last = summaries(orch, state.id)[-1]
     assert last.level == "warn" and "the rewrite failed the code checks" in last.summary

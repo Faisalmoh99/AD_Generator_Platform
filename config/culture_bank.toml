@@ -33,7 +33,9 @@ food = ["food", "sweets", "chocolate", "pastry", "حلويات", "حلا", "شو
 # Fields: id · names (English and Arabic, matched against the prop's name) · description (one
 # physical line, at most 200 characters) · not_like (the wrong versions a model tends to draw) ·
 # ref_image (optional: a verified photo, used at $0 instead of a generated image) ·
-# gloss (2-4 words for the compact References line when the prompt is over the limit).
+# gloss (2-4 words for the compact References line when the prompt is over the limit) ·
+# always_say (the word code glues to every mention) · wrong_words (generic words refused in the
+# shots) · max_count (1: exactly one in the film).
 [[objects]]
 id = "dallah"
 gloss = "Saudi coffee pot"
@@ -41,6 +43,7 @@ ref_image = "assets/dallah.webp"  # a verified reference photo (user, 2026-11-07
 names = ["dallah", "dalla", "arabic coffee pot", "coffee pot", "دلة", "دلّة"]
 description = "a Saudi dallah: brass body pinched at the waist above a wide base, a tall crescent beak spout, a domed lid with a pointed finial, a curved side handle"
 not_like = ["a European or Turkish coffee pot", "a gooseneck kettle with a thin straight spout", "a teapot", "a moka pot", "a glass brewer or pour-over carafe (Saudi qahwa in a finjan is poured only from a dallah)"]
+max_count = 1  # the coffee video showed a second dallah as set dressing (ADR-0029)
 
 [[objects]]
 id = "finjan"
@@ -49,6 +52,8 @@ ref_image = "assets/finjan.jpeg"  # a verified reference photo (user, 2026-11-07
 names = ["finjan", "fenjan", "arabic coffee cup", "coffee cup", "فنجان", "فناجين"]
 description = "a small handleless Arabic coffee cup (finjan), white porcelain with a thin gold band, about egg-cup size, a third full of light golden coffee"
 not_like = ["a mug or any cup with a handle", "an espresso cup on a saucer", "dark black coffee"]
+always_say = "handleless"  # said once in References, the shots said "cups": handles (ADR-0029)
+wrong_words = ["cups?", "teacups?", "mugs?", "saucers?"]
 
 [[objects]]
 id = "mabkhara"

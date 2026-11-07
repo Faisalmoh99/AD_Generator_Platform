@@ -20,6 +20,7 @@ from adsmith.agent.nodes.common import (
     brief_block,
     concept_block,
     decision,
+    device_block,
     scene_block,
     storyboard_block,
 )
@@ -37,8 +38,8 @@ from adsmith.domain.ad import (
     render_ad_prompt,
 )
 from adsmith.domain.continuity import ContinuityBible
-from adsmith.domain.creative_rules import creative_rule_problems
-from adsmith.domain.culture_bank import with_gulf_objects
+from adsmith.domain.creative_rules import creative_rule_problems, device_length_problems
+from adsmith.domain.culture_bank import object_problems, with_gulf_objects
 from adsmith.domain.enums import Stage
 from adsmith.domain.formats import AdFormat
 from adsmith.domain.llm import LLMCallRecord
@@ -229,6 +230,7 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     rendered = template.render(
         brief=brief_block(state.brief),
         concept=concept_block(concept),
+        visual_device=device_block(ctx.settings, concept),
         bible=bible.prompt_block(),
         creative_rules=rules.prompt_block(),
         gulf_objects=bank.objects_block(),
@@ -251,6 +253,8 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
     model_key = ad_model_key(ctx.settings, cfg.ad_model, cfg.ad_provider)
     images = await product_photo_parts(state, ctx)
 
+    device = ctx.settings.visual_devices.get(concept.device_id or "")
+
     def convert(d: AdPromptDraft) -> AdGeneration:
         d = with_gulf_objects(d, bank)  # a named Gulf object gets its canonical description
         problems = ad_prompt_problems(
@@ -259,6 +263,9 @@ async def write_ad_prompt(state: RunState, ctx: NodeContext) -> StructuredResult
             max_words=rules.params.max_words, key_within_words=rules.params.key_within_words,
         )  # fmt: skip
         problems += creative_rule_problems(d, rules)
+        problems += object_problems(d, bank)
+        if device is not None:
+            problems += device_length_problems(d, device.id, device.min_s)
         if problems:
             raise ValueError("; ".join(problems))
         ad_prompt = AdPrompt.from_draft(

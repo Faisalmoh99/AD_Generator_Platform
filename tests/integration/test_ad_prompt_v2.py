@@ -20,11 +20,11 @@ async def test_the_writer_sees_the_photo_and_the_prompt_has_references(tmp_path:
     run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
     state = await orch.run_until_blocked(run.id, stop_before=Stage.ESTIMATE)
     assert state.stage is Stage.ESTIMATE and state.generation is not None
-    req = next(r for r in llm.requests if r.template == "ad_prompt_writer@v5")
+    req = next(r for r in llm.requests if r.template == "ad_prompt_writer@v6")
     parts = getattr(req.messages[0], "parts", ())
     assert any(isinstance(p, ImagePart) for p in parts)
     p = state.generation.prompt
-    assert p.template_version == "ad_prompt_writer@v5" and p.key_shot == 3
+    assert p.template_version == "ad_prompt_writer@v6" and p.key_shot == 3
     lines = p.text.splitlines()
     # ADR-0028: identity first, then the key moment, then the header.
     assert lines[0].startswith("Image 1 is the product: keep its shape")

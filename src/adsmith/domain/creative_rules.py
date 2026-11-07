@@ -39,6 +39,8 @@ class CreativeParams(DomainModel):
     max_words_look: int = Field(default=35, ge=5, le=200)
     max_words_shot: int = Field(default=45, ge=10, le=200)
     max_words_audio: int = Field(default=25, ge=5, le=200)
+    # The key shot's beats (ADR-0029: the coffee video's key shot had four in 2.5 s).
+    key_max_beats: int = Field(default=2, ge=1, le=6)
 
 
 class BannedWord(DomainModel):
@@ -157,6 +159,8 @@ class CreativeRules(DomainModel):
                 "key shot's event as the first two lines: they must end within "
                 f"{p.key_within_words} words, so the key shot's event is the one visible motion "
                 "in a few words.",
+                f"- The key shot's action has at most {p.key_max_beats} beats (clauses split by "
+                "';' or a full stop): the one event that is the turn, and the reaction to it.",
             ]
         )
 
@@ -371,6 +375,38 @@ def product_share(d: AdPromptDraft) -> tuple[list[int], float]:
     return [s.number for s in shots], (seconds / total if total > 0 else 0.0)
 
 
+_BEAT_SPLIT = re.compile(r";|\.\s+(?=[A-Z])")
+
+
+def key_beat_problems(d: AdPromptDraft, max_beats: int) -> list[str]:
+    """The key shot carries at most ``max_beats`` beats (clauses split by ';' or a full stop):
+    the coffee video's key shot had four in 2.5 s (tilt; fill; offer; smile) and the turn
+    landed softly. Steps of ONE event ("spirals tighter, thickens, then condenses") are fine."""
+    shot = next((s for s in d.shots if s.number == d.key_shot), None)
+    if shot is None:
+        return []
+    beats = [b for b in _BEAT_SPLIT.split(shot.action.strip().rstrip(".")) if b.strip()]
+    if len(beats) <= max_beats:
+        return []
+    return [
+        f"the key shot {shot.number} has {len(beats)} beats ({'; '.join(b.strip() for b in beats)}"
+        f"); at most {max_beats}: keep the one event that IS the turn and the reaction to it, "
+        "move the rest to another shot or cut it"
+    ]
+
+
+def device_length_problems(d: AdPromptDraft, device: str, min_s: float) -> list[str]:
+    """The concept's visual device happens in the key shot, which needs the device's minimum
+    length (ADR-0029: try 2's 2.5 s morph was compressed to 0.5 s)."""
+    shot = next((s for s in d.shots if s.number == d.key_shot), None)
+    if shot is None or shot.end_s - shot.start_s + 1e-9 >= min_s:
+        return []
+    return [
+        f"the key shot {shot.number} carries the visual device '{device}', which needs at least "
+        f"{min_s:g} s; it lasts {shot.end_s - shot.start_s:g} s (take time from another shot)"
+    ]
+
+
 def creative_rule_problems(  # noqa: PLR0912, PLR0915 - one flat list of independent rules
     d: AdPromptDraft, rules: CreativeRules
 ) -> list[str]:
@@ -457,6 +493,7 @@ def creative_rule_problems(  # noqa: PLR0912, PLR0915 - one flat list of indepen
     problems += physics_problems(d, rules.physics)
     problems += serving_problems(d, rules.serving)
     problems += word_budget_problems(d, p)
+    problems += key_beat_problems(d, p.key_max_beats)
     for s in d.shots:
         if s.handled and s.product_in_frame == "small":
             problems.append(

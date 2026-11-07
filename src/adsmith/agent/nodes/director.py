@@ -20,6 +20,7 @@ from adsmith.agent.nodes.common import (
     brief_block,
     concept_block,
     decision,
+    device_block,
     language_name,
     storyboard_block,
 )
@@ -41,8 +42,12 @@ from adsmith.domain.ad import (
     writer_words,
 )
 from adsmith.domain.base import stable_hash
-from adsmith.domain.creative_rules import CreativeRules, creative_rule_problems
-from adsmith.domain.culture_bank import with_gulf_objects
+from adsmith.domain.creative_rules import (
+    CreativeRules,
+    creative_rule_problems,
+    device_length_problems,
+)
+from adsmith.domain.culture_bank import CultureBank, object_problems, with_gulf_objects
 from adsmith.domain.director import (
     DirectorReview,
     DirectorReviewDraft,
@@ -55,6 +60,7 @@ from adsmith.domain.formats import FormatGrammar, format_block
 from adsmith.domain.llm import LLMCallRecord
 from adsmith.domain.run import RunState
 from adsmith.domain.storyboard import Storyboard
+from adsmith.domain.visual_devices import VisualDevice
 
 RETIME_EPS_S = 0.05
 
@@ -80,6 +86,8 @@ def rewrite_problems(
     image_names: Sequence[str],
     identity: str | None = None,
     glosses: Mapping[str, str] | None = None,
+    bank: CultureBank | None = None,
+    device: VisualDevice | None = None,
 ) -> list[str]:
     """Code checks on a director rewrite. Timecodes are checked against the rewrite's OWN
     durations (the director may re-time), within the grammar: same shot count as the storyboard,
@@ -116,6 +124,10 @@ def rewrite_problems(
         key_within_words=rules.params.key_within_words, existing=image_names, glosses=glosses,
         identity=identity,
     )  # fmt: skip
+    if bank is not None:
+        problems += object_problems(d, bank)
+    if device is not None:
+        problems += device_length_problems(d, device.id, device.min_s)
     return problems
 
 
@@ -199,6 +211,8 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     ids = rules.judge_ids
     bank = ctx.settings.culture_bank
     ident = g.prompt.identity or None  # the writer's clause by product type
+    picked = state.concepts.selected if state.concepts else None
+    device = ctx.settings.visual_devices.get(picked.device_id or "") if picked else None
 
     def convert_for(round_no: int) -> Callable[[DirectorReviewDraft], DirectorRound]:
         def convert(d: DirectorReviewDraft) -> DirectorRound:
@@ -210,7 +224,8 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
             problems += rewrite_problems(
                 d.rewrite, sb=sb, grammar=grammar, rules=rules, duration_s=duration,
                 max_chars=ep.max_prompt_chars, image_names=names, identity=ident,
-                glosses=bank.glosses([r.name for r in d.rewrite.references]),
+                glosses=bank.glosses([r.name for r in d.rewrite.references]), bank=bank,
+                device=device,
             )  # fmt: skip
             if problems:
                 raise ValueError("; ".join(problems))
@@ -253,6 +268,7 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         return template.render(
             brief=brief_block(state.brief) if state.brief else "",
             concept=concept_block(concept),
+            visual_device=device_block(ctx.settings, picked),
             bible=state.bible.prompt_block() if state.bible else "",
             format=format_block(ctx.settings.formats, sb.format),
             params=rules.params_block(),

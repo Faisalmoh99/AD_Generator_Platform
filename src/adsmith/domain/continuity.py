@@ -126,6 +126,11 @@ class ContinuityBibleDraft(DomainModel):
     product-only ads."""
 
     character: CharacterSpec | None
+    second_character: CharacterSpec | None = Field(
+        description="A second person whose face or reaction matters to the turn (the father who "
+        "pours, the guest who is honoured), described as precisely as the first; null when the "
+        "story has one person."
+    )
     product: ProductSpec
     color_grade: ColorGrade
     location: LocationSpec
@@ -137,6 +142,8 @@ class ContinuityBibleDraft(DomainModel):
 
 class ContinuityBible(ContinuityBibleDraft):
     version: int = Field(default=1, ge=1)
+    # ADR-0029: bibles made before it described one person only.
+    second_character: CharacterSpec | None = None
 
     def section_hash(self, section: BibleSection) -> str:
         return stable_hash(
@@ -157,13 +164,16 @@ class ContinuityBible(ContinuityBibleDraft):
         """
         use = sections if sections is not None else frozenset(BibleSection)
         lines: list[str] = []
-        if BibleSection.CHARACTER in use and self.character is not None:
-            c = self.character
-            lines.append(
-                f"CHARACTER: {c.description}; age: {c.age_range}; appearance: {c.appearance}; "
-                f"hair: {c.hair}; grooming: {c.grooming}; build: {c.build}; "
-                f"wardrobe: {', '.join(c.wardrobe)}."
-            )
+        if BibleSection.CHARACTER in use:
+            for label, c in (("CHARACTER", self.character),
+                             ("SECOND CHARACTER", self.second_character)):  # fmt: skip
+                if c is None:
+                    continue
+                lines.append(
+                    f"{label}: {c.description}; age: {c.age_range}; appearance: {c.appearance}; "
+                    f"hair: {c.hair}; grooming: {c.grooming}; build: {c.build}; "
+                    f"wardrobe: {', '.join(c.wardrobe)}."
+                )
         if BibleSection.PRODUCT in use:
             p = self.product
             brand = (

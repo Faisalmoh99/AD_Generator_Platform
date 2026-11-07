@@ -47,6 +47,8 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
         # → schema repair with the exact problems
         problems = wordless_label_problems(d.product) + effect_feature_problems(d.product)
         problems += culture.wardrobe_problems(brief, d.character)
+        if d.second_character is not None:
+            problems += culture.wardrobe_problems(brief, d.second_character)
         if problems:
             raise ValueError("; ".join(problems))
         return ContinuityBible(**d.model_dump(), version=version)
@@ -64,6 +66,8 @@ async def continuity(state: RunState, ctx: NodeContext) -> NodeResult:
     if flags:
         deltas.append(UpgradeSceneFlags(flags=flags))
     who = bible.character.description if bible.character else "no character"
+    if bible.second_character is not None:
+        who += f" + {bible.second_character.description}"
     return NodeResult(
         deltas=deltas,
         events=[

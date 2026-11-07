@@ -29,6 +29,7 @@ key_within_words = 30      # the identity line and the key-moment line end withi
 max_words_look = 30        # location + look + lighting together
 max_words_shot = 35        # one shot: action + camera + sound (labels not counted)
 max_words_audio = 20
+key_max_beats = 2          # beats in the key shot (';' or '.'): the coffee video had four in 2.5 s
 
 # Words the video model took literally or that do not describe a picture. One table per word.
 # `pattern` is a case-insensitive regex (default: the word with word boundaries);
@@ -183,7 +184,7 @@ text = "One location for the whole film, named in the location line; every shot 
 
 [[judge]]
 id = "hook_motion"
-text = "Shot 1 has a physical motion in the first second and shows, at a readable size (at least a third of the frame), either the product or the prop that leads to it."
+text = "Shot 1 has a physical motion in the first second and shows, at a readable size (at least a third of the frame), either the product or the prop that leads to it. When the hook is a gaze or a gesture toward the product, the product standing on a surface in the frame at a readable size passes: nobody needs to hold it up."
 
 [[judge]]
 id = "sizes_named"
@@ -203,7 +204,7 @@ text = "The audio line names one sound hit exactly on the key shot's event (the 
 
 [[judge]]
 id = "emotion_on_turn"
-text = "When the insight is about a person's feeling, the key shot shows that person's face, at least partly (profile or three-quarter is fine), and the face shows the feeling at the turn (a small private smile, a breath, softened eyes). 'Face turned away', 'seen from behind' or hands and a wrist alone at the key shot fail this rule: they turn the idea into a spray demo any brand could run. The cliche to avoid is 'eyes closed, sniffing the wrist', not showing her face."
+text = "The key shot shows the face of the person whose feeling or gesture the insight is about (the father who honours his son, not only the son); when two people share the turn, a two-shot with both faces. The face is at least partly visible (profile or three-quarter is fine) and shows the feeling (a small private smile, a breath, softened eyes). Face turned away, seen from behind, or hands and a wrist alone fail: they turn the idea into a spray demo any brand could run. The cliche to avoid is eyes closed sniffing the wrist, not showing her face."
 
 [[judge]]
 id = "culturally_gracious"
@@ -220,6 +221,18 @@ text = "The key moment reads on a phone screen in 2 seconds with the sound off: 
 [[judge]]
 id = "serving_correct"
 text = "Saudi qahwa (light golden coffee in a small handleless finjan) is brewed in and poured from a dallah only, never from a glass brewer, V60, kettle, carafe or teapot; a glass brewer or pour-over belongs only with dark specialty coffee in ordinary cups. The pourer holds the dallah in the left hand and offers the finjan with the right. The younger usually serves the elder, so an elder pouring for a younger person is an honour: when that is the turn, keep it and let it read."
+
+[[judge]]
+id = "device_lands"
+text = "The concept's visual device (named in the concept and in <visual_device>) IS the key shot's event: it happens in that shot, lasts most of it, is at least half the frame, and the turn depends on it. Use the device's wording that renders. A device moved to a background detail, shrunk to a flash, or replaced by an ordinary action fails: the device is why the ad is remembered."
+
+[[judge]]
+id = "setup_filmed"
+text = "The key shot's meaning depends on something the viewer SAW earlier: shot 1 is the setup the turn answers (the son waiting for his father's verdict, the elder passing the burner), never a product held up to camera. If the turn reverses a situation, that situation is on screen before it."
+
+[[judge]]
+id = "no_holdup_opening"
+text = "No shot opens with a person holding the product up to the camera or presenting it to the lens: it is the generic product-review opening (the coffee video's critic: 'a generic hold-up-the-product opening with no tension'). The product acts in the story instead: poured, opened, passed, used."
 
 [[judge]]
 id = "physics_anchored"

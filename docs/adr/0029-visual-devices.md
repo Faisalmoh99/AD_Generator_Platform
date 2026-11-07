@@ -95,3 +95,31 @@ divergent-then-convergent prompting, arXiv 2512.23601).
 - `scripts/export_preferences.py` writes (preferred, rejected) JSONL pairs and prints how often
   the human agreed with the system's pick: the first calibration number for every judge.
 - The gate printout lists the five taglines and three brands with code's pick marked.
+
+## Addendum (part 4): the execution path keeps the idea
+
+What the coffee video lost, each now caught before the spend gate:
+- **Both faces** (`ContinuityBible.second_character`, `continuity` v7): the bible described only
+  the son, so the father was hands and a torso at his own turn. A second person whose face carries
+  the turn is described like the first (wardrobe lint included); stored bibles load without it.
+  `emotion_on_turn` now names whose face: the person whose feeling or gesture the insight is about.
+- **Object fidelity** (culture-bank `[[objects]]`: `always_say`, `wrong_words`, `max_count`):
+  code glues "handleless" before every finjan in the shots, refuses "cups / teacups / mugs /
+  saucers" when a finjan is in the prompt (`object_problems`, writer and director → repair), and
+  says "exactly one in the whole film" for the dallah (full and compact References lines).
+- **Two beats in the key shot** (`key_max_beats = 2`, `key_beat_problems`, clauses split by ';' or
+  a full stop): the coffee key shot had four in 2.5 s. Steps of one event stay one beat.
+- **The device's length** (`device_length_problems`): the key shot lasts at least the concept's
+  device minimum.
+- **Judged rules** (17): `device_lands` (the device IS the key shot's event, most of it, half the
+  frame, the turn depends on it), `setup_filmed` (shot 1 is the setup the turn answers),
+  `no_holdup_opening` (the generic product-review opening the critic named); `hook_motion` accepts
+  the product standing in frame when the hook is a gaze toward it, so `product_active`,
+  `hook_motion` and the size rules no longer compose into the hold-up opening.
+- **The device reaches the prompt** (`device_block`): `ad_prompt_writer` v6 and `director` v5 get
+  the concept's device, its one image, its shot, its minimum length and the wording that renders
+  it; the director keeps the device and the setup when two rules pull against each other.
+- Ideas are born at the film's shot count (part 1), so the director no longer has to cut a beat.
+
+Deferred: the production pack's shot list follows the storyboard, which a prompt rewrite does not
+change (the coffee pack still lists the glass brewer); a storyboard sync after `rewrite-prompt`.
