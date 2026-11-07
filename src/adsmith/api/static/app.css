@@ -338,3 +338,7 @@ textarea:focus, #edit:focus { border-color: var(--accent); }
 .photo-pick { display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border: 1px dashed var(--line-2); border-radius: var(--r); color: var(--muted); cursor: pointer; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .photo-pick.has { border-style: solid; color: var(--text); }
 .use-line { margin-left: 8px; height: 22px; padding: 0 8px; font-size: 12px; }
+.ideas { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.ideas-list { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; line-height: 1.5; }
+.ideas-list li { color: var(--text); }
+@media (max-width: 900px) { .ideas { grid-template-columns: 1fr; } }

@@ -389,7 +389,17 @@ function setupTips() {
 }
 
 // ------------------------------------------------------------------ concepts, board, final
+function renderIdeas(v) {
+  const ins = v.insights || [], sk = v.device_sketches || [];
+  $("#ideas-wrap").classList.toggle("hidden", !ins.length && !sk.length);
+  if (!ins.length && !sk.length) return;
+  const truths = ins.map((x, i) => `<li dir="auto"><b>${i + 1}.</b> ${esc(x.statement)}${x.culture_anchor && x.culture_anchor !== "none" ? ` <span class="flag">${esc(x.culture_anchor)}</span>` : ""}</li>`).join("");
+  const sketches = sk.map((x) => { const [id, ...rest] = x.split(":"); return `<li><span class="flag good">${esc(id.trim())}</span> ${esc(rest.join(":").trim())}</li>`; }).join("");
+  $("#ideas").innerHTML = `<div class="ideas-col"><div class="label">Insights</div><ol class="ideas-list">${truths}</ol></div><div class="ideas-col"><div class="label">Device sketches</div><ul class="ideas-list">${sketches}</ul></div>`;
+}
+
 function renderConcepts(v) {
+  renderIdeas(v);
   $("#concepts-wrap").classList.toggle("hidden", !v.concepts.length);
   if (!v.concepts.length) return;
   const awaiting = v.stage === "awaiting_concept_choice";
@@ -400,7 +410,7 @@ function renderConcepts(v) {
     : sel ? (v.selected_by === "user" ? `You picked 0${sel.number}${rec ? ` · the judge recommended 0${rec.number}` : ""}` : `Code picked 0${sel.number} · the LLM scored, code weighted`) : "";
   $("#concepts").innerHTML = v.concepts.map((c) => {
     const flags = [];
-    for (const [k, v] of Object.entries(c.rubric || {})) flags.push(`<span class="flag ${v >= 8 ? "good" : v <= 4 ? "bad" : ""}">${k.replace("_", " ")} ${v}</span>`);
+    for (const [k, v] of Object.entries(c.rubric || {})) flags.push(`<span class="flag ${v >= 8 ? "good" : v <= 4 ? "bad" : ""}">${k.replaceAll("_", " ")} ${v}</span>`);
     if (c.product_role) flags.push(`<span class="flag">product: ${c.product_role.role}</span>`);
     if (c.producibility != null) flags.push(`<span class="flag ${c.producibility >= 7 ? "good" : c.producibility <= 4 ? "bad" : ""}">producibility ${c.producibility}</span>`);
     if (c.originality != null && !c.rubric?.originality) flags.push(`<span class="flag ${c.originality >= 7 ? "good" : ""}">originality ${c.originality}</span>`);
@@ -416,6 +426,7 @@ function renderConcepts(v) {
       <div class="title" dir="auto">${esc(c.title)}</div>
       <div class="logline" dir="auto">${esc(c.logline)}</div>
       <div><div class="label">Insight</div><div class="insight" dir="auto">${esc(c.insight)}</div></div>
+      ${c.device_id ? `<div><div class="label">Visual device · ${esc(c.device_id.replaceAll("_", " "))}${c.device_shot ? ` · shot ${c.device_shot}` : ""}</div><div class="insight" dir="auto">${esc(c.device_image || "")}</div></div>` : ""}
       <div class="flags">${flags.join("")}</div>
       ${score}${pick}
     </article>`;

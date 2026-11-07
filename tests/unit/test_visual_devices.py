@@ -134,3 +134,16 @@ async def test_ideate_is_shown_the_devices_examples_and_shot_count(tmp_path: Pat
         "room_responds",
         "rewind",
     ]
+
+
+async def test_the_studio_shows_the_insights_sketches_and_devices(tmp_path: Path) -> None:
+    from adsmith.api.view import run_view  # noqa: PLC0415
+
+    rt = runtime(settings(tmp_path))
+    orch = Orchestrator(rt)
+    run = orch.create_run(REQUEST, interactive=False, product_photo=photo(tmp_path))
+    state = await orch.run_until_blocked(run.id, stop_before=Stage.STORYBOARD)
+    v = run_view(state, rt.storage)
+    assert len(v["device_sketches"]) == 6 and v["insights"]
+    assert v["concepts"][0]["device_id"] == "invisible_made_visible"
+    assert all(c["device_image"] and c["device_shot"] for c in v["concepts"])

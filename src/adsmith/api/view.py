@@ -248,6 +248,9 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
                     "single_shot": s.get("single_shot_plausible"),
                     "product_late": s.get("product_only_at_end"),
                     "rationale": s.get("rationale"),
+                    "device_id": c.device_id,
+                    "device_image": c.device_image,
+                    "device_shot": c.device_shot,
                 }
             )
     scenes = []
@@ -314,6 +317,7 @@ def run_view(state: RunState, storage: Storage) -> dict[str, Any]:
         "concepts": concepts,
         "selection": state.concepts.selection_rationale if state.concepts else None,
         "insights": [x.model_dump() for x in state.insights.insights] if state.insights else [],
+        "device_sketches": list(state.concepts.device_sketches) if state.concepts else [],
         "selected_by": state.concepts.selected_by if state.concepts else None,
         "scenes": scenes,
         "blast": _blast(state, events),
