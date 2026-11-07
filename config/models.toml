@@ -18,6 +18,7 @@ select         = { model = "claude-haiku-5-5",  effort = "low" }
 storyboard     = { model = "claude-sonnet-5-5", effort = "low" }
 continuity     = { model = "claude-haiku-5-5",  effort = "medium" }
 prompt_writer  = { model = "claude-sonnet-5-5", effort = "low" }
+director       = { model = "claude-sonnet-5-5", effort = "low" }
 edit_parser    = { model = "claude-haiku-5-5",  effort = "low" }
 conflict_check = { model = "claude-haiku-5-5",  effort = "medium" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "low" }
@@ -35,6 +36,8 @@ select         = { model = "claude-sonnet-5-5", effort = "medium" }
 storyboard     = { model = "claude-sonnet-5-5", effort = "high" }
 continuity     = { model = "claude-sonnet-5-5", effort = "medium" }
 prompt_writer  = { model = "claude-sonnet-5-5", effort = "medium" }
+# director: the creative brain of the whole-ad prompt (user, 2026-11-07): Opus at high effort.
+director       = { model = "claude-opus-5-5",   effort = "high" }
 edit_parser    = { model = "claude-haiku-5-5",  effort = "medium" }
 conflict_check = { model = "claude-sonnet-5-5", effort = "medium" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }
@@ -49,6 +52,7 @@ select         = { model = "claude-sonnet-5-5", effort = "high" }
 storyboard     = { model = "claude-opus-5-5",   effort = "high" }
 continuity     = { model = "claude-sonnet-5-5", effort = "high" }
 prompt_writer  = { model = "claude-sonnet-5-5", effort = "high" }
+director       = { model = "claude-opus-5-5",   effort = "high" }
 edit_parser    = { model = "claude-sonnet-5-5", effort = "medium" }
 conflict_check = { model = "claude-sonnet-5-5", effort = "high" }
 policy_rewrite = { model = "claude-sonnet-5-5", effort = "medium" }

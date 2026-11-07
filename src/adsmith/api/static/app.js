@@ -493,7 +493,20 @@ function renderGeneration(v) {
     ${g.warnings.length ? `<div class="desc">${esc(g.warnings.join(" · "))}</div>` : ""}
     ${g.creative_note ? `<div class="desc" dir="auto">${esc(g.creative_note)}</div>` : ""}
     ${g.failure ? `<div class="fail" dir="auto">${esc(g.failure)}</div>` : ""}
+    ${renderDirector(g.director)}
     <details><summary>Prompt sent to the model</summary><pre>${esc(g.prompt)}</pre></details>`;
+}
+
+function renderDirector(d) {
+  if (!d) return "";
+  const label = { kept: "writer's prompt kept", rewritten: "director's rewrite used", fallback: "writer's prompt kept (rewrite failed the checks)" }[d.outcome] || d.outcome;
+  const rounds = d.rounds.map((r) => {
+    const flags = r.verdicts.map((x) => `<span class="flag ${x.passed ? "good" : "bad"}" title="${esc(x.note)}">${esc(x.rule_id.replaceAll("_", " "))}</span>`).join("");
+    const changes = r.changes.length ? `<ul class="desc" dir="auto">${r.changes.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : "";
+    return `<div class="gen-row"><span>round ${r.round}</span><b>${r.failed.length ? `${r.failed.length} rule(s) failed` : "all rules pass"}</b></div><div class="flags">${flags}</div><div class="desc" dir="auto">${esc(r.summary)}</div>${changes}`;
+  }).join("");
+  const diff = d.outcome === "rewritten" ? `<details><summary>Writer's prompt (before the director)</summary><pre>${esc(d.before)}</pre></details>` : "";
+  return `<div class="section-label">Creative director · ${esc(label)}${d.retimed ? " · re-timed" : ""}</div>${rounds}${d.note ? `<div class="desc warn">${esc(d.note)}</div>` : ""}${diff}`;
 }
 
 function renderFinal(v) {

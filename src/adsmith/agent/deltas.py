@@ -16,6 +16,7 @@ from adsmith.domain.base import DomainModel
 from adsmith.domain.brief import Brief
 from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.director import DirectorReview
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.generation import Artifact
 from adsmith.domain.run import RunState
@@ -80,6 +81,20 @@ class SetAdGeneration(DomainModel):
     generation: AdGeneration
 
 
+class SetDirectorReview(DomainModel):
+    """The creative director's review of the whole-ad prompt (ADR-0026)."""
+
+    kind: Literal["set_director_review"] = "set_director_review"
+    review: DirectorReview
+
+
+class SyncStoryboardDurations(DomainModel):
+    """The director re-timed the shots within the grammar: the storyboard follows."""
+
+    kind: Literal["sync_storyboard_durations"] = "sync_storyboard_durations"
+    durations: list[float] = Field(min_length=1, max_length=12)
+
+
 class UpgradeSceneFlags(DomainModel):
     """Upgrade-only (ADR-0010): flags can be turned on, never off."""
 
@@ -106,7 +121,9 @@ Delta = Annotated[
     | FailScenes
     | SetFinal
     | SetEndCard
-    | SetAdGeneration,
+    | SetAdGeneration
+    | SetDirectorReview
+    | SyncStoryboardDurations,
     Field(discriminator="kind"),
 ]
 
@@ -158,6 +175,15 @@ def _select(state: RunState, delta: SelectConcept) -> None:
     state.concepts.select(delta.concept_id, delta.by, delta.rationale)
 
 
+def _sync_durations(state: RunState, delta: SyncStoryboardDurations) -> None:
+    sb = state.storyboard
+    if sb is None or len(sb.scenes) != len(delta.durations):
+        raise StaleDeltaError("the storyboard does not have one scene per re-timed shot")
+    for scene, d in zip(sb.scenes, delta.durations, strict=True):
+        scene.duration_s = d
+    sb.check_invariants()
+
+
 def apply_delta(state: RunState, delta: Delta) -> None:  # noqa: PLR0912 - one branch per delta
     match delta:
         case SetBrief():
@@ -190,3 +216,7 @@ def apply_delta(state: RunState, delta: Delta) -> None:  # noqa: PLR0912 - one b
             }:
                 raise StaleDeltaError(f"the ad generation is {state.generation.status}")
             state.generation = delta.generation
+        case SetDirectorReview():
+            state.director_review = delta.review
+        case SyncStoryboardDurations():
+            _sync_durations(state, delta)

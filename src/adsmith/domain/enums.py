@@ -15,6 +15,7 @@ class Stage(StrEnum):
     STORYBOARD = "storyboard"
     CONTINUITY = "continuity"
     PROMPT = "prompt"
+    DIRECTOR = "director"  # whole-ad: the creative director reviews the prompt (ADR-0026)
     ESTIMATE = "estimate"  # whole-ad generation: the provider's price for the one generation
     AWAITING_GENERATION_APPROVAL = "awaiting_generation_approval"  # human gate before real money
     KEYFRAME = "keyframe"

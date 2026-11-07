@@ -61,3 +61,29 @@ system must write that prompt itself.
 − More fields for the writer to fill: a larger schema and slightly longer prompts (the fixture
   renders at ≈ 1950 of 2500 characters).
 − A banned word in an otherwise good prompt costs a repair round.
+
+## Addendum (2026-11-07): the creative-director stage (phase 2)
+
+- `Stage.DIRECTOR` sits between PROMPT and ESTIMATE on whole-ad runs (`_after_prompt`); a pure
+  node (`agent/nodes/director.py`, template `director` v1, `LLMNode.DIRECTOR`: Opus at high effort
+  on balanced and quality, Sonnet low on fast; the user's choice). It sees the product photo, the
+  concept, the storyboard, the bible, the format, every rule (code-checked and judged), the
+  lessons and the run's clichés, the rendered prompt and its structured draft.
+- Output: one verdict per judged rule id (code checks the set), changes and a summary in the
+  user's language, and a full rewrite. The rewrite is checked by code against its OWN timings
+  (same shot count, each shot within the format's length range and its purpose's minimum, ending
+  at the ad's length), every creative rule and the prompt limit; failures go to the repair loop.
+- **Code decides what is kept** (CLAUDE.md rule 1): all verdicts pass → the writer's prompt stays
+  and the rewrite is only logged; a rule failed → round 2 (the round-1 verdicts and rewrite as
+  input, "confirm or fix") and the rewrite replaces the writer's prompt (`template_version =
+  director@v1`); round 2 invalid → the round-1 rewrite is used, with a note; round 1 invalid after
+  repairs → the writer's prompt stays and a warn decision is logged. The run never blocks here.
+- Re-timing within the grammar is allowed (the user's choice); `SyncStoryboardDurations` makes the
+  storyboard follow, and the critic's windows already follow the prompt's shots.
+- `RunState.director_review` (default None) stores the rounds, the outcome, before/after and a
+  `prompt_hash`; the same prompt is never reviewed twice (a resume or a reset to the stage costs
+  nothing). A human's prompt (`approve --prompt-file`) goes straight to ESTIMATE and is never
+  reviewed. Edits that reset the run to PROMPT write a new prompt, which is reviewed.
+- The studio shows a Director lane and, in the whole-ad panel, the verdicts per rule, the changes
+  and the writer's prompt when it was replaced; the production pack has a "Director review"
+  section and is also written after DIRECTOR.

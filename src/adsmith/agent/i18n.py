@@ -12,6 +12,7 @@ _STAGE: dict[Stage, tuple[str, str]] = {
     Stage.STORYBOARD: ("building the storyboard", "بناء القصة المصورة"),
     Stage.CONTINUITY: ("defining visual continuity", "تحديد الهوية البصرية"),
     Stage.PROMPT: ("writing generation prompts", "كتابة أوامر التوليد"),
+    Stage.DIRECTOR: ("creative director review", "مراجعة المخرج الإبداعي"),
     Stage.ESTIMATE: ("estimating the generation cost", "تقدير تكلفة التوليد"),
     Stage.AWAITING_GENERATION_APPROVAL: (
         "waiting for spend approval",

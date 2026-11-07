@@ -41,6 +41,7 @@ class LLMNode(StrEnum):
     STORYBOARD = "storyboard"
     CONTINUITY = "continuity"
     PROMPT_WRITER = "prompt_writer"
+    DIRECTOR = "director"  # the creative director of a whole-ad prompt (ADR-0026)
     EDIT_PARSER = "edit_parser"
     CONFLICT_CHECK = "conflict_check"
     POLICY_REWRITE = "policy_rewrite"

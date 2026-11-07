@@ -106,7 +106,28 @@ def pack_json(state: RunState) -> dict[str, Any]:
             if state.generation
             else None
         ),
+        "director_review": (
+            state.director_review.model_dump(mode="json") if state.director_review else None
+        ),
     }
+
+
+def _director_lines(state: RunState) -> list[str]:
+    """The creative director's review (ADR-0026): verdicts per rule, changes, before/after."""
+    r = state.director_review
+    if r is None:
+        return []
+    out = [f"## Director review: {r.outcome}{' (re-timed)' if r.retimed else ''}", ""]
+    for rnd in r.rounds:
+        out.append(f"Round {rnd.round}: {rnd.summary}")
+        out += [f"- {'PASS' if v.passed else 'FAIL'} {v.rule_id}: {v.note}" for v in rnd.verdicts]
+        out += [f"- change: {c}" for c in rnd.changes]
+        out.append("")
+    if r.note:
+        out += [f"Note: {r.note}", ""]
+    if r.outcome == "rewritten":
+        out += ["Writer's prompt (before the director):", "", "```text", r.before_text, "```", ""]
+    return out
 
 
 def _creative_lines(concept: Concept) -> list[str]:
@@ -159,6 +180,7 @@ def pack_markdown(state: RunState) -> str:
             "```",
             "",
         ]
+        out += _director_lines(state)
     if state.bible:
         out += [
             f"## {t['bible']} (v{state.bible.version})",

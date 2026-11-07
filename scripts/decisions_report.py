@@ -70,7 +70,8 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
             + f" · approved by {g.approved_by or '-'}"
         )
         for e in events:
-            if e.stage in {Stage.ESTIMATE, Stage.QA} and e.type is EventType.DECISION:
+            stages = {Stage.DIRECTOR, Stage.ESTIMATE, Stage.QA}
+            if e.stage in stages and e.type is EventType.DECISION:
                 out.append(f"  {e.summary[:400]}")
         if g.qa is not None:
             out.append(

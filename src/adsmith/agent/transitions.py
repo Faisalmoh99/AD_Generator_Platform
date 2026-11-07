@@ -33,7 +33,7 @@ def whole_ad(s: RunState) -> bool:
 
 
 def _after_prompt(s: RunState) -> Stage:
-    return Stage.ESTIMATE if whole_ad(s) else Stage.KEYFRAME
+    return Stage.DIRECTOR if whole_ad(s) else Stage.KEYFRAME
 
 
 def _after_estimate(s: RunState) -> Stage:
@@ -81,6 +81,7 @@ TRANSITIONS: dict[Stage, Guard] = {
     Stage.STORYBOARD: lambda s: Stage.CONTINUITY,
     Stage.CONTINUITY: lambda s: Stage.PROMPT,
     Stage.PROMPT: _after_prompt,
+    Stage.DIRECTOR: lambda s: Stage.ESTIMATE,
     Stage.ESTIMATE: _after_estimate,
     Stage.KEYFRAME: _after_keyframe,
     Stage.GENERATE: _after_generate,

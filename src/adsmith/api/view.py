@@ -21,6 +21,7 @@ PIPELINE: list[tuple[str, str, str]] = [
     ("storyboard", "Storyboard", "اللوحة"),
     ("continuity", "Bible", "الاستمرارية"),
     ("prompt", "Prompts", "الأوامر"),
+    ("director", "Director", "المخرج"),
     ("estimate", "Estimate", "التقدير"),
     ("keyframe", "Keyframes", "الإطارات"),
     ("generate", "Clips", "اللقطات"),
@@ -37,6 +38,7 @@ STAGE_KIND: dict[str, tuple[str, str]] = {
     "storyboard": ("llm", "LLM picks shots · code validates the grammar"),
     "continuity": ("llm", "LLM writes the bible · code lints wardrobe"),
     "prompt": ("llm", "LLM writes prompts · code lints them"),
+    "director": ("mixed", "LLM creative director judges the rules · code decides what is kept"),
     "estimate": ("code", "provider prices the one generation · a human approves the spend"),
     "keyframe": ("mixed", "image model · LLM vision gate · code decides pass"),
     "generate": ("code", "video model · code picks takes and windows"),
@@ -367,4 +369,28 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "warnings": g.qa.warnings if isinstance(g.qa, AdVerdict) else [],
         "creative_note": g.qa.creative_note if isinstance(g.qa, AdVerdict) else None,
         "failure": g.failure.reason_user if g.failure else None,
+        "director": _director(state),
+    }
+
+
+def _director(state: RunState) -> dict[str, Any] | None:
+    r = state.director_review
+    if r is None:
+        return None
+    return {
+        "outcome": r.outcome,
+        "retimed": r.retimed,
+        "note": r.note,
+        "rounds": [
+            {
+                "round": rnd.round,
+                "failed": rnd.failed,
+                "verdicts": [v.model_dump() for v in rnd.verdicts],
+                "changes": rnd.changes,
+                "summary": rnd.summary,
+            }
+            for rnd in r.rounds
+        ],
+        "before": r.before_text,
+        "after": r.after_text,
     }

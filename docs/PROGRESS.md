@@ -1041,3 +1041,17 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
 - **Tests**: 755 passed, 2 skipped (+26: `tests/unit/test_creative_rules.py`,
   `tests/integration/test_ad_prompt_v2.py`; header assertions and `storyboard@v9` pins moved).
 - **Next**: phase 2, the creative-director stage.
+
+## Phase 2: the creative-director stage (2026-11-07)
+
+- **Built**: `Stage.DIRECTOR` (PROMPT → DIRECTOR → ESTIMATE on whole-ad runs), `agent/nodes/director.py`,
+  `prompts/director/v1.md`, `domain/director.py` (`DirectorReviewDraft`, `DirectorRound`,
+  `DirectorReview`), `LLMNode.DIRECTOR` (balanced/quality: Opus high; fast: Sonnet low), deltas
+  `SetDirectorReview` and `SyncStoryboardDurations`, `RunState.director_review`, i18n labels, the
+  studio's Director lane and panel (verdicts, changes, before/after), the pack's "Director review"
+  section (pack also written after DIRECTOR), director events in `scripts/decisions_report.py`.
+  Scripted fixture `multishot_en/director.json` (all rules pass, writer's prompt kept). ADR-0026
+  addendum.
+- **Decisions (user)**: Opus at high effort; the director may re-time within the grammar and the
+  storyboard follows.
+- **Deviation**: none.

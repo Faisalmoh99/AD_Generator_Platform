@@ -23,6 +23,7 @@ from adsmith.domain.brief import AspectRatio, Brief
 from adsmith.domain.budget import BudgetLedger
 from adsmith.domain.concept import ConceptSet, InsightSet
 from adsmith.domain.continuity import ContinuityBible
+from adsmith.domain.director import DirectorReview
 from adsmith.domain.edit import ScenePatch
 from adsmith.domain.endcard import EndCardCopy
 from adsmith.domain.enums import FailureKind, Stage
@@ -149,6 +150,8 @@ class RunState(DomainModel):
     reference_images: list[PropReference] = Field(default_factory=list, max_length=8)
     # The whole-ad generation of a multishot run (None for scene-based formats).
     generation: AdGeneration | None = None
+    # The creative director's review of the whole-ad prompt (ADR-0026; None before it ran).
+    director_review: DirectorReview | None = None
     budget: BudgetLedger
     error: RunError | None = None
 
