@@ -94,3 +94,24 @@ with no idea stage. Diversity research says planned spread beats more samples.
   outside hospitality (`road_thermos`, travel; `home_roast`, craft), marked for the user's review.
 - Research basis: planned spread over semantic directions beats more samples of one prompt;
   structures that pull ideas toward consensus collapse diversity (ACL 2026 Findings).
+
+## Addendum: serving Saudi qahwa, dropped candidates kept, rewrite in place (2026-11-07)
+
+- The coffee run `run_01M6TBP6H8VTXWGXFJR6XPVQ7M` had the father pour qahwa into a finjan from a
+  glass brewer. As a general rule (the user's): Saudi qahwa is brewed in and poured from a
+  dallah only; a glass brewer or pour-over belongs to dark specialty coffee in ordinary cups; the
+  dallah is held in the left hand and the finjan offered with the right; the younger usually
+  serves the elder, so an elder pouring for a younger person is an honour.
+  - **Code check** (`[serving]` in `creative_rules.toml`, `serving_problems`): a shot that pours
+    or serves into a finjan names the dallah and no brewer, carafe, V60, kettle or teapot; a
+    prompt with a finjan has no such prop.
+  - **Judged rule** `serving_correct` (14 rules) for the director.
+  - **Culture bank**: `coffee_right_hand` corrected (it said "poured and served with the right
+    hand"; the dallah is in the left), serving pitfalls on the coffee entries, the dallah's
+    `not_like` names the glass brewer.
+- `ConceptSet.candidates_dropped` stores the candidates code did not keep, in full (pack and
+  decisions report list them).
+- `adsmith rewrite-prompt <run> --reason`: a human sends a whole-ad run back to PROMPT before any
+  money is spent on it (gate, estimate or a finished run with no attempt); the writer and the
+  director run again; the concept, copy and end card are kept; generated and library props are
+  cleared so PROPS follows the new prompt. A paid generation is refused (use `regenerate-ad`).

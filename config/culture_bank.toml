@@ -40,7 +40,7 @@ gloss = "Saudi coffee pot"
 ref_image = "assets/dallah.webp"  # a verified reference photo (user, 2026-11-07)
 names = ["dallah", "dalla", "arabic coffee pot", "coffee pot", "دلة", "دلّة"]
 description = "a Saudi dallah: brass body pinched at the waist above a wide base, a tall crescent beak spout, a domed lid with a pointed finial, a curved side handle"
-not_like = ["a European or Turkish coffee pot", "a gooseneck kettle with a thin straight spout", "a teapot", "a moka pot"]
+not_like = ["a European or Turkish coffee pot", "a gooseneck kettle with a thin straight spout", "a teapot", "a moka pot", "a glass brewer or pour-over carafe (Saudi qahwa in a finjan is poured only from a dallah)"]
 
 [[objects]]
 id = "finjan"
@@ -182,10 +182,10 @@ theme = "hospitality"
 objects = ["dallah", "finjan"]
 kind = "gesture"
 text_ar = "تقديم القهوة باليمين وبدء الصب بالكبير"
-meaning_en = "Coffee is poured and served with the right hand, starting with the eldest or the most honoured guest: an order of respect everyone in the room reads."
+meaning_en = "The pourer holds the dallah in the left hand and offers the finjan with the right, starting with the eldest or the most honoured guest: an order of respect everyone in the room reads. The younger usually serves the elder, so an elder who pours for a younger person is giving an honour."
 use = "a turn: who is served first tells the story without a word"
 categories = ["coffee", "dates"]
-pitfalls = ["the pourer stands, the cup is filled only a little", "never the left hand", "the host never ignores or delays a guest at the door"]
+pitfalls = ["the pourer stands, the cup is filled only a little", "the dallah in the left hand, the finjan offered with the right: never offered with the left", "Saudi qahwa is poured only from a dallah, never from a glass brewer, kettle or teapot", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "shake_the_cup"
@@ -196,7 +196,7 @@ text_ar = "هزّ الفنجان"
 meaning_en = "A guest shakes the small cup gently to say 'enough'; until then the host keeps pouring. A silent language every Saudi knows."
 use = "a hook or a payoff: the shake that ends (or refuses to end) the pouring"
 categories = ["coffee"]
-pitfalls = ["the cup is a small handleless finjan, filled a third", "the host never ignores or delays a guest at the door"]
+pitfalls = ["the cup is a small handleless finjan, filled a third", "poured from a dallah held in the left hand, never from a glass brewer or kettle", "the host never ignores or delays a guest at the door"]
 
 [[entries]]
 id = "four_cups"
@@ -218,7 +218,7 @@ text_ar = "التمر مع القهوة"
 meaning_en = "Saudi coffee is always served with dates: the bitterness of cardamom coffee and the sweetness of the date belong together, and offering both is the welcome."
 use = "a pairing: the product completes the other half of the welcome"
 categories = ["coffee", "dates"]
-pitfalls = ["Saudi coffee is light gold with cardamom, not dark espresso"]
+pitfalls = ["Saudi coffee is light gold with cardamom, not dark espresso", "qahwa is poured into the finjan only from a dallah, never from a glass brewer, kettle or teapot"]
 
 [[entries]]
 id = "dallah_on_the_fire"
@@ -314,7 +314,7 @@ text_ar = "تحميص البن في البيت"
 meaning_en = "In many homes the beans are still roasted in a pan and ground with cardamom; the smell fills the house and everyone knows coffee is coming. Knowing the right roast is a quiet pride."
 use = "craft: the hand that knows when the bean is ready; the smell that calls the house"
 categories = ["coffee"]
-pitfalls = ["Saudi coffee is a light roast, golden, never black espresso"]
+pitfalls = ["Saudi coffee is a light roast, golden, never black espresso", "brewed in and poured from a dallah into a finjan; a glass brewer or pour-over belongs only with dark specialty coffee in ordinary cups"]
 # TO BE REVIEWED BY THE USER (added 2026-11-07, ADR-0028).
 
 # --------------------------------------------------------------------- dates and the seasons

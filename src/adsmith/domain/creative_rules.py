@@ -80,6 +80,23 @@ class PhysicsRule(DomainModel):
         return self
 
 
+class ServingRule(DomainModel):
+    """How Saudi qahwa is served (checked by code): pouring into a finjan names the dallah."""
+
+    cup: str
+    pour: str
+    vessel: str
+    wrong: str
+    why: Annotated[str, Field(min_length=1, max_length=300)]
+    use: Annotated[str, Field(min_length=1, max_length=300)]
+
+    @model_validator(mode="after")
+    def _compiles(self) -> Self:
+        for x in (self.cup, self.pour, self.vessel, self.wrong):
+            re.compile(x, re.IGNORECASE)
+        return self
+
+
 class ReferenceTemplate(DomainModel):
     """A reference ad's measured execution (ADR-0028): targets, not a format to copy."""
 
@@ -99,6 +116,7 @@ class CreativeRules(DomainModel):
     banned: list[BannedWord] = Field(default_factory=list)
     physics: list[PhysicsRule] = Field(default_factory=list)
     templates: list[ReferenceTemplate] = Field(default_factory=list)
+    serving: ServingRule | None = None
     camera_moves: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(
         default_factory=list
     )
@@ -175,7 +193,13 @@ class CreativeRules(DomainModel):
             f"{self.physics_block()}\n"
             "Camera moves that read in one shot (one per shot): "
             f"{', '.join(self.camera_moves)}\n"
-            "Execution targets from reference ads we measured:\n"
+            + (
+                f"Serving Saudi qahwa (checked by code): {self.serving.why}. "
+                f"Write: {self.serving.use}\n"
+                if self.serving
+                else ""
+            )
+            + "Execution targets from reference ads we measured:\n"
             f"{self.templates_block()}\n"
             "Judged by the creative director:\n"
             f"{self.judge_block()}"
@@ -260,6 +284,44 @@ def physics_problems(d: AdPromptDraft, physics: Sequence[PhysicsRule]) -> list[s
                 r.required, text, re.IGNORECASE
             ):
                 problems.append(f"shot {s.number} ({r.id}): {r.failure} ({r.seen}). {r.use}")
+    return problems
+
+
+def serving_problems(d: AdPromptDraft, rule: ServingRule | None) -> list[str]:
+    """Saudi qahwa (user rule, 2026-11-07): a shot that pours or serves into a finjan names the
+    dallah and no other vessel; a prompt with a finjan has no brewer, kettle or teapot prop."""
+    if rule is None:
+        return []
+
+    def has(pattern: str, text: str) -> re.Match[str] | None:
+        return re.search(pattern, text, re.IGNORECASE)
+
+    problems: list[str] = []
+    any_cup = False
+    for s in d.shots:
+        text = f"{s.action} {s.event}"
+        if not has(rule.cup, text):
+            continue
+        any_cup = True
+        if not has(rule.pour, text):
+            continue
+        if bad := has(rule.wrong, text):
+            problems.append(
+                f'shot {s.number} serves into a finjan from a "{bad.group(0)}": {rule.why}. '
+                f"Write: {rule.use}"
+            )
+        elif not has(rule.vessel, text):
+            problems.append(
+                f"shot {s.number} pours into a finjan without naming the dallah: {rule.why}. "
+                f"Write: {rule.use}"
+            )
+    if any_cup or any(has(rule.cup, f"{r.name} {r.description}") for r in d.references):
+        for r in d.references:
+            if bad := has(rule.wrong, r.name):
+                problems.append(
+                    f'reference "{r.name}" is a "{bad.group(0)}" next to a finjan: {rule.why}. '
+                    "Use the dallah"
+                )
     return problems
 
 
@@ -393,6 +455,7 @@ def creative_rule_problems(  # noqa: PLR0912, PLR0915 - one flat list of indepen
     problems += size_problems(d)
     problems += residue_problems(d)
     problems += physics_problems(d, rules.physics)
+    problems += serving_problems(d, rules.serving)
     problems += word_budget_problems(d, p)
     for s in d.shots:
         if s.handled and s.product_in_frame == "small":

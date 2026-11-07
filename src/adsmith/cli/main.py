@@ -490,6 +490,17 @@ def accept_ad(run_id: str, reason: Annotated[str, typer.Option(help="Why you acc
     print_state(orch, commands.accept_ad(orch.rt.storage, run_id, reason=reason))
 
 
+@app.command("rewrite-prompt")
+def rewrite_prompt(
+    run_id: str, reason: Annotated[str, typer.Option(help="Why the prompt is rewritten")]
+) -> None:
+    """Send a whole-ad run back to the prompt writer and the director (same concept, copy and
+    end card), before any money is spent; it stops at the spend gate again."""
+    orch = _orchestrator()
+    commands.rewrite_prompt(orch.rt.storage, run_id, reason=reason)
+    print_state(orch, follow(orch, run_id, orch.run_until_blocked(run_id)))
+
+
 @app.command("regenerate-ad")
 def regenerate_ad(
     run_id: str, reason: Annotated[str, typer.Option(help="Why a new generation")]

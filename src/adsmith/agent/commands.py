@@ -17,7 +17,14 @@ from adsmith.domain.ad import (
     prompt_diff_summary,
     retime_problems,
 )
-from adsmith.domain.enums import FailureKind, Language, SceneStatus, Stage, StaleFrom
+from adsmith.domain.enums import (
+    TERMINAL_STAGES,
+    FailureKind,
+    Language,
+    SceneStatus,
+    Stage,
+    StaleFrom,
+)
 from adsmith.domain.events import AgentEvent, EventType
 from adsmith.domain.generation import Artifact
 from adsmith.domain.qa import QAVerdict
@@ -532,6 +539,45 @@ def accept_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:
         ]
 
     return storage.runs.update(run_id, mutate, reason="ad accepted").state
+
+
+def rewrite_prompt(storage: Storage, run_id: str, *, reason: str) -> RunState:
+    """A human sends a whole-ad run back to the PROMPT stage after a rule changed (e.g. the
+    serving rule, 2026-11-07): the writer and the director run again on the same concept,
+    storyboard and bible; the copy and the end card are kept (the copy stage skips a concept it
+    already wrote for). Generated and library props are cleared so the PROPS stage matches the
+    new prompt; the user's images stay. Only before any money is spent on this generation."""
+
+    def mutate(s: RunState) -> list[AgentEvent]:
+        g = s.generation
+        if g is None:
+            raise CommandRejectedError("this run has no whole-ad generation")
+        if g.status not in {"pending", "estimated", "failed"} or g.attempts:
+            raise CommandRejectedError(
+                f"the generation is {g.status} with {len(g.attempts)} attempt(s): use "
+                "`adsmith regenerate-ad` for a new paid version"
+            )
+        if s.stage not in {Stage.ESTIMATE, Stage.AWAITING_GENERATION_APPROVAL, *TERMINAL_STAGES}:
+            raise CommandRejectedError(f"run is at {s.stage}; rewrite a prompt at the gate")
+        old = g.prompt_text
+        dropped = [r.name for r in s.reference_images if r.source != "user"]
+        s.reference_images = [r for r in s.reference_images if r.source == "user"]
+        s.director_review = None
+        s.final, s.error = None, None
+        s.stage = Stage.PROMPT
+        return [
+            AgentEvent(
+                run_id=s.id,
+                stage=Stage.PROMPT,
+                type=EventType.DECISION,
+                summary=f"HUMAN: rewrite the whole-ad prompt ({reason}); the writer and the "
+                "director run again, the concept, copy and end card are kept"
+                + (f"; props cleared: {', '.join(dropped)}" if dropped else ""),
+                payload={"human": True, "old_prompt": old, "props_cleared": ", ".join(dropped)},
+            )
+        ]
+
+    return storage.runs.update(run_id, mutate, reason="rewrite prompt").state
 
 
 def regenerate_ad(storage: Storage, run_id: str, *, reason: str) -> RunState:

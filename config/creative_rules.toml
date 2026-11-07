@@ -143,6 +143,17 @@ required = "\\b(then|step by step|gradually|tighter|thickens?|slowly|until)\\b"
 use = "describe it in visible steps inside the shot: 'the smoke spirals tighter, thickens, then condenses into the bottle'"
 key_only = false
 
+# Serving Saudi qahwa (user, 2026-11-07; coffee run run_01M6TBP6H8VTXWGXFJR6XPVQ7M poured into a
+# finjan from a glass brewer). CHECKED BY CODE: a shot that pours or serves into a finjan names
+# the dallah and no other vessel; a prompt with a finjan has no brewer, kettle or teapot prop.
+[serving]
+cup = "\\b(finjans?|fenjans?|arabic coffee cups?)\\b"
+pour = "\\b(pours?|pouring|poured|fills?|filling|filled|serves?|serving|served|tilts?|tilting)\\b"
+vessel = "\\b(dallah|dalla)\\b"
+wrong = "\\b(glass brewer|brewer|carafe|v60|pour[- ]?over|chemex|kettle|teapot|french press|coffee server|jug)\\b"
+why = "Saudi qahwa in a finjan is poured only from a dallah (a glass brewer or kettle belongs to dark specialty coffee in ordinary cups)"
+use = "the father lifts the dallah in his left hand and pours a thin ribbon of golden coffee into the finjan"
+
 # Reference ads we measured frame by frame (2026-11-07): their execution numbers, shown to the
 # writer and the director as targets. Neither has an idea; we keep ours and borrow their craft.
 [[templates]]
@@ -205,6 +216,10 @@ text = "The product does something in the story in at least one shot: it is open
 [[judge]]
 id = "turn_readable"
 text = "The key moment reads on a phone screen in 2 seconds with the sound off: a large, clear action or change a viewer cannot miss, not a micro-movement. A tiny wrist motion ('starts to shake the cup and stops halfway') fails unless it is framed close and slowed: a close-up on the hand and the cup, the shake clearly begun, a full stop, then the face (his smile)."
+
+[[judge]]
+id = "serving_correct"
+text = "Saudi qahwa (light golden coffee in a small handleless finjan) is brewed in and poured from a dallah only, never from a glass brewer, V60, kettle, carafe or teapot; a glass brewer or pour-over belongs only with dark specialty coffee in ordinary cups. The pourer holds the dallah in the left hand and offers the finjan with the right. The younger usually serves the elder, so an elder pouring for a younger person is an honour: when that is the turn, keep it and let it read."
 
 [[judge]]
 id = "physics_anchored"

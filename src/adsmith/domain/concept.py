@@ -259,6 +259,8 @@ class ConceptSet(DomainModel):
     selected_id: str | None = None
     selected_by: Literal["user", "agent"] | None = None
     selection_rationale: str | None = Field(default=None, max_length=1000)
+    # The candidates ideate wrote that code did not keep (ADR-0028), in full, for the record.
+    candidates_dropped: list[Concept] = Field(default_factory=list, max_length=MAX_CANDIDATES)
 
     @classmethod
     def from_draft(cls, draft: ConceptSetDraft) -> ConceptSet:
@@ -276,7 +278,12 @@ class ConceptSet(DomainModel):
     ) -> ConceptSet:
         """``keep``: indices of the concepts to keep (``pick_distinct``), in order."""
         idx = list(keep) if keep is not None else list(range(len(draft.concepts)))
-        return cls(concepts=[draft.concepts[i].to_concept() for i in idx], category_cliches=cliches)
+        rest = [i for i in range(len(draft.concepts)) if i not in idx]
+        return cls(
+            concepts=[draft.concepts[i].to_concept() for i in idx],
+            category_cliches=cliches,
+            candidates_dropped=[draft.concepts[i].to_concept() for i in rest],
+        )
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:

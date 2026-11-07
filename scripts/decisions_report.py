@@ -71,6 +71,10 @@ def decisions_text(rt: AgentRuntime, st: RunState) -> str:  # noqa: PLR0912, PLR
                 out.append(f"      product: {c.product_role.role} · culture: {c.cultural_meaning}")
         if st.concepts.selection_rationale:
             out.append(f"    why: {st.concepts.selection_rationale}")
+        for c in st.concepts.candidates_dropped:
+            turn = c.story.turn if c.story else ""
+            out.append(f"    dropped [{c.axis or '-'}] {c.title} · {c.logline} · turn: {turn} · "
+                       f"motifs: {', '.join(c.motifs)}")  # fmt: skip
 
     # 2b. the whole-ad generation (multishot, ADR-0023 / ADR-0025)
     g = st.generation

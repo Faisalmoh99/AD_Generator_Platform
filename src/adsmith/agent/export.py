@@ -326,6 +326,13 @@ def _concept_lines(state: RunState, scores: Mapping[int, Mapping[str, object]]) 
         cells = " | ".join(str(s.get(k, "-")) for k in RUBRIC_KEYS)
         cliche = " (cliché)" if s.get("uses_category_cliche") else ""
         out.append(f"| {n} | {c.title}{mark} | {cells} | {s.get('weighted', '-')}{cliche} |")
+    dropped = state.concepts.candidates_dropped
+    if dropped:
+        out += ["", "Written but not kept by code (least different, ADR-0028):", ""]
+        for c in dropped:
+            turn = f" Turn: {c.story.turn}" if c.story else ""
+            out.append(f"- [{c.axis or '-'}] **{c.title}**: {c.logline}{turn} "
+                       f"(motifs: {', '.join(c.motifs) or '-'})")  # fmt: skip
     return [*out, ""]
 
 

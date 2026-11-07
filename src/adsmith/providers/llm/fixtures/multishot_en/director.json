@@ -66,6 +66,11 @@
      "rule_id": "turn_readable",
      "passed": true,
      "note": "Shot 3 is a close-up of the bottle settling into the guest's open palm over two seconds: a clear change of hands, readable without sound."
+    },
+    {
+     "rule_id": "serving_correct",
+     "passed": true,
+     "note": "No coffee is poured into a finjan; the cup is only set down on the tray."
     }
    ],
    "changes": [],

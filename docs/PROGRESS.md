@@ -1299,3 +1299,14 @@ one generation there costs ~$2.4. Plan approved 2026-11-07 (P1 → P5). ADR-0027
   the sound off, a large clear action, not a micro-movement; a small wrist motion passes only
   framed close and slowed (the coffee run's half-shake). Director fixture verdict added.
 - **Tests**: +1; 920 passed, 2 skipped.
+
+## Serving rule, dropped candidates, rewrite in place (2026-11-07)
+
+- **Built**: `[serving]` code check + judged rule `serving_correct` (14 rules); culture-bank
+  serving facts (dallah in the left hand, qahwa only from a dallah, the elder pouring is an
+  honour; `coffee_right_hand` corrected); `ConceptSet.candidates_dropped` in full (pack, report);
+  `adsmith rewrite-prompt` (`commands.rewrite_prompt`). ADR-0028 addendum.
+- **Found in the coffee run**: the father poured qahwa from a glass brewer; the glass brewer's
+  two images were mock placeholders because the command lacked `ADSMITH_MEDIA_PROVIDER=fal`.
+- **Tests**: +7 (`tests/unit/test_serving.py`, dropped candidates in `test_diversity.py`).
+  927 passed, 2 skipped.

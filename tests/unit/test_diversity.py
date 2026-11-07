@@ -52,6 +52,13 @@ async def test_six_are_written_and_the_three_least_alike_are_kept(tmp_path: Path
     titles = [c.title for c in state.concepts.concepts]
     assert titles == ["The Last Guest", "Amber Hour", "First Rain"]
     assert [c.axis for c in state.concepts.concepts] == ["hospitality", "self", "season"]
+    dropped = state.concepts.candidates_dropped  # stored in full, not only their axes
+    assert [c.title for c in dropped] == ["Wedding Night Walk", "The Blender's Nose", "Mile Zero"]
+    assert dropped[1].story is not None and dropped[1].motifs == [
+        "perfumer",
+        "workshop",
+        "blotters",
+    ]
     evs = [e.summary for e in rt.storage.events.tail(run.id, limit=2000)]
     assert any(e.startswith("Diversity: 6 concepts written on axes hospitality, self") for e in evs)
 
