@@ -22,6 +22,7 @@ PIPELINE: list[tuple[str, str, str]] = [
     ("continuity", "Bible", "الاستمرارية"),
     ("prompt", "Prompts", "الأوامر"),
     ("director", "Director", "المخرج"),
+    ("props", "Props", "الأدوات"),
     ("estimate", "Estimate", "التقدير"),
     ("keyframe", "Keyframes", "الإطارات"),
     ("generate", "Clips", "اللقطات"),
@@ -39,6 +40,7 @@ STAGE_KIND: dict[str, tuple[str, str]] = {
     "continuity": ("llm", "LLM writes the bible · code lints wardrobe"),
     "prompt": ("llm", "LLM writes prompts · code lints them"),
     "director": ("mixed", "LLM creative director judges the rules · code decides what is kept"),
+    "props": ("mixed", "image model draws each prop · LLM vision checks it is not the product"),
     "estimate": ("code", "provider prices the one generation · a human approves the spend"),
     "keyframe": ("mixed", "image model · LLM vision gate · code decides pass"),
     "generate": ("code", "video model · code picks takes and windows"),
@@ -370,7 +372,27 @@ def _generation(state: RunState) -> dict[str, Any] | None:
         "creative_note": g.qa.creative_note if isinstance(g.qa, AdVerdict) else None,
         "failure": g.failure.reason_user if g.failure else None,
         "director": _director(state),
+        "images": _images(state),
     }
+
+
+def _images(state: RunState) -> list[dict[str, Any]]:
+    """The images the video model receives, in order: the product photo, then the props."""
+    out: list[dict[str, Any]] = []
+    if state.product_photo is not None:
+        out.append({"label": "Image 1 · product photo", "url": media_url(state.product_photo.path),
+                    "source": "user", "cost": 0.0, "check": ""})  # fmt: skip
+    for i, r in enumerate(state.reference_images, start=2):
+        out.append(
+            {
+                "label": f"Image {i} · {r.name}",
+                "url": media_url(r.artifact.path),
+                "source": r.source,
+                "cost": round(r.cost_usd, 3),
+                "check": r.check,
+            }
+        )
+    return out
 
 
 def _director(state: RunState) -> dict[str, Any] | None:

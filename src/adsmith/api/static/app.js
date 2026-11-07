@@ -493,8 +493,15 @@ function renderGeneration(v) {
     ${g.warnings.length ? `<div class="desc">${esc(g.warnings.join(" · "))}</div>` : ""}
     ${g.creative_note ? `<div class="desc" dir="auto">${esc(g.creative_note)}</div>` : ""}
     ${g.failure ? `<div class="fail" dir="auto">${esc(g.failure)}</div>` : ""}
+    ${renderImages(g.images)}
     ${renderDirector(g.director)}
     <details><summary>Prompt sent to the model</summary><pre>${esc(g.prompt)}</pre></details>`;
+}
+
+function renderImages(images) {
+  if (!images || !images.length) return "";
+  const cards = images.map((im) => `<figure class="ref-image"><img src="${im.url}" alt="${esc(im.label)}" loading="lazy"><figcaption>${esc(im.label)}${im.source === "generated" ? ` · generated ${money(im.cost)}${im.check ? ` · ${esc(im.check)}` : ""}` : ""}</figcaption></figure>`).join("");
+  return `<div class="section-label">Images the model receives</div><div class="ref-images">${cards}</div>`;
 }
 
 function renderDirector(d) {

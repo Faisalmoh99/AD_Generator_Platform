@@ -27,7 +27,9 @@ async def test_the_writer_sees_the_photo_and_the_prompt_has_references(tmp_path:
     assert p.template_version == "ad_prompt_writer@v2" and p.key_shot == 3
     lines = p.text.splitlines()
     assert lines[1].startswith("References: Image 1 is the product")
-    assert "The brass tray: a round, flat, hammered brass tray" in lines[1]
+    # The PROPS stage generated both props, so the References line numbers them.
+    assert "Image 2 is the brass tray: a round, flat, hammered brass tray" in lines[1]
+    assert "Image 3 is the coffee cup" in lines[1]
     assert lines[2].startswith("Look: An empty traditional majlis")
     assert "Framing: the product fills about half the frame." in lines[5]
     assert [s.handled for s in p.shots] == [False, False, True, False]

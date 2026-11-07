@@ -325,3 +325,10 @@ textarea:focus, #edit:focus { border-color: var(--accent); }
 .gen-panel .flags { display: flex; flex-wrap: wrap; gap: 4px; }
 .gen-panel .desc { color: var(--muted); font-size: 12.5px; }
 .gen-panel details pre { font: 11px/1.5 var(--mono); color: var(--muted); white-space: pre-wrap; margin: 6px 0 0; }
+
+/* Whole-ad reference images (ADR-0026): the product photo and the props, in the order sent. */
+.gen-panel .ref-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.gen-panel .ref-image { margin: 0; }
+.gen-panel .ref-image img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid var(--line, rgba(127,127,127,.25)); }
+.gen-panel .ref-image figcaption { font: 10.5px var(--mono); color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+.gen-panel .desc.warn { color: var(--warn, #b7791f); }

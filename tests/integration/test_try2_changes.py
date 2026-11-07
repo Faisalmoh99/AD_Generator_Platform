@@ -165,11 +165,13 @@ async def test_reference_images_go_after_the_product_in_order(tmp_path: Path) ->
         e for e in rt.storage.events.tail(run.id, limit=3000) if e.summary.startswith("Estimate:")
     )
     urls = est.payload["image_urls"]
-    assert isinstance(urls, list) and len(urls) == 2
+    # The product photo, the user's prop, then the two props the prompt names (ADR-0026).
+    assert isinstance(urls, list) and len(urls) == 4
     m = mock_provider(rt, state)
     assert state.product_photo is not None
     assert m._urls[str(urls[0])].stem == state.product_photo.sha256  # Image 1: the product
     assert m._urls[str(urls[1])].stem == state.reference_images[0].artifact.sha256  # Image 2
+    assert [r.source for r in state.reference_images] == ["user", "generated", "generated"]
 
 
 def test_reference_images_need_a_product_photo_and_must_exist(tmp_path: Path) -> None:
@@ -205,7 +207,8 @@ async def test_the_critic_sees_the_prop_as_a_prop(tmp_path: Path) -> None:
     )
     state = await orch.run_until_blocked(run.id)
     assert state.stage is Stage.DONE and state.generation is not None
-    assert state.generation.qa is not None and state.generation.qa.frames_inspected == 14
+    # The photo, three props (the user's + two generated), 4 shots × 3 frames.
+    assert state.generation.qa is not None and state.generation.qa.frames_inspected == 16
     req = next(r for r in llm.requests if r.template == "qa_ad_critic@v2")
     msg = req.messages[0]
     assert hasattr(msg, "parts")
@@ -213,7 +216,10 @@ async def test_the_critic_sees_the_prop_as_a_prop(tmp_path: Path) -> None:
     assert texts[0] == "Image 0: the real product photo (the reference)"
     assert texts[1] == "Image 1: prop reference (mabkhara.png), a prop and NOT the product"
     body = "\n".join(texts)
-    assert "Prop references (props, not the product): image 1 (mabkhara.png)." in body
+    assert (
+        "Prop references (props, not the product): image 1 (mabkhara.png), image 2 (brass "
+        "tray), image 3 (coffee cup)." in body
+    )
 
 
 def test_the_critic_template_is_v2_and_has_no_prop_line_without_props(tmp_path: Path) -> None:

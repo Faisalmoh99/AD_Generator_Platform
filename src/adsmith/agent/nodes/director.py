@@ -54,8 +54,10 @@ from adsmith.domain.storyboard import Storyboard
 RETIME_EPS_S = 0.05
 
 
-def prompt_hash(text: str) -> str:
-    return stable_hash("director.reviewed.v1", text)
+def prompt_hash(d: AdPromptDraft) -> str:
+    """The prompt's CONTENT, not its rendered text: the PROPS stage renumbers the References
+    line afterwards, which must not count as a new prompt."""
+    return stable_hash("director.reviewed.v2", d.model_dump(mode="json"))
 
 
 def durations_of(d: AdPromptDraft) -> list[float]:
@@ -150,17 +152,6 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
     concept = state.concepts.selected
     assert concept is not None
     before = g.prompt.text
-    h = prompt_hash(before)
-    if state.director_review is not None and state.director_review.prompt_hash == h:
-        return NodeResult(
-            events=[
-                decision(
-                    ctx.run_id,
-                    Stage.DIRECTOR,
-                    "Creative director: this prompt was already reviewed; nothing to do",
-                )
-            ]
-        )
     if g.human_prompt is not None or g.prompt.key_shot is None:
         # A human's prompt is final; a prompt written before v2 has no structure to review.
         return NodeResult(
@@ -169,6 +160,18 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
                     ctx.run_id,
                     Stage.DIRECTOR,
                     "Creative director: skipped (the prompt was written by a human or before v2)",
+                )
+            ]
+        )
+    h = prompt_hash(g.prompt.to_draft())
+    r0 = state.director_review
+    if r0 is not None and h in {r0.prompt_hash, r0.result_hash}:
+        return NodeResult(
+            events=[
+                decision(
+                    ctx.run_id,
+                    Stage.DIRECTOR,
+                    "Creative director: this prompt was already reviewed; nothing to do",
                 )
             ]
         )
@@ -286,7 +289,8 @@ async def director(state: RunState, ctx: NodeContext) -> NodeResult:  # noqa: PL
         for a, b in zip(durations_of(final), durations_of(writer), strict=True)
     )
     review = DirectorReview(
-        prompt_hash=h, rounds=rounds, outcome=outcome, before_text=before,
+        prompt_hash=h, result_hash=prompt_hash(chosen), rounds=rounds, outcome=outcome,
+        before_text=before,
         after_text=after if final is not None else before, retimed=retimed, note=note,
     )  # fmt: skip
     for rnd in rounds:

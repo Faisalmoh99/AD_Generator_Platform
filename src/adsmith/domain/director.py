@@ -55,7 +55,8 @@ class DirectorReview(DomainModel):
     """Stored on the run. ``prompt_hash`` identifies the writer prompt that was reviewed, so the
     same prompt is never reviewed (and paid for) twice."""
 
-    prompt_hash: str
+    prompt_hash: str  # the writer's prompt content that was reviewed
+    result_hash: str = ""  # the content the review left (equal to prompt_hash when kept)
     rounds: list[DirectorRound] = Field(default_factory=list, max_length=2)
     outcome: Outcome
     before_text: str

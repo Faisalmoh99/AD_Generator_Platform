@@ -112,6 +112,17 @@ def print_state(orch: Orchestrator, state: RunState) -> None:
         console.print(f"Next: [bold]{nxt}[/]")
 
 
+def reference_lines(state: RunState) -> list[str]:
+    """The images the video model receives, in order (Image 1 is always the product photo)."""
+    if state.product_photo is None:
+        return []
+    out = [f"Image 1: product photo {state.product_photo.path}"]
+    for i, r in enumerate(state.reference_images, start=2):
+        extra = f", ${r.cost_usd:.3f}, check {r.check}" if r.source == "generated" else ""
+        out.append(f"Image {i}: {r.name} ({r.source}{extra}) {r.artifact.path}")
+    return out
+
+
 def _print_generation(state: RunState) -> None:
     g = state.generation
     if g is None:
@@ -128,6 +139,14 @@ def _print_generation(state: RunState) -> None:
     if state.stage is Stage.AWAITING_GENERATION_APPROVAL:
         if g.price_basis:
             console.print(f"[dim]Price: {g.price_basis}[/]")
+        for line in reference_lines(state):
+            console.print(f"[dim]{line}[/]")
+        if state.director_review is not None:
+            r = state.director_review
+            failed = ", ".join(r.failed) or "none"
+            console.print(
+                f"[dim]Creative director: {r.outcome} (rules failed in round 1: {failed})[/]"
+            )
         who = " (written by a human creative director)" if g.human_prompt else ""
         console.print(f"[bold]Prompt sent to the model{who}:[/]\n{g.prompt_text}")
     if g.qa is not None:

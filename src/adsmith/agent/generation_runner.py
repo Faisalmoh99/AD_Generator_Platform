@@ -121,6 +121,8 @@ class AdGenerationRunner:
             await self._generate(run_id)
         elif stage is Stage.QA:
             await self._review(run_id)
+        else:
+            raise ValueError(f"the ad generation runner does not run {stage}")
 
     # ------------------------------------------------------------------------ the request
     def _request(

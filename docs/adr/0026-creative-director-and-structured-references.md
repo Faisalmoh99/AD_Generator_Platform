@@ -87,3 +87,28 @@ system must write that prompt itself.
 - The studio shows a Director lane and, in the whole-ad panel, the verdicts per rule, the changes
   and the writer's prompt when it was replaced; the production pack has a "Director review"
   section and is also written after DIRECTOR.
+
+## Addendum (2026-11-07): prop reference images (phase 3)
+
+- `Stage.PROPS` runs after DIRECTOR and before ESTIMATE on whole-ad runs. It is an ad stage
+  (`AD_STAGES`), routed by `_ad_step` to `agent/props.py` `PropsRunner`, which commits its own
+  atomic updates like the generation runner; `AdGenerationRunner.run` now refuses a stage it does
+  not run instead of silently advancing.
+- For each prop reference of the prompt (at most 3) that no reference image covers by name (a
+  user `--ref-image` wins), a square 768 px text-to-image on the default image model
+  (`flux_dev`, $0.025; FLUX schnell is not in the catalog and was not added), template
+  `prop_reference` v1. Budget: reserved, then settled or released, as the product reference;
+  `ADSMITH_PROPS_MAX_USD` (default $0.20) refuses before the call. Cache by prompt, size and seed.
+- Vision check `qa_prop_ref` v1 (Image 0 the product photo, Image 1 the prop): the described
+  object, wordless, alcohol-free, brand-safe, and not resembling the product (a "product" issue,
+  hard by `gate_draft`). A prop that transforms into the product may share one material, never
+  the shape. One retry with the critic's hint; then the prop is dropped with a warning and keeps
+  its description in the References line without an image number.
+- Accepted images join `reference_images` (`PropReference.source = "generated"`, `cost_usd`,
+  `check`; defaults keep older runs loadable) after the user's, and the prompt's text is
+  re-rendered so the References line numbers them. Today only the writer checked the prompt
+  limit; the re-render checks it too and drops generated props last-first until the text fits.
+- The director's "already reviewed" check now hashes the prompt's content, not its text, so the
+  renumbering does not count as a new prompt.
+- The gate shows every image in order with its source, cost and check (CLI, studio thumbnails,
+  production pack, written after PROPS too). Zero-key runs make mock props.

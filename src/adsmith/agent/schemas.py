@@ -40,4 +40,5 @@ OUTPUT_SCHEMAS: dict[str, type[BaseModel]] = {
     "endcard_copy": EndCardCopyDraft,
     "ad_prompt_writer": AdPromptDraft,
     "director": DirectorReviewDraft,
+    "qa_prop_ref": QAVerdictDraft,
 }

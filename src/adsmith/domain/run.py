@@ -118,10 +118,14 @@ class ProductReference(DomainModel):
 
 
 class PropReference(DomainModel):
-    """A non-product reference image (a prop), given by the user at run creation."""
+    """A non-product reference image (a prop): given by the user at run creation, or generated
+    by the PROPS stage from the prompt's prop references (ADR-0026)."""
 
     artifact: Artifact
-    name: str = Field(min_length=1, max_length=120)  # the file name, for labels
+    name: str = Field(min_length=1, max_length=120)  # the file name or the reference's name
+    source: Literal["user", "generated"] = "user"
+    cost_usd: float = Field(default=0.0, ge=0)
+    check: str = Field(default="", max_length=200)  # the vision check's result, for the gate
 
 
 class RunState(DomainModel):

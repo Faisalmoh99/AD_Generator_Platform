@@ -118,7 +118,11 @@ async def test_a_failed_rule_rewrites_retimes_and_syncs_the_storyboard(tmp_path:
     assert [(s.start_s, s.end_s) for s in g.prompt.shots] == [(0, 2), (2, 3.5), (3.5, 6), (6, 8)]
     assert "Shot 3 (3.5-6 s): The host lifts the bottle with both hands, holds it" in g.prompt.text
     assert [s.duration_s for s in sb.scenes] == [2, 1.5, 2.5, 2]
-    assert r.before_text != r.after_text == g.prompt.text
+    # The stored text differs only by the References numbering the PROPS stage added.
+    assert (
+        r.before_text != r.after_text
+        and r.after_text.splitlines()[2:] == (g.prompt.text.splitlines()[2:])
+    )
     evs = summaries(orch, state.id)
     assert "1 of 8 rules failed (turn_withheld)" in evs[0].summary
     assert evs[-1].summary.startswith("Creative director: director's rewrite used (re-timed")

@@ -19,6 +19,7 @@ from adsmith.storage import ArtifactStore, Storage
 if TYPE_CHECKING:
     from adsmith.agent.generation_runner import AdGenerationRunner
     from adsmith.agent.media import MediaGateway
+    from adsmith.agent.props import PropsRunner
     from adsmith.agent.scenes import SceneStageRunner
     from adsmith.providers.media.base import (
         MusicProvider,
@@ -369,6 +370,21 @@ class AgentRuntime:
             storage=self.storage,
             provider=self.ad_video_provider(run),
             critic=critic,
+            sleep=self.sleep,
+            rng=self.rng,
+        )
+
+    def props_runner(self, run: RunState) -> PropsRunner:
+        from adsmith.agent.props import PropsRunner  # noqa: PLC0415
+        from adsmith.agent.qa import LLMCritic, MockCritic  # noqa: PLC0415
+
+        critic = LLMCritic(self.node_context(run)) if run.config.qa_mode == "llm" else MockCritic()
+        return PropsRunner(
+            storage=self.storage,
+            gateway=self.media_gateway(run),
+            critic=critic,
+            prompts=self.prompts,
+            settings=self.settings,
             sleep=self.sleep,
             rng=self.rng,
         )

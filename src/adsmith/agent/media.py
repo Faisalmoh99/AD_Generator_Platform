@@ -157,6 +157,28 @@ class MediaGateway:
         )  # fmt: skip
         return self._prepare_image(still, aspect, label)
 
+    def prepare_prop(
+        self, prompt: str, *, index: int, attempt_no: int, side: int = 768
+    ) -> PreparedJob:
+        """One prop reference image (ADR-0026 phase 3): square text-to-image on the default image
+        model. Label scene 0 with the prop's index as its version, so files and traces never
+        collide between props; a retry gets a new seed."""
+        label = MediaLabel(
+            scene_order=0, scene_version=index, phase=ScenePhase.KEYFRAME, attempt_no=attempt_no,
+            shot="prop", camera="static", palette=(),
+        )  # fmt: skip
+        seed = attempt_no - 1
+        request = GenerationRequest(
+            provider=self.image.name,
+            model=self.image.model,
+            phase=ScenePhase.KEYFRAME,
+            prompt=prompt,
+            negative_prompt="",
+            params={"width": side, "height": side, "seed": seed, "kind": "prop"},
+        )
+        job = ImageJob(prompt, "", side, side, seed, label)
+        return PreparedJob(request, job, self.image.estimate_usd(side, side))
+
     def _direct(
         self, plain: PreparedJob, reference: Artifact, product_name: str, framing: str, note: str
     ) -> PreparedJob:

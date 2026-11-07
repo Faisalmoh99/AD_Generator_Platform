@@ -1055,3 +1055,21 @@ reference against our tries 1–2 (product on screen 93–100 % vs 13–19 %); p
 - **Decisions (user)**: Opus at high effort; the director may re-time within the grammar and the
   storyboard follows.
 - **Deviation**: none.
+- **Tests (phase 2)**: 765 passed, 2 skipped (+10: `tests/integration/test_director.py` and the
+  moved stage-order assertions).
+
+## Phase 3: prop reference images (2026-11-07)
+
+- **Built**: `Stage.PROPS` (DIRECTOR → PROPS → ESTIMATE), `agent/props.py` (`PropsRunner`:
+  generate, check, retry once, drop; props cap; prompt re-rendered with image numbers and dropped
+  last-first over the limit), `MediaGateway.prepare_prop`, `LLMCritic`/`MockCritic.
+  review_prop_reference`, templates `prop_reference` v1 and `qa_prop_ref` v1,
+  `PropReference.source/cost_usd/check`, `Settings.props_max_usd` ($0.20), scripted fixture
+  `multishot_en/qa_prop_ref.json`, the images at the gate (CLI list, studio thumbnails in the
+  whole-ad panel, the pack's "References sent with the prompt", pack written after PROPS), the
+  Props lane in the studio pipeline. ADR-0026 addendum.
+- **Fix found by a test**: the director's skip hash now covers the prompt's content, so the PROPS
+  renumbering does not make a reviewed prompt look new.
+- **Tests**: 773 passed, 2 skipped (+8: `tests/integration/test_props.py` and the moved image counts).
+- **Deviation**: none. The zero-key multishot runs now make two mock props, so the critic sees two
+  more images (13 → 15; 14 → 16 with a user prop) and the request carries 4 image URLs.

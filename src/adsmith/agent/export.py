@@ -112,6 +112,19 @@ def pack_json(state: RunState) -> dict[str, Any]:
     }
 
 
+def _reference_lines(state: RunState) -> list[str]:
+    """The images sent with the whole-ad prompt, in order (Image 1 is the product photo)."""
+    if not state.reference_images:
+        return []
+    photo = f" ({state.product_photo.path})" if state.product_photo else ""
+    out = ["References sent with the prompt:", "", f"- Image 1: product photo{photo}"]
+    for i, r in enumerate(state.reference_images, start=2):
+        extra = f", ${r.cost_usd:.3f}, {r.check}" if r.source == "generated" else ""
+        link = f"![{r.name}](../../../{r.artifact.path})"
+        out.append(f"- Image {i}: {r.name} ({r.source}{extra}) {link}")
+    return [*out, ""]
+
+
 def _director_lines(state: RunState) -> list[str]:
     """The creative director's review (ADR-0026): verdicts per rule, changes, before/after."""
     r = state.director_review
@@ -180,6 +193,7 @@ def pack_markdown(state: RunState) -> str:
             "```",
             "",
         ]
+        out += _reference_lines(state)
         out += _director_lines(state)
     if state.bible:
         out += [

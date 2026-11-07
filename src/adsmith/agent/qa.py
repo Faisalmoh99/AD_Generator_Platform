@@ -25,7 +25,7 @@ from adsmith.agent.context import NodeContext
 from adsmith.agent.nodes.common import concept_block, scene_block, storyboard_block
 from adsmith.agent.recovery.errors import PermanentProviderError
 from adsmith.config import LLMNode
-from adsmith.domain.ad import AdGeneration, AdShot, HumanShot
+from adsmith.domain.ad import AdGeneration, AdShot, HumanShot, ReferenceSpec
 from adsmith.domain.enums import FailureKind, ScenePhase
 from adsmith.domain.generation import Artifact
 from adsmith.domain.llm import LLMCallRecord
@@ -90,6 +90,15 @@ class MockCritic:
         """Mock packshots are placeholder cards: always pass."""
         verdict = QAVerdict(
             score=0.9, checks=_ALL_OK, frames_inspected=1, threshold=state.config.qa_threshold
+        )
+        return verdict, []
+
+    async def review_prop_reference(
+        self, state: RunState, image: Artifact, spec: ReferenceSpec, prompt: str
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """Mock props are placeholder cards: always pass."""
+        verdict = QAVerdict(
+            score=0.9, checks=_ALL_OK, frames_inspected=2, threshold=state.config.qa_threshold
         )
         return verdict, []
 
@@ -378,6 +387,48 @@ class LLMCritic:
             if problems:
                 raise ValueError("; ".join(problems))
             return QAVerdict.from_draft(gate_draft(d), threshold=threshold)
+
+        res = await self.ctx.llm.call_and_convert(
+            LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts
+        )
+        return res.value, res.calls
+
+    async def review_prop_reference(
+        self, state: RunState, image: Artifact, spec: ReferenceSpec, prompt: str
+    ) -> tuple[QAVerdict, list[LLMCallRecord]]:
+        """Gate for a generated prop (ADR-0026 phase 3): the product photo (image 0) next to the
+        candidate prop (image 1). A prop that resembles the product is a "product" issue, made
+        hard by code as at the keyframe gate."""
+        parts: list[ImagePart | TextPart] = []
+        for label, art in (
+            ("Image 0: the real product photo", state.product_photo),
+            (f"Image 1: candidate prop ({spec.name})", image),
+        ):
+            if art is None:
+                continue
+            jpeg = await asyncio.to_thread(
+                image_to_jpeg, self.ctx.artifacts.resolve(art), long_side=self.long_side
+            )
+            parts += [TextPart(label), ImagePart("image/jpeg", base64.b64encode(jpeg).decode())]
+        n_images = len(parts) // 2
+        category = state.brief.product_category if state.brief else "the product"
+        rendered = self.ctx.prompts.get("qa_prop_ref").render(
+            name=spec.name,
+            description=spec.description,
+            transforms="yes" if spec.transforms_into_product else "no",
+            category=category,
+            image_prompt=prompt,
+        )
+        threshold = state.config.qa_threshold
+
+        def convert(d: QAVerdictDraft) -> QAVerdict:
+            problems = check_verdict(d, n_images=n_images)
+            if any(i.category == "motion" for i in d.issues):
+                problems.append("a still has no motion: use another category")
+            if problems:
+                raise ValueError("; ".join(problems))
+            verdict = QAVerdict.from_draft(gate_draft(d), threshold=threshold)
+            return verdict.model_copy(update={"frames_inspected": n_images})
 
         res = await self.ctx.llm.call_and_convert(
             LLMNode.QA_CRITIC, rendered, QAVerdictDraft, convert, images=parts

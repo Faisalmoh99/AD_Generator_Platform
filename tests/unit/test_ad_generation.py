@@ -245,7 +245,8 @@ def whole_run(**gen: Any) -> RunState:
 
 def test_prompt_goes_to_the_director_then_the_estimate_for_a_whole_ad() -> None:
     assert next_stage(whole_run(), Stage.PROMPT) is Stage.DIRECTOR
-    assert next_stage(whole_run(), Stage.DIRECTOR) is Stage.ESTIMATE
+    assert next_stage(whole_run(), Stage.DIRECTOR) is Stage.PROPS
+    assert next_stage(whole_run(), Stage.PROPS) is Stage.ESTIMATE
     plain = make_full_run(Stage.PROMPT)
     assert next_stage(plain, Stage.PROMPT) is Stage.KEYFRAME
 

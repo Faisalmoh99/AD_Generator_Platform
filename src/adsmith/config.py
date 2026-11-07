@@ -369,6 +369,8 @@ class Settings(BaseSettings):
     # any media). Hard cap per run on the music call; above it the ad is assembled without music.
     generate_music: bool = True
     music_max_usd: float = Field(default=0.15, ge=0)
+    # Prop reference images of a whole-ad prompt (ADR-0026): the run's cap on their images.
+    props_max_usd: float = Field(default=0.20, ge=0)
     # Hard ceiling for ALL real fal spend on this machine (prepaid balance, no auto top-up).
     # Every paid call reserves against it in the account ledger before it is submitted.
     fal_balance_usd: float | None = Field(default=None, ge=0)

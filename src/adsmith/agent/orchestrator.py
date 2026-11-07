@@ -66,10 +66,12 @@ NODES: dict[Stage, Node] = {
 # Per-scene stages: run by the SceneStageRunner, which commits each scene's progress itself.
 SCENE_STAGES: frozenset[Stage] = frozenset({Stage.KEYFRAME, Stage.GENERATE, Stage.QA})
 # Whole-ad stages (multishot, ADR-0023): run by the AdGenerationRunner, which commits itself.
-AD_STAGES: frozenset[Stage] = frozenset({Stage.ESTIMATE, Stage.GENERATE, Stage.QA})
+AD_STAGES: frozenset[Stage] = frozenset({Stage.PROPS, Stage.ESTIMATE, Stage.GENERATE, Stage.QA})
 
 # Side effects that run after a stage's commit (files, not state). Failures are logged, not fatal.
-EXPORT_AFTER: frozenset[Stage] = frozenset({Stage.PROMPT, Stage.DIRECTOR, Stage.ASSEMBLE})
+EXPORT_AFTER: frozenset[Stage] = frozenset(
+    {Stage.PROMPT, Stage.DIRECTOR, Stage.PROPS, Stage.ASSEMBLE}
+)
 
 
 def run_config_from_settings(settings: Settings, request: str, *, interactive: bool) -> RunConfig:
@@ -318,7 +320,10 @@ class Orchestrator:
             await ensure_music(self.rt, run_id)
             state = self.rt.storage.runs.load(run_id)
         if stage in AD_STAGES and whole_ad(state):
-            return await self._ad_step(state)
+            committed = await self._ad_step(state)
+            if stage in EXPORT_AFTER and committed.stage is not Stage.ERRORED:
+                self.export(committed)
+            return committed
         if stage in SCENE_STAGES:
             return await self._scene_step(state)
         node = NODES[stage]
@@ -456,7 +461,10 @@ class Orchestrator:
         started = time.monotonic()
         spent_before = state.budget.spent_usd
         try:
-            await self.rt.ad_runner(state).run(run_id, stage)
+            if stage is Stage.PROPS:  # prop reference images (ADR-0026 phase 3)
+                await self.rt.props_runner(state).run(run_id)
+            else:
+                await self.rt.ad_runner(state).run(run_id, stage)
         except Exception as exc:
             log.exception("ad stage stopped", run_id=run_id, stage=stage.value)
             return self._fail(
